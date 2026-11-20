@@ -114,6 +114,7 @@ function DC.new(o)
     end)
     local code = math.floor(cause / 4) % 32
     if code == 0 then return end                                   -- an interrupt, not a fault
+    if code == 8 and d.phase ~= 1 then return end                  -- a syscall from the SDK (EnterCriticalSection) after main, not a fault
     d.ended = true
     local c = d.phase == 1 and calls[idx] or nil
     local info = { code = code, epc = epc % 4294967296, badvaddr = bad % 4294967296, phase = d.phase,

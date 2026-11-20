@@ -10,7 +10,7 @@ See [`Summary.md`](Summary.md) for the full curriculum.
 
 * You can program (loops, functions, conditionals). No assembly, console, or 3D experience needed.
 * Linux (primary), macOS or Windows (WSL recommended). x86-64 for the prebuilt tools; other CPUs can use Docker.
-* Installed on the host: `git`, `curl`, `python3` (3.10+, with `venv`), `cmake` (3.20+), `make`, and a C++ compiler
+* Installed on the host: `git`, `curl`, `python3` (3.10+, with `venv`), `cmake` (3.21+), `make`, and a C++ compiler
   (`build-essential`) because armips is built from source.
   On Debian/Ubuntu: `sudo apt install build-essential cmake git curl python3 python3-venv`.
 * About 1 GB of disk for the toolchain. No sudo is needed for the toolchain itself, and **no PlayStation BIOS is

@@ -38,3 +38,6 @@ ps1book-ch*/
 *.swp
 .vscode/
 .idea/
+
+# generated compiler output (make asm)
+expand.O*.s

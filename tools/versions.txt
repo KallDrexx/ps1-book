@@ -30,5 +30,6 @@ REDUX_SHA256=31acdbc0a6f325fb49827b22dbc09c42f1d988e1e99947e709d4e88e8c665636
 
 # --- host requirements ------------------------------------------------------
 PYTHON_MIN=3.10
-CMAKE_MIN=3.20
+# PSn00bSDK 0.24 (sdk.cmake) requires CMake 3.21.
+CMAKE_MIN=3.21
 PIP_PACKAGES="pillow"

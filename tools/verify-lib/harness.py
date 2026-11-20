@@ -275,7 +275,7 @@ def build_project(project, cfg, work):
         need_tool("cmake")
         bdir = work / "cmake-build"
         sdk = env["PSN00BSDK_LIBS"] + "/cmake/sdk.cmake"
-        rc, log = _run(["cmake", "-S", str(project), "-B", str(bdir), "-G", "Ninja",
+        rc, log = _run(["cmake", "-S", str(project), "-B", str(bdir), "-G", "Ninja", "-Wno-dev",
                         f"-DCMAKE_TOOLCHAIN_FILE={sdk}", "-DCMAKE_BUILD_TYPE=Release"], project, env)
         if rc == 0:
             rc, log2 = _run(["cmake", "--build", str(bdir)], project, env)
