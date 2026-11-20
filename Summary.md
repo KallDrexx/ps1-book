@@ -74,6 +74,7 @@ ps1-book/
             │   ├── verify.sh   # entry point: ./verify.sh [path-to-reader-project]
             │   ├── checks.py   # chapter-specific assertions
             │   └── probe.lua   # chapter-specific emulator probe (optional)
+            ├── example/        # the runnable worked example (optional; not checked by verify/CI)
             └── quiz.md         # 5–10 self-check questions with answers in <details>
 ```
 
@@ -170,7 +171,7 @@ The book has **8 parts, 42 chapters**. Course-section mapping is shown as *(Piku
 
 #### Chapter 7 — The Pipeline and Delay Slots *(Pikuma §6)*
 - **Concept:** The R3000A overlaps five pipeline stages. As a result, the instruction after a branch always executes (branch delay slot), and a loaded value is not ready for the very next instruction (load delay slot).
-- **Covers:** The IF/RD/ALU/MEM/WB stages. Hazards. Branch delay slot semantics. The R3000 load delay slot and why the next instruction sees the *old* value. Filling delay slots with useful work. armips `.set noreorder` behavior.
+- **Covers:** The IF/RD/ALU/MEM/WB stages. Hazards. Branch delay slot semantics. The R3000 load delay slot and why the next instruction sees the *old* value. Filling delay slots with useful work. armips never reorders and has no `.set` directive (it behaves like GNU `as` under `.set noreorder`, which appears in compiler output); its load-delay warning only compares consecutive lines. `multu`/`mflo` (the HI/LO interlock).
 - **Project:** "Factorial, Tightly." Compute `n!` iteratively for several inputs. Then make a second version with every delay slot filled by a useful instruction (no `nop` in delay slots).
 - **Verification:** The results are correct for all inputs (patched at runtime). A static check on the disassembly confirms that the optimized routine has zero `nop`s in delay slots. An instruction-count probe confirms it runs in fewer instructions than the first version.
 
