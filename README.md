@@ -31,8 +31,9 @@ Prefer a container? `docker build -f tools/Dockerfile -t ps1-book .` then
 
 ## Working through a chapter
 
-1. Read `parts/part-NN-*/chNN-*/chapter.md`.
-2. Work in that chapter's `starter/` directory (copy it elsewhere first if you want to keep it pristine).
+1. Read the chapter text, `parts/part-NN-*/chNN-*/README.md`.
+2. Work in that chapter's `starter/` directory (or a copy of it elsewhere; run `source tools/env.sh` first so the
+   copy's `Makefile` can find the book through `PS1BOOK_ROOT`).
    Build with `make` (or the command the chapter gives) and run it in PCSX-Redux to watch it work.
 3. Check yourself:
    ```sh
@@ -58,7 +59,8 @@ tools/
   verify-lib/           the verification harness (see its README.md for the chapter-author API)
   assets/               asset generators (img2tim.py, wav2vag.py, ...)
 appendices/             reference material (MIPS, memory map, GPU, GTE, file formats, troubleshooting)
-parts/part-NN-slug/chNN-slug/{chapter.md, starter/, solution/, verify/, quiz.md}
+parts/part-NN-slug/README.md                part intro
+parts/part-NN-slug/chNN-slug/{README.md, starter/, solution/, verify/, quiz.md}   README.md = chapter text
 .toolchain/             downloaded tools (git-ignored)
 ```
 

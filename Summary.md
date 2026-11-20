@@ -67,7 +67,7 @@ ps1-book/
     └── part-NN-slug/
         ├── README.md           # part intro: theme, goals, what you'll build
         └── chNN-slug/
-            ├── chapter.md      # the chapter text
+            ├── README.md       # the chapter text
             ├── starter/        # what the reader begins with (compiles, but incomplete)
             ├── solution/       # reference solution (kept spoiler-hidden; used to test verify)
             ├── verify/
@@ -77,7 +77,7 @@ ps1-book/
             └── quiz.md         # 5–10 self-check questions with answers in <details>
 ```
 
-**Every `chapter.md` follows this template:**
+**Every chapter `README.md` follows this template:**
 
 1. **Concept** – one or two sentences naming the single big idea.
 2. **Why it matters** – motivation tied to real PS1 games and hardware.
@@ -433,5 +433,5 @@ The book has **8 parts, 42 chapters**. Course-section mapping is shown as *(Piku
 2. **Specify formats before generators.** Write Appendix E (book formats) before Chapters 29–41, and have `tools/assets/*.py` implement it exactly. All capstone assets are procedurally generated or original. Never include or reference commercial game assets.
 3. **Prove every verify script both ways.** It must pass on `solution/` and fail on `starter/`. Add a CI job (`tools/ci.sh`) that does this for every chapter.
 4. **Keep checks behavioral.** Never require a specific variable name unless the starter declares it. Expose the needed state through starter-declared symbols such as `results`, `scene`, `ship`, and `done`.
-5. **Tone and length.** Conversational and precise, 4,000–9,000 words per chapter. Use diagrams for memory layouts, pipelines, packets, VRAM maps, and transform pipelines. Explain every new instruction or API the first time it appears.
+5. **Tone and length.** Conversational and precise, as long as the concept needs and no longer (up to roughly 9,000 words; shorter is fine when the content is adequately explained). Use diagrams for memory layouts, pipelines, packets, VRAM maps, and transform pipelines. Explain every new instruction or API the first time it appears.
 6. **Cite hardware facts** against psx-spx and the PSn00bSDK documentation, and note emulator-specific behavior wherever it differs.
