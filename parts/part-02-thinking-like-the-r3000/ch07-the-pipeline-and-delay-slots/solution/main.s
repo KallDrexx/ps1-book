@@ -44,7 +44,7 @@ fact_v2:
     la    $s1, out_v2
     lw    $s2, 0($s0)           ; count
     addiu $s0, $s0, 4           ; load-delay filler
-    li    $t4, 1
+    li    $t4, 2
 v2_next:
     lw    $t0, 0($s0)           ; n
     addiu $s0, $s0, 4           ; load-delay filler: advance input pointer
@@ -53,9 +53,10 @@ v2_next:
     li    $t1, 1                ; delay slot: acc = 1 on both paths
 v2_loop:
     multu $t1, $t0
-    addiu $t0, $t0, -1          ; runs while the multiply is in flight
-    bne   $t0, $t4, v2_loop
-    mflo  $t1                   ; delay slot: collect the product
+    mflo  $t1                   ; acc *= n (interlocks until the product is ready)
+    bne   $t0, $t4, v2_loop     ; n == 2 was the last factor
+    addiu $t0, $t0, -1          ; delay slot: n-- (the test above used the old n)
+                                ; bne + slot = 2 instructions between this mflo and the next multu (Chapter 12)
 v2_store:
     sw    $t1, 0($s1)
     addiu $s2, $s2, -1

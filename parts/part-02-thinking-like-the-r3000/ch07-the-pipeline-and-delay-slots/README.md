@@ -102,7 +102,7 @@ The project multiplies. `multu rs, rt` multiplies two registers and puts the 64-
 
 The multiplier runs in parallel with the pipeline: `multu` starts and the next instructions keep going. `mflo` is the one place the R3000 does interlock: if the result is not ready it stalls until it is. So you can schedule independent work between a `multu` and its `mflo`. (psx-spx: `multu` takes 6 to 13 cycles depending on the size of `rs`; with small operands, up to six instructions in between cost nothing extra.)
 
-One caution for later: the MIPS I architecture says a `mult`/`div` started within two instructions after an `mfhi`/`mflo` gives undefined results, and psx-spx reports a not-yet-understood "don't touch HI/LO for about two cycles" rule on the PS1. Emulators do not model it, and this chapter's verifier does not require the gap (the reference solution's tight loop has none); GCC targeting the R3000 inserts it for you. Chapter 12 returns to it.
+One caution for later: the MIPS I architecture says a `mult`/`div` started within two instructions after an `mfhi`/`mflo` gives undefined results, and psx-spx reports a not-yet-understood "don't touch HI/LO for about two cycles" rule on the PS1. Emulators do not model it, so this chapter's verifier cannot see it. The reference solution is written to respect it anyway: its loop leaves two instructions (the `bne` and its slot) between `mflo` and the next `multu`. GCC targeting the R3000 inserts such gaps for you. [Chapter 12](../ch12-risc-vs-cisc-multiply-and-divide/README.md) returns to it.
 
 ### 5.5 Filling delay slots
 
@@ -170,14 +170,14 @@ Version 1 falls through into version 2, and `done` follows. Each version sets up
 
 - Get version 1 right first; version 2 is a transformation of it.
 - Count down (`n`, `n-1`, ... 2) so the loop test is cheap, and test `n < 2` once before the loop (`slti`).
-- A pointer bump at the end of the outer loop, the `acc = 1` initialisation, and the `mflo` that collects the product are all candidates for delay slots. Check each one is legal on both paths.
+- A pointer bump at the end of the outer loop, the `acc = 1` initialisation, and the loop counter's decrement are all candidates for delay slots. Check each one is legal on both paths.
 - The instruction after a `lw` is also a free slot. Put the input pointer advance there.
 - Remember the multiplier runs in parallel: independent loop bookkeeping can sit between `multu` and `mflo`.
 
 **Stretch goals** (in a copy)
 
 - Unroll the multiply loop by two and count again.
-- Move `mflo` out of the delay slot and watch your instruction count rise. Where is the best place for it?
+- Find the place for `mflo` that costs no extra instructions and still leaves two instructions before the next `multu` (5.4). The branch's delay slot also costs nothing, but then `mflo` is directly followed by the next `multu`.
 - Put a real instruction in a slot that is *wrong* on the other path, and predict the wrong result before running it.
 
 ## 8. Verification
