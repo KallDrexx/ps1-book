@@ -1,0 +1,6 @@
+.git
+.toolchain
+__pycache__
+*.ps-exe
+*.bin
+*.cue

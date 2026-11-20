@@ -26,7 +26,7 @@ Authoring agents must use these tools consistently across all chapters. Pin exac
 
 | Role | Tool | Notes |
 |---|---|---|
-| Assembler (Parts I–III) | **armips** | `.psx` / `.create` / `.org` directives. `-sym` emits symbol files that the verification harness uses. |
+| Assembler (Parts I–III) | **armips** | `.psx` (selects the R3000 instruction set only; it emits **no** PSX-EXE header) / `.create` / `.org` / `.include` directives. The 2 KB header comes from the book's `common/psxexe.inc`. `-sym` emits symbol files that the verification harness uses. |
 | C compiler (Parts IV–VII) | **GCC cross-compiler `mipsel-none-elf`** (binutils + gcc) | Built by the PSn00bSDK toolchain instructions or installed from a distro or prebuilt package. |
 | SDK (Parts IV–VII) | **PSn00bSDK** | Open source. Its APIs mirror Sony's `libgpu`/`libgte`/`libetc`/`libcd`/`libspu` names (`RotTransPers`, `ClearOTagR`, `PutDrawEnv`, …), so the concepts carry over to the original SDK. Uses CMake. |
 | Primary emulator & debugger | **PCSX-Redux** | Integrated debugger, VRAM viewer, GPU logger, and a Lua scripting API. Its headless/test mode drives every `verify` script. |
@@ -152,8 +152,8 @@ The book has **8 parts, 42 chapters**. Course-section mapping is shown as *(Piku
 
 #### Chapter 5 — Anatomy of an Executable: The PSX-EXE Format *(Pikuma §4)*
 - **Concept:** A PS1 program is a PSX-EXE: a 2 KB header that tells the BIOS where to load the code, where execution starts, and where the stack is, followed by the raw machine code.
-- **Covers:** The header fields (magic `"PS-X EXE"`, initial PC, initial GP, load address, file size, stack base/size, region marker). How armips `.psx`/`.create` emit it. How emulators side-load EXEs vs. how the BIOS boots from CD. Instruction encoding (R/I/J formats), and reading a hex dump as instructions.
-- **Project:** (a) Write `exeinfo.py`, a host tool that parses and validates any PSX-EXE header and disassembles the first 16 instructions. (b) Build an EXE with a **hand-written header** (raw `.word` directives, no `.psx` shortcut) that loads at a non-default address and still runs.
+- **Covers:** The header fields (magic `"PS-X EXE"`, initial PC, initial GP, load address, file size, stack base/size, region marker). Why armips' `.psx` emits no header, and how the book's `common/psxexe.inc` builds one from `.ascii`/`.word` directives (`.create "main.ps-exe",0x8000F800`, `.include "common/psxexe.inc"`, `.org 0x80010000`). How emulators side-load EXEs vs. how the BIOS boots from CD. Instruction encoding (R/I/J formats), and reading a hex dump as instructions.
+- **Project:** (a) Write `exeinfo.py`, a host tool that parses and validates any PSX-EXE header and disassembles the first 16 instructions. (b) Build an EXE with a **hand-written header** (raw `.ascii`/`.word` directives written by the reader, without `common/psxexe.inc`) that loads at a non-default address and still runs.
 - **Verification:** `exeinfo.py` is run against several provided EXEs, including malformed ones, and its output is compared with expected values. The reader's hand-built EXE must pass header validation and reach `done` with the correct results.
 
 #### Chapter 6 — Emulation and Debugging *(Pikuma §5)*

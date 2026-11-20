@@ -1,0 +1,40 @@
+# Downloaded/built toolchain (created by tools/setup.sh)
+.toolchain/
+
+# Build outputs
+build/
+cmake-build*/
+*.ps-exe
+*.exe
+*.elf
+*.o
+*.a
+*.map
+*.sym
+*.sym2
+
+# CD images produced by mkpsxiso. NOTE: *.bin is deliberately NOT ignored
+# wholesale because chapters commit small raw data files (.incbin images,
+# MODEL.BIN samples). Disc-image .bin files are ignored by name/location:
+*.cue
+*.iso
+disc*.bin
+hoverline*.bin
+iso/
+cd/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Verification scratch (the harness normally uses the system temp dir)
+.ps1book-work/
+ps1book-ch*/
+
+# Editors / OS
+.DS_Store
+*.swp
+.vscode/
+.idea/

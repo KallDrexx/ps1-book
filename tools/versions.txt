@@ -1,0 +1,34 @@
+# Pinned tool versions for the PS1 book. Shell-sourceable (KEY=VALUE), read by
+# setup.sh, doctor.sh and the Dockerfile. Bump deliberately, then re-run
+# tools/setup.sh and tools/ci.sh.
+
+# --- armips (assembler) ---------------------------------------------------
+# Built from source. The v0.11.0 tag does NOT build with GCC >= 13 / CMake >= 4
+# (missing <cstdint>, strict-ANSI __float128 clash), so we pin the first master
+# commit that does. It still reports itself as "v0.11.0".
+ARMIPS_REPO=https://github.com/Kingcom/armips.git
+ARMIPS_COMMIT=62adab4ef30da765f5cf22a451eb08a59c54dc8b
+ARMIPS_VERSION_RE='v0\.11'
+
+# --- PSn00bSDK (SDK + bundled mipsel-none-elf GCC 12.3.0, ninja, elf2x...) --
+PSN00BSDK_VERSION=0.24
+PSN00BSDK_URL=https://github.com/Lameguy64/PSn00bSDK/releases/download/v0.24/PSn00bSDK-0.24-Linux.zip
+PSN00BSDK_SHA256=5ada7c9478d795b22bde96ee23d6869290c14a740bcde3d57c01c342a26ded35
+GCC_VERSION_RE='12\.3'
+
+# --- mkpsxiso (CD image builder; newer than the copy bundled in the SDK) ---
+MKPSXISO_VERSION=2.30
+MKPSXISO_URL=https://github.com/Lameguy64/mkpsxiso/releases/download/v2.30/mkpsxiso-2.30-Linux.zip
+MKPSXISO_SHA256=8e387e6db51dee3eb7cb08f4d59293a24c48f58bd541631acf9301d78015a1fc
+
+# --- PCSX-Redux (primary emulator; Linux x86_64 AppImage, "dev" channel) ----
+# Redux only ships rolling dev builds; we pin one by distrib.app build id.
+REDUX_BUILD=582
+REDUX_VERSION=dd3497b5
+REDUX_URL=https://distrib.app/storage/assets/34d/392/5f3/c49d5eb56b8204edae24ed1994589c7bb2c59cc6eac269257b73781/PCSX-Redux-dd3497b5-linux-x86_64.zip
+REDUX_SHA256=31acdbc0a6f325fb49827b22dbc09c42f1d988e1e99947e709d4e88e8c665636
+
+# --- host requirements ------------------------------------------------------
+PYTHON_MIN=3.10
+CMAKE_MIN=3.20
+PIP_PACKAGES="pillow"
