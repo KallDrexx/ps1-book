@@ -10,7 +10,7 @@
 |---|---|---|---|
 | 13 | [The GPU, VRAM, and Command Packets](ch13-the-gpu-vram-and-command-packets/README.md) | `gpu_init`, `gpu_clear`, `gpu_rect`: a 320x240 display cleared to 8 colour bars | available |
 | 14 | [Rendering Polygons](ch14-rendering-polygons/README.md) | "Polygon Gallery": flat and Gouraud triangles and quads | available |
-| 15 | Drawing Subroutines and Stack Parameters | `draw_flat_tri`, `draw_flat_quad`, `draw_gouraud_tri` and a 20-polygon scene from a data table | planned |
+| 15 | [Drawing Subroutines and Stack Parameters](ch15-drawing-subroutines-and-stack-parameters/README.md) | `draw_flat_tri`, `draw_flat_quad`, `draw_gouraud_tri` and a 20-polygon scene from a data table | available |
 | 16 | Copying Data to VRAM | `vram_upload`: a 16-bpp image, then a 24-bpp full-screen image | planned |
 | 17 | Part III Capstone: Animation in Assembly | "Bouncing Gem": a Gouraud diamond, double-buffered, synchronised to VBlank | planned |
 
