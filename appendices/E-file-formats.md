@@ -747,7 +747,7 @@ Face flags:
 | 1 | `WALL` | A side wall, facing the road. |
 | 2 | `BOOST` | Boost pad (centre lane of the sections in the manifest's `boost_sections`). Always with `FLOOR`. |
 | 3 | `START` | Start/finish line (the three lane quads of the start section). With `FLOOR`. |
-| 4 | `FLIP_H` | Render **mirrored in U**: use the UVs `(u1,u0,u3,u2)` for the vertices `(v0,v1,v2,v3)` (swap the two vertices of each U edge; V unchanged). The texture itself is not modified. |
+| 4 | `FLIP_H` | Render **mirrored in U**: every corner's `u` becomes `u_min + u_max - u`, where `u_min`, `u_max` are the smallest and largest of the face's four `u` values (the generated faces use the whole tile, so `u -> 63 - u`); `v` is unchanged. On a lane quad (U runs along `v0 -> v1`) this equals using the UVs `(u1,u0,u3,u2)` for the vertices `(v0,v1,v2,v3)`; on a wall quad (U runs along `v0 -> v2`) it swaps `(u0,u2)` and `(u1,u3)`. The texture itself is not modified. |
 | 5-15 | | 0 |
 
 Per section the 5 faces are, in order: left wall (ring vertices 0,1), left lane (1,2), centre lane (2,3), right lane (3,4), right wall (4,5).
