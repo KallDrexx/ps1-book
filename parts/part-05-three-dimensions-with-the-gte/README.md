@@ -13,7 +13,7 @@
 | 25 | [The GTE Coprocessor](ch25-the-gte-coprocessor/README.md) | "Solid Cube": a flat-shaded cube with GTE transforms, back-face culling and depth sorting | available |
 | 26 | [Multiple Objects and Simple Motion](ch26-multiple-objects-and-simple-motion/README.md) | "Bouncing Cubes": three cubes under fixed-point gravity on a checkerboard floor | available |
 | 27 | [Batching GTE Work: RTPT and Timing](ch27-batching-gte-work-rtpt-and-timing/README.md) | "The 64-Cube Field": 64 cubes transformed per corner (`RTPS`) and batched (`RTPT`), with the cycles of each compared | available |
-| 28 | The Camera | `camera_look_at` and a free-fly camera | planned |
+| 28 | [The Camera](ch28-the-camera/README.md) | "Flyable Camera": `camera_look_at` (view matrix from eye, target, up) and a pad-driven free-fly camera that tracks the centre cube | available |
 
 ## How the part flows
 
@@ -22,7 +22,7 @@ fixed point -> projection -> the GTE -> many objects -> batching -> camera
    (Ch 23)       (Ch 24)      (Ch 25)      (Ch 26)       (Ch 27)    (Ch 28)
 ```
 
-Chapter 23 gives you the number system: the PS1 has no FPU, and the GTE itself computes in 4.12 fixed point, so every later chapter depends on it. Chapter 24 builds the 3D pipeline (model, world, view, perspective divide, screen) on the CPU, so you see each step. Chapter 25 hands the same steps to the GTE through PSn00bSDK's `gte_*` macros and adds back-face culling and depth sorting. Chapter 26 gives each object its own transform and adds motion. Chapter 27 looks at what the GTE costs: its full register set, command timing and hazards, and batching three vertices per command with `RTPT`. Chapter 28 turns the camera into a matrix and puts it under your control.
+Chapter 23 gives you the number system: the PS1 has no FPU, and the GTE itself computes in 4.12 fixed point, so every later chapter depends on it. Chapter 24 builds the 3D pipeline (model, world, view, perspective divide, screen) on the CPU, so you see each step. Chapter 25 hands the same steps to the GTE through PSn00bSDK's `gte_*` macros and adds back-face culling and depth sorting. Chapter 26 gives each object its own transform and adds motion. Chapter 27 looks at what the GTE costs: its full register set, command timing and hazards, and batching three vertices per command with `RTPT`. Chapter 28 turns the camera into a matrix (look-at: cross products and normalising in fixed point), composes it with every object, and puts the eye under your control.
 
 ## Before you start
 
