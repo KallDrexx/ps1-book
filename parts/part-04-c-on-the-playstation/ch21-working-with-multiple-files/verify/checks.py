@@ -261,16 +261,16 @@ def _(ctx):
 
 
 @static_check("the reference solution mirrors common/psxe (the copy later chapters start from)",
-              hint="Keep solution/psxe and common/psxe identical.")
+              hint="Keep solution/psxe's display, ot and gfx files identical to common/psxe.")
 def _(ctx):
     if not ctx.solution:
         return
+    # common/psxe keeps growing (Chapter 22 adds the `input` module and lists it in CMakeLists.txt), so compare this chapter's modules only.
     ref = ROOT_DIR / "common" / "psxe"
-    for p in sorted(ref.rglob("*")):
-        if p.is_file():
-            q = ctx.project / "psxe" / p.relative_to(ref)
-            expect_true(q.exists() and q.read_bytes() == p.read_bytes(), f"solution/psxe/{p.relative_to(ref)} == common/psxe/...",
-                        "differs or missing")
+    for m in HEADERS:
+        for rel in (f"include/psxe/{m}.h", f"src/{m}.c"):
+            p, q = ref / rel, ctx.project / "psxe" / rel
+            expect_true(q.exists() and q.read_bytes() == p.read_bytes(), f"solution/psxe/{rel} == common/psxe/{rel}", "differs or missing")
 
 
 def code_lines(path):
