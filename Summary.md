@@ -135,8 +135,8 @@ The book has **8 parts, 42 chapters**. Course-section mapping is shown as *(Piku
 #### Chapter 2 — Memory, the Memory Map, and Endianness *(Pikuma §3)*
 - **Concept:** The CPU sees one 32-bit address space. RAM, BIOS, scratchpad, and hardware I/O registers live at fixed addresses, mirrored through KUSEG/KSEG0/KSEG1. Multi-byte values are stored little-endian.
 - **Covers:** What an ISA is. Bits, bytes, halfwords, words. Hex notation. The PS1 memory map (2 MB RAM at `0x80000000`, 1 KB scratchpad at `0x1F800000`, I/O at `0x1F801000`, BIOS at `0xBFC00000`). Cached vs. uncached segments. Little-endian storage. The MIPS–LSI relationship (the CPU is an LSI CW33300 core).
-- **Project:** "Memory Cartographer." Use only `lui`/`ori`/`sw`/`sb`/`sh` to write a given set of byte, halfword, and word values to specified addresses in a `results` block, then read the same word back byte-by-byte to prove little-endianness.
-- **Verification:** The harness breaks at `done` and checks every byte of `results` against the expected little-endian layout. It also checks that the reader's byte-extraction results match.
+- **Project:** "Memory Cartographer." Use only `lui`/`ori`/`sw`/`sb`/`sh` (plus `lbu`/`lw`, the minimum loads for reading back, and `nop` for the load delay, which this chapter introduces ahead of Chapter 7) to write a given set of byte, halfword, and word values to specified addresses in a `results` block, including through KSEG1/KUSEG aliases and the scratchpad, then read the same words back byte-by-byte to prove little-endianness.
+- **Verification:** The harness breaks at `done` and checks every byte of `results` against the expected little-endian layout. Watchpoints check each store's width and segment, and a perturbation run (source words changed just before they are read) proves the byte-extraction copies come from real loads.
 
 #### Chapter 3 — Registers, Loads, Stores, and Arithmetic *(Pikuma §4)*
 - **Concept:** MIPS is a load/store architecture. All computation happens in 32 general-purpose registers, and memory is touched only by explicit load and store instructions.
