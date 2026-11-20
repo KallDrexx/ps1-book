@@ -11,7 +11,7 @@
 | 18 | [From Assembly to C](ch18-from-assembly-to-c/README.md) | A C program that clears the screen to a colour computed by your Chapter 9 assembly routine, plus an annotated read of the compiler's output | available |
 | 19 | [Double Buffering with Display and Draw Environments](ch19-double-buffering/README.md) | `display_init()`/`display_clear()`/`display_swap()`, a colour-cycling background and a moving rectangle | available |
 | 20 | [Primitives and Ordering Tables](ch20-primitives-and-ordering-tables/README.md) | `ot.c`/`ot.h`: 16 overlapping quads sorted by depth | available |
-| 21 | Working with Multiple Files | The `psxe` engine library (`display`, `ot`, `gfx`) | planned |
+| 21 | [Working with Multiple Files](ch21-working-with-multiple-files/README.md) | The `psxe` engine library (`display`, `ot`, `gfx`) | available |
 | 22 | Controller Input and the BIOS | "Cursor": a sprite moved by the D-pad, with press/release edge detection | planned |
 
 ## How the part flows
@@ -32,6 +32,10 @@ Finish Part III. You will constantly use:
 - reading disassembly: a debugging habit from Chapter 6 that now applies to compiler output.
 
 The workflow changes slightly: `source tools/env.sh`, `make` in `starter/` (it runs CMake and Ninja), `verify.sh`. Projects are CMake projects built with PSn00bSDK, and a few programs run on a CD image, not just side-loaded.
+
+## The `psxe` library
+
+From Chapter 21 the engine lives in `common/psxe/` (headers in `include/psxe/`, sources in `src/`, a `CMakeLists.txt` defining the `psxe` target). It is Chapter 21's answer: open it after you pass that chapter. Chapter folders stay self-contained: each chapter that uses it ships its own copy in `starter/psxe/` and `solution/psxe/`, taken from `common/psxe/` as it stands at that chapter.
 
 ## Capstone for the part
 

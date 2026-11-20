@@ -55,7 +55,7 @@ ps1-book/
 │   │   ├── symbols.py          # parse armips .sym / ELF symbols (nm)
 │   │   └── image.py            # screenshot / VRAM comparisons with tolerances
 │   └── assets/                 # generators: img2tim.py, wav2vag.py, shpgen.py, tpkpack.py, trkgen.py
-├── common/                     # shared starter libraries handed to the reader at given points
+├── common/                     # shared code: psxexe.inc (Parts I–III); psxe/ (C engine library, the Ch 21 reference, copied into later chapters)
 ├── appendices/
 │   ├── A-mips-cheatsheet.md
 │   ├── B-memory-map-and-io-registers.md
@@ -268,8 +268,8 @@ The book has **8 parts, 42 chapters**. Course-section mapping is shown as *(Piku
 #### Chapter 21 — Working with Multiple Files *(Pikuma §20)*
 - **Concept:** Scaling a codebase means separating interface from implementation: header files declare, `.c` files define, and the build system compiles each one separately and links them together.
 - **Covers:** Header guards, `extern` globals, `static` linkage, translation units, CMake targets, a reusable `common/` engine library. Designing small module APIs (display, ot, gfx, input).
-- **Project:** Refactor Ch 19–20 into a mini engine library `psxe` (`display`, `ot`, `gfx`) plus a thin `main.c`. This library carries forward into all later chapters.
-- **Verification:** The build must produce `libpsxe.a`. `nm` confirms the module symbols, and `static` helpers are not exported. `main.c` must be under a line budget. The Ch 20 scene must still render identically (screenshot comparison with the previous chapter's solution output).
+- **Project:** The starter is Ch 19 + Ch 20 pasted into one `main.c`, plus the three `psxe` headers (API given, guards missing). Refactor it into a static library `psxe` (`display`, `ot`, new `gfx_quad_f4`) in `starter/psxe/{include/psxe,src}` with its own `CMakeLists.txt` (`PRIVATE psn00bsdk` only: linking `psxgpu` into it breaks the SDK's link order), plus a thin `main.c`. Worked example: `ar`/`nm` on the SDK's `libpsxgpu` (no `example/`). The reference library is kept in `common/psxe/` (`solution/psxe` must equal it); each later chapter ships its own copy in `starter/psxe` and `solution/psxe`.
+- **Verification:** `libpsxe.a` exists; `nm` per archive member shows each module exports its API and otherwise only `module_*` names declared in its header (so non-`static` helpers/state fail). Headers have unique guards, compile alone/twice/together, define nothing. `main.c` ≤ 70 code lines, no `psxgpu` use, the only `.c` outside `psxe/`. Ch 20's dynamic checks (DMA-list walk, bump allocation, overflow guards, pacing, ~1,500 sampled screenshot points on two scenes) plus 16 `gfx_quad_f4` calls per frame.
 
 #### Chapter 22 — Controller Input and the BIOS *(Pikuma §19)*
 - **Concept:** The digital pad is read over a serial interface. The BIOS and SDK expose its state as a bitmask of pressed buttons, and edge detection turns that state into "pressed this frame" events.

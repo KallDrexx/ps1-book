@@ -52,7 +52,7 @@ A hung program or infinite loop before the chapter's `done:` label simply fails 
 ```
 Summary.md              curriculum and authoring conventions
 README.md               this file
-common/                 shared starter code handed to the reader (e.g. psxexe.inc, the PSX-EXE header macro)
+common/                 shared starter code handed to the reader (psxexe.inc, the PSX-EXE header macro; psxe/, the C engine library from Chapter 21, copied into each chapter that uses it)
 tools/
   setup.sh doctor.sh env.sh versions.txt requirements.txt Dockerfile
   ci.sh                 proves every chapter: solution passes, untouched starter fails
