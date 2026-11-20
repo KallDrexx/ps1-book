@@ -47,6 +47,8 @@ def fmt_rgb(c):
 
 
 class Image:
+    # 24-bpp screenshots (PCSX-Redux takeScreenShot, bpp != 0) are bytes R,G,B per pixel: confirmed in Chapter 16 by
+    # comparing a screenshot with the 24-bit source bytes. redux.lua stores them unchanged, so pixel() is true (r,g,b).
     def __init__(self, width, height, rgb):
         self.width, self.height, self.rgb = width, height, rgb  # rgb: bytes, 3/px
 

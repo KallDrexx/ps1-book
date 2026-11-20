@@ -232,8 +232,8 @@ The book has **8 parts, 42 chapters**. Course-section mapping is shown as *(Piku
 #### Chapter 16 — Copying Data to VRAM *(Pikuma §12)*
 - **Concept:** VRAM is not memory-mapped to the CPU. Image data is moved into it with a GP0 "CPU→VRAM" transfer command followed by a stream of pixel words, at 16 or 24 bits per pixel.
 - **Covers:** GP0 `0xA0` (copy rectangle CPU→VRAM). Pixel packing (two 16-bit pixels per word). Computing pixel addresses with shifts (Ch 12). 24-bpp display mode and its 3-bytes-per-pixel layout. `.incbin` for embedding raw images.
-- **Project:** Write `vram_upload(ptr, x, y, w, h)`. Embed a provided 16-bpp image and display it. Then switch to 24-bpp mode and display a provided 24-bit image full-screen.
-- **Verification:** A probe reads VRAM back through the PCSX-Redux API (or uses a GPU→CPU readback the reader also implements) and compares it against the source image (exact match required, since uploads are lossless). It also checks that GPUSTAT reports 24-bpp mode for the second program.
+- **Project:** "Picture Show": write `vram_upload(ptr, x, y, w, h)` (fifth argument on the stack) and `bpp24_halfwords(px)` (`px*3/2` with shifts). One program with a `mode` data word: mode 0 embeds a provided 16-bpp image (`.incbin`) and displays it on a cleared background; mode 1 switches to 24-bpp mode and displays a provided 24-bit image full-screen (a 480x240-unit upload).
+- **Verification:** The probe calls `vram_upload` directly with harness-chosen buffers and rectangles (odd widths and pixel counts, VRAM right/bottom edges, never crossing them) and reads VRAM back through the PCSX-Redux API: the rectangle must match exactly (uploads are lossless) and nothing outside may change. The real program runs in both modes on the shipped and on patched images (random pixels, other size/place); the 24-bpp run must write GP1(08h) with bit 4 set and its screenshot must show the image.
 
 #### Chapter 17 — Part III Capstone: Animation in Assembly *(extension)*
 - **Concept:** Animation means redrawing in sync with the display. Waiting for vertical blank and double-buffering the drawing area prevent tearing.
