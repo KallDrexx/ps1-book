@@ -9,7 +9,7 @@
 | # | Chapter | You build | Status |
 |---|---|---|---|
 | 18 | [From Assembly to C](ch18-from-assembly-to-c/README.md) | A C program that clears the screen to a colour computed by your Chapter 9 assembly routine, plus an annotated read of the compiler's output | available |
-| 19 | Double Buffering with Display and Draw Environments | `display_init()`/`display_swap()`, a colour-cycling background and a moving rectangle | planned |
+| 19 | [Double Buffering with Display and Draw Environments](ch19-double-buffering/README.md) | `display_init()`/`display_clear()`/`display_swap()`, a colour-cycling background and a moving rectangle | available |
 | 20 | Primitives and Ordering Tables | `ot.c`/`ot.h`: 16 overlapping quads sorted by depth | planned |
 | 21 | Working with Multiple Files | The `psxe` engine library (`display`, `ot`, `gfx`) | planned |
 | 22 | Controller Input and the BIOS | "Cursor": a sprite moved by the D-pad, with press/release edge detection | planned |
