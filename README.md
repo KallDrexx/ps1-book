@@ -57,7 +57,7 @@ tools/
   setup.sh doctor.sh env.sh versions.txt requirements.txt Dockerfile
   ci.sh                 proves every chapter: solution passes, untouched starter fails
   verify-lib/           the verification harness (see its README.md for the chapter-author API)
-  assets/               asset generators (img2tim.py, wav2vag.py, ...)
+  assets/               asset generators and their selftest (img2tim.py, shpgen.py, trkgen.py, wav2vag.py, mkassets.py, ...; see its README)
 appendices/             reference material (MIPS, memory map, GPU, GTE, file formats, troubleshooting)
 parts/part-NN-slug/README.md                part intro
 parts/part-NN-slug/chNN-slug/{README.md, starter/, solution/, verify/, quiz.md}   README.md = chapter text

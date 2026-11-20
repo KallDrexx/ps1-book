@@ -41,3 +41,8 @@ ps1book-ch*/
 
 # generated compiler output (make asm)
 expand.O*.s
+
+# Generated assets (tools/assets/mkassets.py output): regenerate, never commit
+build/assets/
+assets-out/
+tools/assets/out/

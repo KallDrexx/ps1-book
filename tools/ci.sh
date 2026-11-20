@@ -4,11 +4,22 @@
 # build error or tooling crash). Prints a table.
 #   tools/ci.sh            all chapters
 #   tools/ci.sh ch07       only chapter dirs whose path contains "ch07"
+# Before the chapters, tools/assets/selftest.py proves the asset generators match Appendix E
+# (set PS1BOOK_SKIP_ASSET_SELFTEST=1 to skip it).
 # PS1BOOK_PARTS_DIR overrides the parts/ location (used for testing the CI itself).
 TOOLS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$TOOLS/.." && pwd)"
 PARTS="${PS1BOOK_PARTS_DIR:-$ROOT/parts}"
 FILTER="${1:-}"
+
+if [[ -z "${PS1BOOK_SKIP_ASSET_SELFTEST:-}" ]]; then
+  ST_LOG="$(mktemp)"
+  if ( source "$TOOLS/env.sh"; exec timeout 300 "$PS1BOOK_PYTHON" "$TOOLS/assets/selftest.py" ) >"$ST_LOG" 2>&1; then
+    echo "ci: asset selftest OK ($(tail -1 "$ST_LOG"))"; rm -f "$ST_LOG"
+  else
+    cat "$ST_LOG"; rm -f "$ST_LOG"; echo "ci: asset selftest FAILED (tools/assets vs appendices/E-file-formats.md)"; exit 1
+  fi
+fi
 
 shopt -s nullglob
 chapters=()
