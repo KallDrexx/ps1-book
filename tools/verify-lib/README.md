@@ -123,7 +123,7 @@ expect_region(img, x, y, w, h, rgb, tol=16, min_fraction=0.98)
 expect_solid(img, rgb)                          # whole screen
 expect_pixel_differs(img, x, y, rgb)            # e.g. "background untouched" checks inverse
 img.region_mean(x,y,w,h); img.fraction_matching(x,y,w,h,rgb,tol); img.count_not_matching(...)
-expect_similar(img, ref_hash, max_distance=6, algo=dhash)   # perceptual hash; ahash/dhash/hamming exported
+expect_similar(img, ref_hash, max_distance=6, algo=dhash, n=8)   # perceptual hash; ahash/dhash(img, n)/hamming exported (n = 16 gives 256 bits)
 vram = ctx.result.vram()                        # needs config(vram=True)
 vram.raw(x,y)   vram.pixel(x,y)   vram.rect(x,y,w,h)   vram.expect_rect(x,y,w,h, expected_bytes)
 bgr555(r,g,b)   rgb_from_bgr555(v)

@@ -12,7 +12,7 @@ arrives as the raw 1024x512 16-bit (BGR555, little-endian) dump.
     expect_pixel(img, x, y, rgb, tol=16)     -> raises CheckFailure on mismatch
     expect_region(img, x, y, w, h, rgb, tol=16, min_fraction=0.98)
     expect_solid(img, rgb, tol=8, min_fraction=0.99)
-    ahash(img) / dhash(img)                  -> 64-bit perceptual hash (int)
+    ahash(img, n=8) / dhash(img, n=8)        -> n*n-bit perceptual hash (int); 64 bits by default
     hamming(h1, h2)                          -> bit distance (0..64)
     vram = Vram.from_file(path)
     vram.raw(x, y)                           -> 16-bit word at VRAM (x, y)
@@ -177,21 +177,22 @@ def _resize_gray(gray, w, h, nw, nh):
     return out
 
 
-def ahash(img):
-    """Average hash: 8x8 box-downsample, bit = pixel above mean."""
-    px = _resize_gray(img.grayscale(), img.width, img.height, 8, 8)
-    mean = sum(px) / 64
+def ahash(img, n=8):
+    """Average hash: n x n box-downsample (default 8 x 8 = 64 bits), bit = pixel above mean."""
+    px = _resize_gray(img.grayscale(), img.width, img.height, n, n)
+    mean = sum(px) / (n * n)
     return sum(1 << i for i, v in enumerate(px) if v > mean)
 
 
-def dhash(img):
-    """Difference hash: 9x8 box-downsample, bit = left pixel brighter than right."""
-    px = _resize_gray(img.grayscale(), img.width, img.height, 9, 8)
+def dhash(img, n=8):
+    """Difference hash: (n+1) x n box-downsample (default 9 x 8 = 64 bits), bit = left pixel brighter than right.
+    A larger n (16 = 256 bits) tells apart pictures that cover a small part of the screen."""
+    px = _resize_gray(img.grayscale(), img.width, img.height, n + 1, n)
     h = 0
-    for j in range(8):
-        for i in range(8):
-            if px[j * 9 + i] > px[j * 9 + i + 1]:
-                h |= 1 << (j * 8 + i)
+    for j in range(n):
+        for i in range(n):
+            if px[j * (n + 1) + i] > px[j * (n + 1) + i + 1]:
+                h |= 1 << (j * n + i)
     return h
 
 
@@ -199,8 +200,8 @@ def hamming(a, b):
     return bin(a ^ b).count("1")
 
 
-def expect_similar(img, ref_hash, max_distance=6, algo=dhash, hint=""):
-    d = hamming(algo(img), ref_hash)
+def expect_similar(img, ref_hash, max_distance=6, algo=dhash, hint="", n=8):
+    d = hamming(algo(img, n), ref_hash)
     if d > max_distance:
         raise CheckFailure(expected=f"perceptual hash distance <= {max_distance}",
                            actual=f"distance {d}", hint=hint)

@@ -24,7 +24,7 @@ commit a small file only when the reader needs it before the chapter introduces 
 | `tim.py` | library | `parse`, `build`, `decode_rgba`, `tsb`, `cba`, `uv_origin`, `fits_in_page`. |
 | `lzss.py` | library | `compress(data)`, `decompress(data, out_size=None)`. Appendix E.5. |
 | `tpkpack_ref.py` | `pack OUT.TPK a.tim ...` (or a directory), `unpack IN.TPK DIR`, `verify IN.TPK` | The **oracle**. Chapter 31's reader writes their own `tpkpack.py`; use this one to check it. |
-| `shpgen.py` | `shpgen.py ship\|pylon\|arch\|tower OUT.SHP [--manifest m.json]`; `shpgen.py --model-bin OUT.BIN [--manifest m.json]` | Ship mixes all 8 primitive types; `--model-bin` is Chapter 29's `MODEL.BIN`. |
+| `shpgen.py` | `shpgen.py ship\|pylon\|arch\|tower OUT.SHP [--manifest m.json] [--variant 1]`; `shpgen.py --model-bin OUT.BIN [--manifest m.json]` | Ship mixes all 8 primitive types; `--variant 1` (ship only) is Chapter 32's alternate ship (no canopy, two more GT4); `--model-bin` is Chapter 29's `MODEL.BIN`. |
 | `trkgen.py` | `trkgen.py OUT.TRK [--track 1\|2] [--sections N] [--manifest m.json]` | Track 1: 112 sections (~1000 units each); track 2: 104. |
 | `scenegen.py` | `scenegen.py TRACK.TRK OUT.BIN [--manifest m.json]` | 35 objects around the track. |
 | `sfxgen.py` | `sfxgen.py OUTDIR` | `ENGINE BOOST THUD BEEP GO` `.WAV`, 16-bit mono 22050 Hz. |

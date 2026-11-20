@@ -2,7 +2,7 @@
 
 **Theme.** Real games stream their data from disc. This part builds a CD image, loads binary files from it, parses them with correct byte order, textures polygons, and decompresses packed data.
 
-**Part outcome.** You run a game from a bootable CD image that loads compressed, textured 3D models designed in the book's own file formats.
+**Part outcome.** You run a game from a bootable CD image that loads compressed, textured 3D models designed in the book's own file formats. Concretely, by Chapter 32 your program boots from a `.cue`, reads `SHIP.TPK` (LZSS-packed TIMs, Chapters 30 and 31) and `SHIP.SHP` (eight primitive types, Chapter 32) with parsers that reject damaged files, and draws the textured ship.
 
 ## Chapters
 
@@ -11,7 +11,7 @@
 | 29 | [The CD-ROM and Loading Files](ch29-the-cd-rom-and-loading-files/README.md) | "Ship from Disc": `cd_load_file`, a `MODEL.BIN` parser, and a flat-shaded ship read from a bootable `.cue/.bin` | available |
 | 30 | [Textured Polygons](ch30-textured-polygons/README.md) | "Crates and Logos": the rotating cube with a different TIM texture on each face, loaded from disc | available |
 | 31 | [Compression: LZSS Texture Packs](ch31-compression-lzss-texture-packs/README.md) | "Eight Textures, One File": `tpkpack.py` (host) and `tpk.c` (PS1): a pack of 8 textures shown as a grid of quads | available |
-| 32 | A Real Model Format: `.SHP` | a parser for the book's `.SHP` ship, rendered flat-shaded and then textured | planned |
+| 32 | [A Real Model Format: `.SHP`](ch32-a-real-model-format-shp/README.md) | "The Ship, Textured": a validating `.SHP` parser with eight primitive types, the ship loaded from disc with its `.TPK` and drawn flat-shaded, then textured | available |
 
 ## How the part flows
 

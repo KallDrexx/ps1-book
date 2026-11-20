@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """shpgen.py -- generate the book's original models and their JSON manifests.
 
-  shpgen.py ship     OUT.SHP   [--manifest OUT.json]   hover-ship with all 8 primitive types
+  shpgen.py ship     OUT.SHP   [--manifest OUT.json] [--variant 1]   hover-ship, all 8 primitive types (variant 1: Chapter 32's alternate ship)
   shpgen.py pylon|arch|tower OUT.SHP [--manifest ...]  scenery objects (Chapter 33)
   shpgen.py --model-bin OUT.BIN [--manifest OUT.json]  simple convex ship for Chapter 29 (MODEL.BIN)
 
@@ -102,7 +102,8 @@ TUV = [(0, 63), (63, 63), (32, 0)]
 def shade(base, k):
     return tuple(max(0, min(255, int(c * k))) for c in base)
 
-def make_ship() -> Mesh:
+def make_ship(variant=0) -> Mesh:
+    """variant 1 (the Chapter 32 alternate ship): no canopy, two extra double-sided GT4 spoiler plates; everything else identical."""
     m = Mesh("SHIP")
     c0 = (0, -10, 0)
     nose, r1, r2, r3, tail = (0, 0, 300), RING(100, 0.6), RING(-60, 1.0), RING(-150, 0.8), (0, 5, -210)
@@ -140,9 +141,15 @@ def make_ship() -> Mesh:
     m.add("FT3", [(0, -70, -100), (0, -190, -210), (0, -55, -210)], [neutral], uv=TUV, tex=1, flags=F.F_DOUBLE_SIDED, outward=(1, 0, 0))
     # canopy: semi-transparent Gouraud pyramid
     ap, base = (0, -95, 0), [(-35, -55, 50), (35, -55, 50), (35, -60, -40), (-35, -60, -40)]
-    for i in range(4):
-        m.add("G3", [ap, base[i], base[(i + 1) % 4]], [(220, 240, 255), (40, 90, 170), (40, 90, 170)],
-              flags=F.F_SEMI_TRANS, inside=(0, -65, 5))
+    if variant == 0:
+        for i in range(4):
+            m.add("G3", [ap, base[i], base[(i + 1) % 4]], [(220, 240, 255), (40, 90, 170), (40, 90, 170)],
+                  flags=F.F_SEMI_TRANS, inside=(0, -65, 5))
+    else:
+        for sx in (-1, 1):
+            m.add("GT4", [(sx * 50, -64, -80), (sx * 110, -64, -80), (sx * 50, -64, -150), (sx * 110, -64, -150)],
+                  [(220, 220, 230), (150, 150, 170), (190, 190, 205), (130, 130, 150)], uv=QUV, tex=2,
+                  flags=F.F_DOUBLE_SIDED, outward=(0, -1, 0))
     # engine pods: flat boxes with a Gouraud glowing back face
     for sx in (-1, 1):
         c = (sx * 100, 15, -185)
@@ -272,12 +279,13 @@ def main(argv=None):
     ap.add_argument("out")
     ap.add_argument("--model-bin", action="store_true")
     ap.add_argument("--manifest")
+    ap.add_argument("--variant", type=int, default=0, help="ship only: 1 = the alternate ship of Chapter 32")
     a = ap.parse_args(argv)
     if a.model_bin:
         data = make_model_bin(); man = model_bin_manifest(data)
     else:
         if not a.what: ap.error("name an object (ship, pylon, arch, tower) or use --model-bin")
-        m = OBJECTS[a.what](); fix_prop_textures(a.what, m)
+        m = make_ship(a.variant) if a.what == "ship" else OBJECTS[a.what](); fix_prop_textures(a.what, m)
         data = m.build(); man = shp_manifest(a.what.upper(), data, OBJECT_SET[a.what] or "props")
     Path(a.out).write_bytes(data)
     if a.manifest:
