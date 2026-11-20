@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Processed by CMake (configure_file) and then by mkpsxiso. Paths are relative to the build directory;
+     a file from the source tree needs ${PROJECT_SOURCE_DIR} in front. -->
+<iso_project>
+	<track type="data">
+		<identifiers
+			system        ="PLAYSTATION"
+			application   ="PLAYSTATION"
+			volume        ="HOVERLINE"
+			volume_set    ="HOVERLINE"
+			publisher     ="PS1BOOK"
+			data_preparer ="MKPSXISO"
+			copyright     ="README.TXT;1"
+		/>
+		<directory_tree>
+			<file name="SYSTEM.CNF" type="data" source="${PROJECT_SOURCE_DIR}/system.cnf" />
+			<file name="HOVER.EXE"  type="data" source="game.exe" />
+			<dir name="DATA">
+				<file name="CRATE.TIM" type="data" source="assets/CRATE.TIM" />
+			</dir>
+			<dummy sectors="1024"/>
+		</directory_tree>
+	</track>
+</iso_project>
