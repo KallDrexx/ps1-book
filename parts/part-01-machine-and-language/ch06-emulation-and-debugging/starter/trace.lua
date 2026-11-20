@@ -1,0 +1,2 @@
+-- Chapter 6: your first PCSX-Redux Lua script (see the chapter text, section 7).
+-- Print one line, "at=0x........", each time the clobbering instruction of bug3 is about to run.

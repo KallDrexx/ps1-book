@@ -12,8 +12,8 @@
 | 2 | Memory, the Memory Map, and Endianness | "Memory Cartographer": bytes, halfwords and words written to exact addresses |
 | 3 | Registers, Loads, Stores, and Arithmetic | "Register Calculator" |
 | 4 | Control Flow: Branches and Jumps | "Loop Lab": sums, min/max, array fills |
-| 5 | Anatomy of an Executable: The PSX-EXE Format | `exeinfo.py` and a hand-written EXE header |
-| 6 | Emulation and Debugging | "Bug Hunt": fix three bugs and write a Lua trace script |
+| 5 | Anatomy of an Executable: The PSX-EXE Format | "Anatomy Lab": `exeinfo.py` and a hand-written EXE header |
+| 6 | Emulation and Debugging | "Bug Hunt": locate three bugs with the debugger, fix them, and write a Lua trace script |
 
 ## How the part flows
 

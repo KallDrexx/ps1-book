@@ -246,7 +246,7 @@ Now take a short tour of Redux. The menu names below are from the pinned build (
 
 1. **Emulation > Pause emulation.** The CPU stops; **Emulation > Start emulation** resumes it.
 2. **Debug > CPU > Show Registers.** The 32 general-purpose registers. After `main` has run, `t0` holds `1F801810` and `t1` holds `1F801814`, the two GPU ports.
-3. **Debug > CPU > Show Assembly.** The machine code in memory, disassembled. Scroll to `80010000` to find your program; the current instruction is the jump at `done`. Note that `li` has become a `lui` + `ori` pair: some assembly "instructions" are shorthand that armips expands (Chapter 3). Stepping and breakpoints need the debugger, which you turn on with the **Enable Debugger** box in this window or under **Configuration > Emulation**. You will use them in Chapter 6.
+3. **Debug > CPU > Show Assembly.** The machine code in memory, disassembled. Scroll to `80010000` to find your program; the current instruction is the jump at `done`. Note that `li` has become a `lui` + `addiu` pair: some assembly "instructions" are shorthand that armips expands (Chapter 3). Stepping and breakpoints need the debugger, which you turn on with the **Enable Debugger** box in this window or under **Configuration > Emulation**; they also need the dynarec turned off (Chapter 6 explains). You will use them in Chapter 6.
 4. **Debug > GPU > VRAM viewers > Show main VRAM viewer.** All of VRAM, 1024x512. Your fill is the 320x240 rectangle in the top-left corner. Everything else is VRAM you have not touched yet.
 5. **Debug > Show Logs.** Messages from the emulator and the BIOS. Look here first when something goes wrong.
 
