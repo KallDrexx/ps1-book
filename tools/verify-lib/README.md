@@ -156,7 +156,8 @@ verify.frame, verify.job, verify.libdir   -- libdir: directory of redux.lua, for
 **Direct subroutine calls.** `local DC = dofile(verify.libdir .. '/directcall.lua')` gives a ready-made
 harness for calling the reader's routines with sentinel-seeded callee-saved registers, garbage temporaries,
 a return trampoline, an instruction limit and a printed random seed (`DC.seed`, `DC.rnd`, `DC.rnd32`). See
-the header of `directcall.lua`, Chapter 8's `probe.lua` (array arguments via `prepare`/`check`) and Chapter 9's.
+the header of `directcall.lua`, Chapter 8's `probe.lua` (array arguments via `prepare`/`check`) and Chapter 9's. Chapter 10's adds stack tracking: `DC.SP`, per-call `limit`, `o.on_step(c)`, `d.cur`, `d.main_sp`.
+A CPU exception (BIOS vector `0x80000080`; OpenBIOS would otherwise halt until the hard timeout) ends the run at once: the faulting call's record gets `exception = {code, epc, badvaddr}`, and seed/calls/entries/`exception` are recorded (or `o.on_exception(info)` is called). `harness.exception_text(exc)` formats it; `require_break` appends it to its message.
 
 Rules of thumb: wrap nothing in `pcall` yourself (the harness does and reports errors); anything that
 resolves an unknown symbol is reported as "your program lacks symbol X" (a normal failed check).

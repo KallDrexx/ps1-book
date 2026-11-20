@@ -11,6 +11,14 @@
 -- instructions pass) a record is stored. Phase 2 restores the registers and lets `main` run.
 -- d.records: list of {fn, a0..a3, v0, v1, returned, instrs, clobbered={names}, ...}
 -- d.entries[name]: times each routine was entered during phase 2 (the real driver run).
+-- CPU exceptions (the BIOS vector 0x80000080; interrupts ignored) would leave OpenBIOS halted until the hard
+-- timeout, so the run ends at once instead. In phase 1 the faulting call is first recorded (returned = false,
+-- exception = {code, epc, badvaddr, phase, fn}). Then o.on_exception(info) is called if given (it must finish
+-- the run); otherwise seed/calls/entries/exception are recorded and the run ends with status 'exception'.
+-- (Resuming with the next call after an exception proved unreliable in PCSX-Redux, so it is not attempted.)
+-- Optional extras (used by Chapter 10): a call may carry its own `limit` (instructions); DC.SP = the $sp given to
+-- every direct call; d.cur = the call in progress; o.on_step(c) is called before every instruction executed in
+-- phase 1; d.main_sp = $sp as it was when `main` was first reached.
 local DC = {}
 local R = PCSX.getRegisters()
 local GPR = R.GPR.r
@@ -25,7 +33,7 @@ local TRAMP, SP = 0x80090000, 0x801F0000
 local function regget(i) return tonumber(GPR[i]) % 4294967296 end
 local function regset(i, v) GPR[i] = v % 4294967296 end
 
-DC.regget, DC.regset, DC.IDX = regget, regset, IDX
+DC.regget, DC.regset, DC.IDX, DC.SP = regget, regset, IDX, SP
 DC.seed = tonumber(os.time()) % 100000
 math.randomseed(DC.seed)
 function DC.rnd(n) return math.random(0, n - 1) end
@@ -40,6 +48,7 @@ function DC.new(o)
   local keepers = d.keep
 
   local function prepare(c)
+    d.cur = c
     verify.write_u32(TRAMP, 0x08000000 + math.floor((TRAMP % 0x10000000) / 4))   -- j TRAMP
     verify.write_u32(TRAMP + 4, 0)                                                 -- nop
     if c.prepare then c.prepare(c) end
@@ -74,6 +83,7 @@ function DC.new(o)
 
   local function restore()
     for i = 1, 31 do regset(i, saved[i]) end
+    d.main_sp = saved[IDX.sp]
     R.pc = main_addr
     d.phase = 2
   end
@@ -91,8 +101,34 @@ function DC.new(o)
   end)
   keepers[#keepers + 1] = PCSX.addBreakpoint(0x80010000, 'Exec', 0x20000, 'verify limit', function()
     if d.phase ~= 1 then return false end
+    if o.on_step and calls[idx] then o.on_step(calls[idx]) end
     count = count + 1
-    if count > limit then finish_call(calls[idx], true); next_call() end
+    if count > ((calls[idx] and calls[idx].limit) or limit) then finish_call(calls[idx], true); next_call() end
+  end)
+  keepers[#keepers + 1] = PCSX.addBreakpoint(0x80000080, 'Exec', 4, 'verify exception', function()
+    if not saved or d.ended then return end
+    local cause, epc, bad = 0, 0, 0
+    pcall(function()
+      local cp0 = R.CP0.r
+      cause, epc, bad = tonumber(cp0[13]) or 0, tonumber(cp0[14]) or 0, tonumber(cp0[8]) or 0
+    end)
+    local code = math.floor(cause / 4) % 32
+    if code == 0 then return end                                   -- an interrupt, not a fault
+    d.ended = true
+    local c = d.phase == 1 and calls[idx] or nil
+    local info = { code = code, epc = epc % 4294967296, badvaddr = bad % 4294967296, phase = d.phase,
+                   fn = c and c.fn or '' }
+    if c then c.exception = info; finish_call(c, true) end
+    if o.on_exception then
+      o.on_exception(info)
+    else
+      verify.record('seed', DC.seed)
+      verify.record('calls', d.records)
+      verify.record('entries', d.entries)
+      verify.record('exception', info)
+      verify.finish('exception')
+    end
+    return false
   end)
   for _, name in ipairs(o.routines or {}) do
     d.entries[name] = 0

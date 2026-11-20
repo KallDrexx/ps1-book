@@ -195,7 +195,8 @@ def _(ctx):
     for c in cs:
         if not c["returned"]:
             raise CheckFailure(expected="the call returns to the address in $ra",
-                               actual=f"still running after {c['instrs']} instructions",
+                               actual=(exception_text(c.get("exception"))[2:] or
+                                       f"still running after {c['instrs']} instructions"),
                                message=f"{describe(c)} never returned (probe seed {seed})")
 
 

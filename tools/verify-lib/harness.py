@@ -108,6 +108,20 @@ def expect_in(needle, haystack, what="", hint=""):
         raise CheckFailure(expected=f"{what or 'value'} contains {needle!r}", actual="not found", hint=hint)
 
 
+EXC_NAMES = {4: "address error on load/fetch", 5: "address error on store", 6: "bus error on fetch",
+             7: "bus error on data", 8: "syscall", 9: "break", 10: "reserved instruction", 11: "coprocessor unusable",
+             12: "arithmetic overflow"}
+
+
+def exception_text(exc):
+    """'' or '; CPU exception ...' for an exception record from directcall.lua ({code, epc, badvaddr})."""
+    if not exc:
+        return ""
+    code = exc.get("code", -1)
+    return (f"; CPU exception {code} ({EXC_NAMES.get(code, 'unknown')}) at pc 0x{exc.get('epc', 0):08X}, "
+            f"bad address 0x{exc.get('badvaddr', 0):08X}")
+
+
 # =============================================================================
 # Configuration + registries
 # =============================================================================
@@ -389,7 +403,8 @@ class RunResult:
         if self.cfg.break_at and not self.break_hit:
             raise CheckFailure(
                 expected=f"program reaches `{self.cfg.break_at}`",
-                actual=f"never reached it in {self.frames} frames (status: {self.data.get('status')})",
+                actual=f"never reached it in {self.frames} frames (status: {self.data.get('status')})"
+                       + exception_text(self.records.get("exception")),
                 hint=f"Does your program fall into an infinite loop, crash, or jump somewhere else "
                      f"before the `{self.cfg.break_at}:` label?")
 
