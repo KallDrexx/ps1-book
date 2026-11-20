@@ -239,7 +239,7 @@ The book has **8 parts, 42 chapters**. Course-section mapping is shown as *(Piku
 - **Concept:** Animation means redrawing in sync with the display. Waiting for vertical blank and double-buffering the drawing area prevent tearing.
 - **Covers:** VBlank via the interrupt status register `I_STAT` (polling, no handler yet). Two framebuffers in VRAM and swapping the display start each frame. Frame counters. Simple velocity/position updates.
 - **Project:** "Bouncing Gem." A Gouraud-shaded diamond bounces around the screen, reflecting off the edges, with a frame counter displayed as a bar graph. Written entirely in assembly.
-- **Verification:** The probe captures positions (read from a `gem_state` symbol) over 120 frames. The position must change every frame, bounces must occur at the edges, and the display-start address must alternate between the two buffers. Screenshots at two frames show the gem in different places.
+- **Verification:** Three 150-frame runs (the shipped `gem_state` and two patched starting states). The probe records `gem_state` at every loop iteration and every VBlank, and every GP0 `E3h` / GP1 `05h` write. Each step must follow the exact clamp-and-negate rule, with bounces on both axes; the loop must advance once per VBlank (a few missed VBlanks tolerated); each iteration must set the drawing area to the back buffer and write the display start exactly once, to the buffer just drawn, alternating 0/240. Screenshots at two frames show the shaded gem at the recorded position, a cleared background, and a bar matching the frame counter.
 
 ---
 
