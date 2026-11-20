@@ -80,6 +80,7 @@ check with a "bug in checks.py" note. The hint printed is the exception's
 | `vram` | `False` | dump all of VRAM at the end (`r.vram()`) |
 | `inputs` | `()` | `[(frame, "START", hold_frames=6), ...]`; buttons: `UP DOWN LEFT RIGHT CROSS CIRCLE SQUARE TRIANGLE L1 L2 R1 R2 START SELECT L3 R3`. Verified end-to-end in Chapter 22 (see "Pads" below for timing and polarity) |
 | `patches` | `{}` | `{"input": 10, "tbl": b"..."}` written into a copy of the `.ps-exe` before the run (int = little-endian u32) |
+| `timeout` | `None` | per-emulator-run hard timeout (s); raises the default 20 s (or `--timeout`), never lowers it. Ch 26 sets 40 (300-frame run, ~8 s wall) |
 | `probe` | auto | path to `probe.lua`; default `verify/probe.lua` if present |
 
 ### `ctx` (passed to every check)
@@ -162,7 +163,7 @@ A CPU exception (BIOS vector `0x80000080`; OpenBIOS would otherwise halt until t
 Rules of thumb: wrap nothing in `pcall` yourself (the harness does and reports errors); anything that
 resolves an unknown symbol is reported as "your program lacks symbol X" (a normal failed check).
 `record` a snapshot in `verify.on_exec("done", ...)` rather than after the run if the value changes.
-The hard Python-side timeout (20 s wall, `--timeout`) kills the emulator process group.
+The hard Python-side timeout (20 s wall, `--timeout`, raised per chapter by `config(timeout=...)`) kills the emulator process group.
 
 ## What we learned about PCSX-Redux (build `dd3497b5`, Nov 2026)
 

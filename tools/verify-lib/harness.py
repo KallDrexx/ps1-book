@@ -147,6 +147,7 @@ class Config:
         probe=None,          # path to probe.lua (default: verify/probe.lua if it exists)
         ram_8mb=False,       # emulate 8 MB RAM
         extra_redux_args=(), # raw extra pcsx-redux flags
+        timeout=None,        # per-emulator-run hard timeout in seconds; raises (never lowers) the default 20 s / --timeout
         title="",
     )
 
@@ -382,7 +383,7 @@ class RunResult:
         if self.timed_out and not self.finished:
             raise CheckFailure(
                 expected="program reaches its end point and PCSX-Redux exits",
-                actual=f"emulator did not finish within the {DEFAULT_TIMEOUT:g}s hard timeout",
+                actual=f"emulator did not finish within the {getattr(self, 'timeout', DEFAULT_TIMEOUT):g}s hard timeout",
                 hint="Infinite loop before the `done` label? A branch with a missing delay slot? "
                      "Run with -v to see the emulator log.")
         if not self.finished:
@@ -572,7 +573,7 @@ def run_emulator(cfg, build, symbols, work, name="default", timeout=DEFAULT_TIME
         except json.JSONDecodeError as e:
             log += f"\n[harness] results.json unreadable: {e}"
     res = RunResult(outdir, c, symbols, data=data, timed_out=timed_out, log=log, exit_code=p.returncode)
-    res.elapsed = time.time() - t0
+    res.elapsed, res.timeout = time.time() - t0, timeout
     return res
 
 
@@ -592,7 +593,7 @@ def _missing_symbol(outdir, c, symbols, ref):
 class Context:
     def __init__(self, chapter_dir, project, cfg, work, solution, timeout):
         self.chapter_dir, self.project, self.cfg, self.work = chapter_dir, project, cfg, work
-        self.solution, self.timeout = solution, timeout
+        self.solution, self.timeout = solution, max(timeout, cfg.timeout or 0)
         self.build = None
         self.symbols = Symbols()
         self._exe = None
