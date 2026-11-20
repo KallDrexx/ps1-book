@@ -12,7 +12,7 @@
 | 24 | [3D Projection Fundamentals](ch24-3d-projection-fundamentals/README.md) | "Software Cube": a spinning wireframe cube projected on the CPU; `fixed` joins `psxe` | available |
 | 25 | [The GTE Coprocessor](ch25-the-gte-coprocessor/README.md) | "Solid Cube": a flat-shaded cube with GTE transforms, back-face culling and depth sorting | available |
 | 26 | [Multiple Objects and Simple Motion](ch26-multiple-objects-and-simple-motion/README.md) | "Bouncing Cubes": three cubes under fixed-point gravity on a checkerboard floor | available |
-| 27 | Batching GTE Work: RTPT and Timing | A 64-cube field transformed per corner (`RTPS`) and batched (`RTPT`), with the cycles of each compared | planned |
+| 27 | [Batching GTE Work: RTPT and Timing](ch27-batching-gte-work-rtpt-and-timing/README.md) | "The 64-Cube Field": 64 cubes transformed per corner (`RTPS`) and batched (`RTPT`), with the cycles of each compared | available |
 | 28 | The Camera | `camera_look_at` and a free-fly camera | planned |
 
 ## How the part flows

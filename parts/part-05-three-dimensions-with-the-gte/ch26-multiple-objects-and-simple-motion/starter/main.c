@@ -58,6 +58,15 @@ __attribute__((noinline)) void render_begin(void) { __asm__ volatile("" ::: "mem
 __attribute__((noinline)) void render_end(void)   { __asm__ volatile("" ::: "memory"); }
 __attribute__((noinline)) void frame_done(void)   { __asm__ volatile("" ::: "memory"); }
 
+/* Given: load a MATRIX into the GTE (RT and TR). PSn00bSDK 0.24's gte_SetRotMatrix/gte_SetTransMatrix overwrite $t0 and
+   $t1 without declaring it, so a value the compiler keeps there across them is lost. Call them only from here: `noipa`
+   makes this an opaque call that may clobber every temporary register (README 9). */
+static __attribute__((noipa, unused)) void load_matrix(const MATRIX *m)
+{
+	gte_SetRotMatrix(m);
+	gte_SetTransMatrix(m);
+}
+
 /* TODO 1 (README 7.3): build cam_mtx once. Identity rotation (4096 on the diagonal), translation = cam. */
 static void init_world(void)
 {
@@ -82,12 +91,12 @@ static void put_quad(int32_t a, int32_t b, int32_t c, int32_t d, int r, int g, i
 	ot_add(p, slot);
 }
 
-/* TODO 3: the checkerboard floor: upload the camera matrix, transform the 9 x 7 corners, one quad per tile (README 7.3). */
+/* TODO 3: the checkerboard floor: upload the camera matrix (load_matrix), transform the 9 x 7 corners, one quad per tile (README 7.3). */
 static void draw_floor(void)
 {
 }
 
-/* TODO 4: one cube: its own matrix, uploaded, then its eight corners and its visible faces (README 7.3). */
+/* TODO 4: one cube: its own matrix, uploaded with load_matrix, then its eight corners and its visible faces (README 7.3). */
 static void draw_object(const Object *o)
 {
 	(void) o;

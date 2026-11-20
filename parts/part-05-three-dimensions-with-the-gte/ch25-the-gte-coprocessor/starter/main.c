@@ -55,6 +55,15 @@ __attribute__((noinline)) void render_begin(void) { __asm__ volatile("" ::: "mem
 __attribute__((noinline)) void render_end(void)   { __asm__ volatile("" ::: "memory"); }   /* ... to here */
 __attribute__((noinline)) void frame_done(void)   { __asm__ volatile("" ::: "memory"); }
 
+/* Given: load a MATRIX into the GTE (RT and TR). PSn00bSDK 0.24's gte_SetRotMatrix/gte_SetTransMatrix overwrite $t0 and
+   $t1 without declaring it, so a value the compiler keeps there across them is lost. Call them only from here: `noipa`
+   makes this an opaque call that may clobber every temporary register (README 9). */
+static __attribute__((noipa, unused)) void load_matrix(const MATRIX *m)
+{
+	gte_SetRotMatrix(m);
+	gte_SetTransMatrix(m);
+}
+
 static void init_gte(void)
 {
 	/* TODO (README 7.3, step 1): InitGeom(); set the screen offset to the centre (CX, CY); set the projection distance to proj_h. */
@@ -68,7 +77,7 @@ static void update_angles(void)
 static void upload_matrix(void)
 {
 	/* TODO (README 7.3, step 3): build mtx from rot (RotMatrix) with the translation (0, 0, cam_z) (TransMatrix),
-	   then load both into the GTE. */
+	   then load it into the GTE with load_matrix(&mtx) (given above). */
 }
 
 static void transform_corners(void)

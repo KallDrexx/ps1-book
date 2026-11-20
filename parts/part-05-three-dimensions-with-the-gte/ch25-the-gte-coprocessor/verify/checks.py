@@ -344,7 +344,7 @@ def check_projection(ctx, name):
                 raise CheckFailure(
                     expected=f"{name}, frame {x.n}: corner {i} at ({ref[i][0]}, {ref[i][1]}) depth {ref[i][2]} (from your own mtx, h = {d['h']})",
                     actual=f"({gx}, {gy}) depth {gz}",
-                    hint="InitGeom(), gte_SetGeomOffset(160, 120), gte_SetGeomScreen(proj_h), upload mtx with gte_SetRotMatrix/gte_SetTransMatrix, "
+                    hint="InitGeom(), gte_SetGeomOffset(160, 120), gte_SetGeomScreen(proj_h), upload mtx with load_matrix(&mtx), "
                          "then gte_ldv0(&cube[i]); gte_rtps(); gte_stsxy(...); gte_stsz(...)." + why)
 
 
@@ -456,7 +456,7 @@ def _(ctx):
 
 
 @check("matrix: mtx is RotMatrix(rot) with translation (0, 0, cam_z), every frame",
-       hint="RotMatrix(&rot, &mtx); TransMatrix(&mtx, &pos); then upload with gte_SetRotMatrix and gte_SetTransMatrix.")
+       hint="RotMatrix(&rot, &mtx); TransMatrix(&mtx, &pos); then upload with load_matrix(&mtx).")
 def _(ctx):
     check_matrix(ctx, "base")
 

@@ -112,7 +112,7 @@ The **units** are the part to keep straight. The matrix is 4.12 (4096 = 1.0), bu
 
 `TransMatrix(&mtx, &pos)` copies a `VECTOR` into `mtx.t`. It does not touch the rotation. The GTE computes `R * v + T`, so as in Chapter 24 the cube is rotated first and then moved: `pos = (0, 0, cam_z)`.
 
-`RotMatrix` and `TransMatrix` only fill the C structure. **Uploading** is separate: `gte_SetRotMatrix(&mtx)` and `gte_SetTransMatrix(&mtx)` copy the `m` and `t` parts into the GTE's `RT` and `TR`. Forget them and the GTE keeps the previous matrix.
+`RotMatrix` and `TransMatrix` only fill the C structure. **Uploading** is separate: `gte_SetRotMatrix(&mtx)` and `gte_SetTransMatrix(&mtx)` copy the `m` and `t` parts into the GTE's `RT` and `TR`. Forget them and the GTE keeps the previous matrix. Call them through the starter's `load_matrix(&mtx)`, not directly (section 9 says why).
 
 ### 5.6 Transforming: `RTPS`
 
@@ -285,7 +285,7 @@ With the shipped numbers the corners stay 17500 to 31700 units away: no divide o
 
 1. `init_gte()`: `InitGeom()`, then the offset `(CX, CY)` and `proj_h`.
 2. `update_angles()`.
-3. `upload_matrix()`: `RotMatrix`, `TransMatrix` with a `VECTOR`, then the two `gte_Set...Matrix` macros (5.5).
+3. `upload_matrix()`: `RotMatrix`, `TransMatrix` with a `VECTOR`, then `load_matrix(&mtx)` (given; it runs the two `gte_Set...Matrix` macros, 5.5).
 4. `transform_corners()`: for each corner `gte_ldv0` / `gte_rtps` / `gte_stsxy` / `gte_stsz` / `gte_stflg` (5.6). OR the flags.
 5. `draw_faces()`: for each face `gte_ldsxy3` of its first three corners, `gte_nclip`, `gte_stopz`; skip unless positive; `gte_ldsz4`, `gte_avsz4`, `gte_stotz`; then take a `POLY_F4` from `ot_alloc`, `setPolyF4`, `setRGB0`, the four corners (unpack the low and high halves of `screen_xy`), `ot_add`. Stop if `ot_alloc` returns `NULL`.
 6. `make run`: a solid cube whose faces appear and vanish as it turns. Then `verify.sh`.
@@ -352,6 +352,7 @@ A pass ends with `CHAPTER 25: PASSED (16/16 checks)`. Boot takes about 30 frames
 - **Face tables written by feel**: some faces wind the other way, so they vanish when they should show. Use 5.7's rule or the given table.
 - **`NCLIP` sign**: positive is front-facing (clockwise on screen) here; do not copy a rule from a Y-up tutorial.
 - **Forgetting to upload**: `RotMatrix` and `TransMatrix` fill the C struct only.
+- **Calling `gte_SetRotMatrix`/`gte_SetTransMatrix` inline**: PSn00bSDK 0.24's macros overwrite `$t0` and `$t1` but declare only `$t2` as clobbered, so a value the compiler keeps in `$t0`/`$t1` across them is silently destroyed (typically a pointer, and the program crashes later). Whether it happens depends on register allocation, so code that works can break after an unrelated edit. The starter's `load_matrix()` calls them inside a `noipa` function, which the compiler must assume clobbers every temporary register; use it.
 - **Mixing units**: the translation is in vertex units, not 4.12; `gte_SetGeomOffset` takes whole pixels (the macro shifts them into 16.16).
 - **Rotation order**: `RotMatrix` applies Z, then Y, then X; with Chapter 24's two angles you get a different tumble. Both are valid; the verifier knows this one.
 - **Reading `SZ` too late**: the FIFOs hold only the last four results; store what you need straight after each transform.

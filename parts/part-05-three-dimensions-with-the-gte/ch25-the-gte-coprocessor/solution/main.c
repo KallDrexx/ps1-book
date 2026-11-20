@@ -56,6 +56,15 @@ __attribute__((noinline)) void render_begin(void) { __asm__ volatile("" ::: "mem
 __attribute__((noinline)) void render_end(void)   { __asm__ volatile("" ::: "memory"); }   /* ... to here */
 __attribute__((noinline)) void frame_done(void)   { __asm__ volatile("" ::: "memory"); }
 
+/* Given: load a MATRIX into the GTE (RT and TR). PSn00bSDK 0.24's gte_SetRotMatrix/gte_SetTransMatrix overwrite $t0 and
+   $t1 without declaring it, so a value the compiler keeps there across them is lost. Call them only from here: `noipa`
+   makes this an opaque call that may clobber every temporary register (README 9). */
+static __attribute__((noipa)) void load_matrix(const MATRIX *m)
+{
+	gte_SetRotMatrix(m);
+	gte_SetTransMatrix(m);
+}
+
 static void update_angles(void)
 {
 	rot.vx = (rot.vx + rot_step.vx) & 4095;
@@ -69,8 +78,7 @@ static void upload_matrix(void)
 
 	RotMatrix(&rot, &mtx);
 	TransMatrix(&mtx, &pos);
-	gte_SetRotMatrix(&mtx);
-	gte_SetTransMatrix(&mtx);
+	load_matrix(&mtx);
 }
 
 static void transform_corners(void)

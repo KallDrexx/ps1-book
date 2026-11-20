@@ -43,7 +43,7 @@ Forget the second upload and B's corners are transformed with A's matrix: B land
 |---|---|
 | 1 | build a `MATRIX` from this object's angles, size, position |
 | 2 | compose it with the camera |
-| 3 | `gte_SetRotMatrix`, `gte_SetTransMatrix` |
+| 3 | upload it: `gte_SetRotMatrix`, `gte_SetTransMatrix` (the starter's `load_matrix` does both) |
 | 4 | transform its vertices, cull, sort, emit quads |
 
 The vertices (the unit cube) are shared by all objects. Only the matrix differs.
@@ -83,7 +83,7 @@ What if the GTE holds a matrix you want back later? Two tools:
 | Tool | What it is | Limits |
 |---|---|---|
 | `PushMatrix()` / `PopMatrix()` | copy the GTE's `RT` and `TR` (8 control registers) to / from one static buffer in the library | **one level**: no nesting; a second push overwrites the first |
-| Re-upload | keep the `MATRIX` in a C variable, call `gte_SetRotMatrix`/`gte_SetTransMatrix` again | costs one upload (8 control-register writes) |
+| Re-upload | keep the `MATRIX` in a C variable, upload it again (`load_matrix`) | costs one upload (8 control-register writes) |
 
 There is a trap: `RotMatrix` uses the same slot. It calls `PushMatrix` on entry and `PopMatrix` on exit (it borrows the GTE's `RT` to multiply the three axis matrices with `MulMatrix0`, then puts back whatever was loaded). So after any `RotMatrix` call the slot holds what the GTE held *when `RotMatrix` started*, not what you pushed: push A, upload B, call `RotMatrix`, pop, and you get B back. In 0.24 only `RotMatrix` and `HiRotMatrix` touch the slot; `MulMatrix0` and `CompMatrixLV` leave it alone but overwrite the GTE's matrix registers themselves.
 
@@ -253,7 +253,7 @@ The object's matrix: `RotMatrix` of its angles, `ScaleMatrix` by `(size, size, s
 
 1. `init_world()`: identity on the diagonal of `cam_mtx.m`, then `TransMatrix` with `cam`.
 2. `update_objects()` (5.5). Use `fx_mul` from `psxe/fixed.h`.
-3. `draw_floor()`: upload `cam_mtx`; loop over the 63 corners with `gte_ldv0` / `gte_rtps` / `gte_stsxy` into a 7 x 9 array; loop over the tiles with `gte_ldsxy3` / `gte_nclip` / `gte_stopz`; `put_quad` (given).
+3. `draw_floor()`: upload `cam_mtx` with `load_matrix`; loop over the 63 corners with `gte_ldv0` / `gte_rtps` / `gte_stsxy` into a 7 x 9 array; loop over the tiles with `gte_ldsxy3` / `gte_nclip` / `gte_stopz`; `put_quad` (given).
 4. `draw_object()`: build, compose, upload (5.2, 5.3); eight corners with `gte_rtps` keeping `SXY` and `SZ`; per face `gte_nclip`, `gte_ldsz4`, `gte_avsz4`, `gte_stotz`, `put_quad`.
 5. `make run`: three cubes bouncing, each with its own spin. Then `verify.sh`.
 
@@ -313,6 +313,7 @@ A pass ends with `CHAPTER 26: PASSED (13/13 checks)`. The shipped run is 300 fra
 ## 9. Common pitfalls
 
 - **One upload for everything**: the second object inherits the first's matrix.
+- **Calling `gte_SetRotMatrix`/`gte_SetTransMatrix` directly**: in PSn00bSDK 0.24 they overwrite `$t0`/`$t1` without telling the compiler, so a pointer or counter it keeps there is silently destroyed (it depends on register allocation, so an unrelated edit can expose it). Use the given `load_matrix()`, which is `noipa` so the compiler must assume the call clobbers every temporary register (Chapter 27, 5.7, explains why `noinline` is not enough).
 - **Pushing across `RotMatrix`**: it pushes and pops the library's single slot itself, so your `PopMatrix` returns whatever the GTE held when `RotMatrix` was called.
 - **`y` is 20.12, positions in the matrix are not**: use `y >> 12` for the translation.
 - **`>>` and negatives**: `y >> 12` rounds toward minus infinity, as the verifier's model does; `y / 4096` does not.

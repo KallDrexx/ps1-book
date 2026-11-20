@@ -533,7 +533,7 @@ def _(ctx):
 
 
 @check("each cube has its own matrix: every visible face's quad has the reference corners (+-2 px), colour and OT slot; hidden faces are not drawn",
-       hint="Per cube: RotMatrix + ScaleMatrix + TransMatrix, CompMatrixLV with the camera, upload (gte_SetRotMatrix/gte_SetTransMatrix), THEN its eight gte_rtps().")
+       hint="Per cube: RotMatrix + ScaleMatrix + TransMatrix, CompMatrixLV with the camera, upload (load_matrix), THEN its eight gte_rtps().")
 def _(ctx):
     check_cubes(ctx, "base")
 

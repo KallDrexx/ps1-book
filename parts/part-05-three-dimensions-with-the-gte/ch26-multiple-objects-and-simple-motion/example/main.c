@@ -15,6 +15,14 @@ static SVECTOR card[4] = {                     /* Z order: top-left, top-right, 
 	{ -1800, -1800, 0 }, { 1800, -1800, 0 }, { -1800, 1800, 0 }, { 1800, 1800, 0 },
 };
 
+/* gte_SetRotMatrix/gte_SetTransMatrix overwrite $t0/$t1 without declaring it: call them only from a `noipa` function
+   (README 9). */
+static __attribute__((noipa)) void load_matrix(const MATRIX *m)
+{
+	gte_SetRotMatrix(m);
+	gte_SetTransMatrix(m);
+}
+
 static void upload(int angle, int x)
 {
 	SVECTOR rot = { 0, angle, 0, 0 };
@@ -23,8 +31,7 @@ static void upload(int angle, int x)
 
 	RotMatrix(&rot, &mtx);
 	TransMatrix(&mtx, &pos);
-	gte_SetRotMatrix(&mtx);
-	gte_SetTransMatrix(&mtx);
+	load_matrix(&mtx);
 }
 
 static void draw_card(int r, int g, int b)

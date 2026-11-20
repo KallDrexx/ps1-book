@@ -58,6 +58,15 @@ __attribute__((noinline)) void render_begin(void) { __asm__ volatile("" ::: "mem
 __attribute__((noinline)) void render_end(void)   { __asm__ volatile("" ::: "memory"); }
 __attribute__((noinline)) void frame_done(void)   { __asm__ volatile("" ::: "memory"); }
 
+/* Given: load a MATRIX into the GTE (RT and TR). PSn00bSDK 0.24's gte_SetRotMatrix/gte_SetTransMatrix overwrite $t0 and
+   $t1 without declaring it, so a value the compiler keeps there across them is lost. Call them only from here: `noipa`
+   makes this an opaque call that may clobber every temporary register (README 9). */
+static __attribute__((noipa)) void load_matrix(const MATRIX *m)
+{
+	gte_SetRotMatrix(m);
+	gte_SetTransMatrix(m);
+}
+
 static void init_world(void)
 {
 	cam_mtx.m[0][0] = cam_mtx.m[1][1] = cam_mtx.m[2][2] = 4096;
@@ -99,8 +108,7 @@ static void draw_floor(void)
 {
 	int32_t sxy[FLOOR_ROWS + 1][FLOOR_COLS + 1];
 
-	gte_SetRotMatrix(&cam_mtx);
-	gte_SetTransMatrix(&cam_mtx);
+	load_matrix(&cam_mtx);
 	for (int r = 0; r <= FLOOR_ROWS; r++) {
 		for (int c = 0; c <= FLOOR_COLS; c++) {
 			SVECTOR v = { (c - FLOOR_COLS / 2) * TILE, floor_y, (r - FLOOR_ROWS / 2) * TILE, 0 };
@@ -138,8 +146,7 @@ static void draw_object(const Object *o)
 	ScaleMatrix(&m, &scl);               /* ... and size, */
 	TransMatrix(&m, &pos);               /* ... and position in the world, */
 	CompMatrixLV(&cam_mtx, &m, &world);  /* then through the fixed camera */
-	gte_SetRotMatrix(&world);
-	gte_SetTransMatrix(&world);
+	load_matrix(&world);
 
 	for (int i = 0; i < 8; i++) {
 		gte_ldv0(&cube[i]);

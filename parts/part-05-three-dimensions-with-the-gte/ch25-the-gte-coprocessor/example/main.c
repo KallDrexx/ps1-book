@@ -13,6 +13,14 @@ static SVECTOR card[4] = {
 	{ -3000, -2000, 0 }, { 3000, -2000, 0 }, { -3000, 2000, 0 }, { 3000, 2000, 0 },
 };
 
+/* gte_SetRotMatrix/gte_SetTransMatrix overwrite $t0/$t1 without declaring it: call them only from a `noipa` function
+   (README 9). */
+static __attribute__((noipa)) void load_matrix(const MATRIX *m)
+{
+	gte_SetRotMatrix(m);
+	gte_SetTransMatrix(m);
+}
+
 int main(void)
 {
 	SVECTOR rot = { 0, 0, 0, 0 };
@@ -34,8 +42,7 @@ int main(void)
 		rot.vy = (rot.vy + 20) & 4095;
 		RotMatrix(&rot, &mtx);
 		TransMatrix(&mtx, &pos);
-		gte_SetRotMatrix(&mtx);
-		gte_SetTransMatrix(&mtx);
+		load_matrix(&mtx);
 
 		for (int i = 0; i < 4; i++) {
 			gte_ldv0(&card[i]);
