@@ -12,7 +12,7 @@
 | 8 | [Subroutines](ch08-subroutines/README.md) | `factorial`, `sum_array`, `max_array` as callable functions, plus a test driver | available |
 | 9 | [Signed Numbers, Logic, and Bit Shifting](ch09-signed-numbers-logic-and-shifts/README.md) | "Bit Toolkit": `abs`, `sign_extend`, `popcount`, colour packing, `swap_endian32` | available |
 | 10 | [The Stack and the MIPS ABI](ch10-the-stack-and-the-mips-abi/README.md) | Recursive `factorial` and `fibonacci`, `sum6` with stack arguments | available |
-| 11 | Data Layout and Memory Alignment | "Vertex Table": aligned `SVECTOR` structs, bounding box, packed copy with `lwl`/`lwr` | planned |
+| 11 | [Data Layout and Memory Alignment](ch11-data-layout-and-memory-alignment/README.md) | "Vertex Table": aligned `SVECTOR` structs, bounding box, packed copy with `lwl`/`lwr` | available |
 | 12 | RISC vs. CISC, Multiply and Divide | Fast `memcpy`/`memset`/`strlen`, shift-based `mul320`, `udiv10` | planned |
 
 ## How the part flows
