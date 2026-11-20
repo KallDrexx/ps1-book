@@ -18,6 +18,7 @@ local JOB = dofile(JOB_PATH)
 verify = {}
 local V = verify
 V.job = JOB
+V.libdir = (debug.getinfo(1, 'S').source:match('^@(.*)[/\\][^/\\]*$')) or '.'  -- dir of this file (for dofile of shared Lua helpers)
 V.frame = 0
 V.sym = JOB.symbols or {}
 V.records = {}

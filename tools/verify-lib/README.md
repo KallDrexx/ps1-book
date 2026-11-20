@@ -150,8 +150,13 @@ verify.press(frame, "CROSS", hold)   verify.button_down("UP")  verify.button_up(
 verify.screenshot("name")  verify.dump_vram()  verify.snapshot("name", addr, size)
 verify.record("key", value)          -- value: number/string/bool/table -> r.record("key") in Python
 verify.finish("status")              -- end early (normally the `break_at` label or max_frames ends the run)
-verify.frame, verify.job
+verify.frame, verify.job, verify.libdir   -- libdir: directory of redux.lua, for dofile of shared helpers
 ```
+
+**Direct subroutine calls.** `local DC = dofile(verify.libdir .. '/directcall.lua')` gives a ready-made
+harness for calling the reader's routines with sentinel-seeded callee-saved registers, garbage temporaries,
+a return trampoline, an instruction limit and a printed random seed (`DC.seed`, `DC.rnd`, `DC.rnd32`). See
+the header of `directcall.lua`, Chapter 8's `probe.lua` (array arguments via `prepare`/`check`) and Chapter 9's.
 
 Rules of thumb: wrap nothing in `pcall` yourself (the harness does and reports errors); anything that
 resolves an unknown symbol is reported as "your program lacks symbol X" (a normal failed check).
