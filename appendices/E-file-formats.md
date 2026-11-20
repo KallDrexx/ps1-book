@@ -614,7 +614,7 @@ Object entry (24 bytes):
 | Offset | Size | Field | Meaning |
 |---|---|---|---|
 | +0x00 | u16 | shape | Index into the shape table. |
-| +0x02 | u16 | flags | bit 0 `ALWAYS_DRAW`: never culled. Others 0. |
+| +0x02 | u16 | flags | bit 0 `ALWAYS_DRAW`: never distance-culled (a renderer may still skip an object it cannot transform; Chapter 33's skips any more than 32000 units from the eye on an axis). Others 0. |
 | +0x04 | s32[3] | position | World position `x, y, z` of the model origin (units as `.TRK`). Models stand on their origin: the body extends toward -Y. |
 | +0x10 | s16[3] | rotation | `rx, ry, rz` in 4096ths of a turn. The generator only rotates about Y. |
 | +0x16 | u16 | scale | 4.12 uniform scale; 4096 = 1.0. |
