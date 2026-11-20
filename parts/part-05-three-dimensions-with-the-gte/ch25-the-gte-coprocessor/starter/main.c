@@ -1,0 +1,111 @@
+#include <stdint.h>
+#include <psxgpu.h>
+#include <psxgte.h>
+#include <inline_c.h>
+#include <psxe/display.h>
+#include <psxe/ot.h>
+
+#define CX (SCREEN_W / 2)
+#define CY (SCREEN_H / 2)
+
+/* State the verifier reads and patches. Do not change the layout, the order or the initial values. */
+
+/* The 8 corners, +-1.0 (4096). Corner i has x = +1 if bit 0 of i is set, y = +1 if bit 1, z = +1 if bit 2. */
+SVECTOR cube[8] = {
+	{ -4096, -4096, -4096 }, {  4096, -4096, -4096 }, { -4096,  4096, -4096 }, {  4096,  4096, -4096 },
+	{ -4096, -4096,  4096 }, {  4096, -4096,  4096 }, { -4096,  4096,  4096 }, {  4096,  4096,  4096 },
+};
+
+/* The 6 faces as corner indices in "Z order" (README 5.7): when the face is turned toward you,
+   corners 0, 1, 2 run clockwise on the screen and NCLIP is positive. */
+uint8_t faces[6][4] = {
+	{ 0, 1, 2, 3 },   /* 0: z = -1, the face toward the camera at rest */
+	{ 5, 4, 7, 6 },   /* 1: z = +1 */
+	{ 4, 0, 6, 2 },   /* 2: x = -1 */
+	{ 1, 5, 3, 7 },   /* 3: x = +1 */
+	{ 4, 5, 0, 1 },   /* 4: y = -1 (top: y is down) */
+	{ 2, 3, 6, 7 },   /* 5: y = +1 */
+};
+
+uint8_t face_colors[6][3] = {
+	{ 224,  48,  48 },   /* red */
+	{  48, 200,  64 },   /* green */
+	{  64,  96, 240 },   /* blue */
+	{ 240, 220,  48 },   /* yellow */
+	{ 220,  64, 220 },   /* magenta */
+	{  48, 220, 220 },   /* cyan */
+};
+
+SVECTOR rot      = { 128, 256, 0, 0 };    /* angles about X, Y, Z: 4096 = one turn, kept in 0..4095 */
+SVECTOR rot_step = {  24,  40, 0, 0 };    /* added to rot every frame */
+int32_t cam_z    = 6 * 4096;              /* z of the cube's centre, in the units of cube[] */
+int32_t proj_h   = 256;                   /* projection distance h, in pixels */
+
+MATRIX  mtx;                              /* the matrix uploaded to the GTE this frame */
+int32_t screen_xy[8];                     /* corner i: low half = x, high half = y (one SXY word) */
+int32_t screen_z[8];                      /* corner i: SZ, its depth, 0..65535 */
+
+int32_t gte_flags;                        /* OR of the GTE flag register after every transform of this frame */
+int32_t prims_submitted;                  /* quads linked into the table this frame */
+int32_t faces_drawn;                      /* quads linked since start */
+int32_t face_mask;                        /* bit f set: face f was drawn this frame */
+int32_t frame_no;                         /* frames completed */
+
+__attribute__((noinline)) void render_begin(void) { __asm__ volatile("" ::: "memory"); }   /* the verifier times from here ... */
+__attribute__((noinline)) void render_end(void)   { __asm__ volatile("" ::: "memory"); }   /* ... to here */
+__attribute__((noinline)) void frame_done(void)   { __asm__ volatile("" ::: "memory"); }
+
+static void init_gte(void)
+{
+	/* TODO (README 7.3, step 1): InitGeom(); set the screen offset to the centre (CX, CY); set the projection distance to proj_h. */
+}
+
+static void update_angles(void)
+{
+	/* TODO (README 7.3, step 2): add rot_step to rot; keep every angle in 0..4095. */
+}
+
+static void upload_matrix(void)
+{
+	/* TODO (README 7.3, step 3): build mtx from rot (RotMatrix) with the translation (0, 0, cam_z) (TransMatrix),
+	   then load both into the GTE. */
+}
+
+static void transform_corners(void)
+{
+	/* TODO (README 7.3, step 4): transform each corner once (RTPS); store its screen XY in screen_xy[i] and its depth in
+	   screen_z[i]; OR the GTE flag register of every transform into gte_flags (it describes this frame only). */
+}
+
+static void draw_faces(void)
+{
+	/* TODO (README 7.3, step 5): per face: NCLIP on corners 0, 1, 2; skip it unless the result is positive; otherwise
+	   average the four depths (AVSZ4), turn OTZ into an OT slot, and link one POLY_F4 in face_colors[f].
+	   Keep prims_submitted (this frame), faces_drawn (total) and face_mask (bit f = face f drawn this frame) up to date. */
+}
+
+int main(void)
+{
+	display_init();
+	init_gte();
+	/* Keeps the state above linked in even where your code does not read it. Leave this line in. */
+	__asm__ volatile("" :: "r"(cube), "r"(faces), "r"(face_colors), "r"(&rot), "r"(&rot_step),
+	                 "r"(&cam_z), "r"(&proj_h), "r"(&mtx), "r"(screen_xy), "r"(screen_z),
+	                 "r"(&gte_flags), "r"(&prims_submitted), "r"(&faces_drawn), "r"(&face_mask));
+
+	for (;;) {
+		display_clear(16, 16, 32);
+		ot_begin_frame();
+		render_begin();
+		update_angles();
+		upload_matrix();
+		transform_corners();
+		draw_faces();
+		render_end();
+		ot_draw();
+		display_swap();
+		frame_no++;
+		frame_done();
+	}
+	return 0;
+}

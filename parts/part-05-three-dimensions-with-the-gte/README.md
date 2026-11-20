@@ -10,19 +10,19 @@
 |---|---|---|---|
 | 23 | [Fixed-Point Math](ch23-fixed-point-math/README.md) | `fixed.h/.c`: `fx_mul`, `fx_div`, `fx_from_int`, `fx_lerp`, `fx_sqrt`, `fx_rotate`, and a float-vs-fixed benchmark | available |
 | 24 | [3D Projection Fundamentals](ch24-3d-projection-fundamentals/README.md) | "Software Cube": a spinning wireframe cube projected on the CPU; `fixed` joins `psxe` | available |
-| 25 | The GTE Coprocessor | "Solid Cube": a flat-shaded cube with GTE transforms, back-face culling and depth sorting | planned |
+| 25 | [The GTE Coprocessor](ch25-the-gte-coprocessor/README.md) | "Solid Cube": a flat-shaded cube with GTE transforms, back-face culling and depth sorting | available |
 | 26 | Multiple Objects and Simple Motion | "Bouncing Cubes": three cubes under fixed-point gravity on a checkerboard floor | planned |
-| 27 | Inline GTE Instructions | The Chapter 25 renderer rewritten with inline GTE macros, and a 64-cube field | planned |
+| 27 | Batching GTE Work: RTPT and Timing | A 64-cube field transformed per corner (`RTPS`) and batched (`RTPT`), with the cycles of each compared | planned |
 | 28 | The Camera | `camera_look_at` and a free-fly camera | planned |
 
 ## How the part flows
 
 ```
-fixed point -> projection -> the GTE -> many objects -> inline GTE -> camera
-   (Ch 23)       (Ch 24)      (Ch 25)      (Ch 26)        (Ch 27)      (Ch 28)
+fixed point -> projection -> the GTE -> many objects -> batching -> camera
+   (Ch 23)       (Ch 24)      (Ch 25)      (Ch 26)       (Ch 27)    (Ch 28)
 ```
 
-Chapter 23 gives you the number system: the PS1 has no FPU, and the GTE itself computes in 4.12 fixed point, so every later chapter depends on it. Chapter 24 builds the 3D pipeline (model, world, view, perspective divide, screen) on the CPU, so you see each step. Chapter 25 hands the same steps to the GTE and adds back-face culling. Chapter 26 gives each object its own transform and adds motion. Chapter 27 drops below the SDK wrappers to the GTE's registers and instructions. Chapter 28 turns the camera into a matrix and puts it under your control.
+Chapter 23 gives you the number system: the PS1 has no FPU, and the GTE itself computes in 4.12 fixed point, so every later chapter depends on it. Chapter 24 builds the 3D pipeline (model, world, view, perspective divide, screen) on the CPU, so you see each step. Chapter 25 hands the same steps to the GTE through PSn00bSDK's `gte_*` macros and adds back-face culling and depth sorting. Chapter 26 gives each object its own transform and adds motion. Chapter 27 looks at what the GTE costs: its full register set, command timing and hazards, and batching three vertices per command with `RTPT`. Chapter 28 turns the camera into a matrix and puts it under your control.
 
 ## Before you start
 
