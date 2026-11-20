@@ -42,7 +42,7 @@ The read waits for the command to finish, so the CPU is idle for the rest of its
 Faster than the batching can explain means work was skipped: for example one cube is transformed and its results copied to the others. Speed only counts when the output is identical. The verifier compares every corner of every cube with the reference, and counts the `RTPT` commands that actually run (at least two per cube).
 </details>
 
-**7.** You replace `gte_rtpt()` with a bare `cop2 0x0280030` right after the `lwc2`s. The emulator still shows correct numbers. Why is that not a pass, and how does the verifier catch it?
+**7.** You replace `gte_rtpt()` with a bare `gte_rtpt_b()` (or `cop2 0x0280030`) right after the `lwc2`s. The emulator still shows correct numbers. Why is that not a pass, and how does the verifier catch it?
 
 <details><summary>Answer</summary>
 

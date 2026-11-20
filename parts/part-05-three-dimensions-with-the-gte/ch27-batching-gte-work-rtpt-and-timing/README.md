@@ -157,13 +157,15 @@ Always measure the same work twice and compare, never trust one number: interrup
 
 ### 5.7 The SDK's macros
 
-PSn00bSDK 0.24's `<inline_c.h>` states that it is "basically identical to Nugget's `inline_n.h`". There is **no** separate no-`nop` variant and no `_b` flavour: every command macro is `nop; nop; cop2 <word>`. To schedule your own instructions into those two slots, issue the command yourself:
+PSn00bSDK 0.24's `<inline_c.h>` is "basically identical to Nugget's `inline_n.h`" and, like it, has two flavours of each command. The plain macro is `nop; nop; cop2 <word>`: `gte_rtpt()` is two `nop`s and the command. The `_b` ("bare") macro is only the command: `gte_rtpt_b()` expands to `cop2 0x0280030`, with no `nop` before or after (65 of them, e.g. `gte_rtps_b`, `gte_rtpt_b`, `gte_nclip_b`, `gte_avsz3_b`, `gte_avsz4_b`, `gte_mvmva_b`; both flavours are plain `asm volatile` with no clobbers). With `_b` you fill the two slots yourself:
 
 ```
-__asm__ volatile("cop2 0x0280030");     /* RTPT: the same encoding gte_rtpt() uses, without its nops */
+gte_ldv3c(&cube[0]);                    /* the last lwc2 */
+next = base + 3;  count--;              /* two independent instructions: the slots the nops would fill */
+gte_rtpt_b();                           /* bare RTPT, the same word gte_rtpt() issues after its nops */
 ```
 
-and keep two non-GTE instructions between the last register write and it. (The command word is `0x4A000000 | imm25`: bit 19 is `sf`, the command number is the low six bits, `0x30` for `RTPT`, `0x01` for `RTPS`; bits 20-24, the "fake" command number Sony's tools show (2 for `RTPT`), are ignored by the hardware.)
+and keep two non-GTE instructions between the last register write and it. Writing `__asm__ volatile("cop2 0x0280030")` yourself is equivalent. Neither the macro nor the asm statement pins the neighbouring C code in place, so check the disassembly (`mipsel-none-elf-objdump -d -z`) to see what the compiler really put there; the verifier does the same. (The command word is `0x4A000000 | imm25`: bit 19 is `sf`, the command number is the low six bits, `0x30` for `RTPT`, `0x01` for `RTPS`; bits 20-24, the "fake" command number Sony's tools show (2 for `RTPT`), are ignored by the hardware.)
 
 **A defect to know about.** In this SDK, `gte_SetRotMatrix` and `gte_SetTransMatrix` (and `gte_SetLightMatrix`, `gte_SetColorMatrix`) load through `$t0` and `$t1` but declare only `$t2` as clobbered. A value the compiler keeps in `$t0`/`$t1` across them is silently destroyed; the symptom is usually a store through a garbage pointer, far from the cause, and whether it happens depends on register allocation. The book's `load_matrix()` (given here and in Chapters 25 and 26) calls them inside a function marked `noipa`. Plain `noinline` is not enough: with GCC's `-fipa-ra` (on at `-O2`) the caller looks at which registers the compiled callee uses, does not see the undeclared ones, and keeps its own values in `$t0`/`$t1` across the call. `noipa` forbids that, so the caller assumes every temporary register is lost.
 
@@ -260,7 +262,7 @@ Measured by the verifier in PCSX-Redux (cycles of the transform section for all 
 
 ### 7.7 Stretch goals
 
-- Write your own `RTPT` without the two `nop`s and put the next batch's address arithmetic there (5.7). Does it get faster, and why must two instructions stay?
+- Use `gte_rtpt_b()` instead of `gte_rtpt()` and put the next batch's address arithmetic there (5.7). Does it get faster, and why must two instructions stay?
 - During the last `RTPT` of a cube, load the next cube's matrix words into CPU registers; after the stores, `ctc2` them (the `lw`s overlap with the command). Measure with `field_cycles`.
 - Turn the three batches into a loop the compiler unrolls; compare with the table in 7.5.
 - Add `NCLIP` and `AVSZ4` per face and count what the whole Chapter 25 pipeline costs for 64 cubes.
@@ -279,7 +281,7 @@ The probe records, every frame, the 64 matrices, `screen_xy`, `screen_z`, the cy
 |---|---|---|
 | `the state symbols exist` | The labels of 7.2 and the markers are in the program | A declaration or the keep-alive line was removed |
 | `the program uses RTPT` | `objdump` of your objects (not the SDK's) contains `RTPT` | Path 1 is still empty, or uses only `RTPS` |
-| `every GTE command comes at least two instructions after ...` | No `cop2` command within two instructions of an `lwc2`/`mtc2`/`ctc2` (the rule of 5.5; a write three or more instructions earlier is fine) | Hand-written commands without the nops (works in the emulator, not reliably on hardware) |
+| `every GTE command comes at least two instructions after ...` | No `cop2` command within two instructions of an `lwc2`/`mtc2`/`ctc2` (the rule of 5.5; a write three or more instructions earlier is fine) | `_b` macros or hand-written commands without the nops (works in the emulator, not reliably on hardware) |
 | `integers only` | No soft-float helper | A `float` crept in |
 | `poses: cube_mtx[] follows cubes[]` | The given code is intact | `update_cubes`/`build_matrices` changed |
 | `path 0 ... bit for bit` | The baseline is right (all 64 x 8 x 24 results) | Path 0 changed |

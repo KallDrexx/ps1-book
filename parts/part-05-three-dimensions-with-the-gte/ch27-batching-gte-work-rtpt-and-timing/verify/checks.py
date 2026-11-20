@@ -236,7 +236,7 @@ def _(ctx):
 
 @static_check("every GTE command comes at least two instructions after the last write to a GTE register (the nops inside the macros)",
               hint="gte_rtpt() and friends start with two nops for a reason: a GTE register write is not interlocked, and psx-spx gives lwc2 a two-instruction delay (README 5.5). "
-                   "If you write your own cop2 sequence, put two instructions (the next batch's work, not a GTE access) between the last lwc2/mtc2/ctc2 and the command.")
+                   "If you use the bare gte_*_b() macros or write your own cop2 sequence, put two instructions (the next batch's work, not a GTE access) between the last lwc2/mtc2/ctc2 and the command.")
 def _(ctx):
     objdump = _tool("mipsel-none-elf-objdump")
     for o in _objects(ctx):
