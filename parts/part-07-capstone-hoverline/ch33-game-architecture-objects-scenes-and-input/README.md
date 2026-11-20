@@ -144,7 +144,7 @@ A rejected file must leave the loaded scene alone; a failure after validation le
 
 ### 5.5 Coordinates: the world is bigger than the GTE
 
-Positions are `s32` world units, +Y down. The generated track spans about 47,000 by 26,000 units, wider than the GTE's 16-bit vertex and translation inputs (+-32767). The cure is the one Chapter 34 uses for every track vertex: **subtract the camera first, in 32-bit C, then give the GTE only small numbers**.
+Positions are `s32` world units, +Y down. The generated track spans about 47,000 by 26,000 units, wider than the 16-bit range (+-32767) of the GTE's vertex registers and of the vector `CompMatrixLV` multiplies (the translation register `TR` itself is 32-bit). The cure is the one Chapter 34 uses for every track vertex: **subtract the camera first, in 32-bit C, then give the GTE only small numbers**.
 
 ```
   object position P (s32)   eye E (s32)

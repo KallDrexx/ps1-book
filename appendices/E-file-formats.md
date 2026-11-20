@@ -689,18 +689,21 @@ and collision edges, face flags and section frames (40, 41). All little-endian, 
 
 ### E.10.2 Vertices
 
-`s32 x, y, z` (12 bytes), world units, **+Y down**. The generated tracks span about 47000 x 26000 units, **more than the 16-bit range**
-(`s16` is +-32767), while the GTE's vertex registers `VXY/VZ` take `s16`. The format keeps absolute `s32` coordinates on purpose (one shared vertex
-table, no per-section origins); the renderer makes them small (Chapter 34):
+`s32 x, y, z` (12 bytes), world units, **+Y down**. The GTE's vertex registers `VXY/VZ` take `s16`. Every coordinate of the two generated tracks
+happens to fit `s16` (track 1: x -22416..24474, z -13353..12448; track 2: x -18416..19986, z -18230..14377), but the **distance** between two points does not
+(track 1 is 46890 units wide), and the format promises neither: a bigger track, or the same one placed away from the origin, has coordinates far outside
+`s16`. The format keeps absolute `s32` coordinates on purpose (one shared vertex table, no per-section origins); the renderer makes them small (Chapter 34):
 
 1. Load only the camera's **rotation** into `RT` and set `TR = 0`.
 2. Per vertex, in 32-bit C: `d = v - camera_pos` (each axis an `int32_t`).
 3. If any `|d|` exceeds 32767, the vertex is farther than the GTE can take: skip the whole face (or clamp `d` and accept the
-   distortion on far faces; Chapter 34 compares both). Otherwise store `d` as an `SVECTOR` and `gte_ldv0` it.
+   distortion on far faces; a Chapter 34 stretch goal compares both). Otherwise store `d` as an `SVECTOR` and `gte_ldv0` it.
 
 With the generated visibility lists (24 sections, about 24000 units ahead) every vertex the renderer draws passes step 3.
-The same applies to `SCENE.BIN` positions and to the ship. Do not put the camera translation into `TR` and load the absolute
-vertex: the vertex itself would already be truncated to 16 bits.
+The same applies to `SCENE.BIN` positions and to the ship. The shortcut "camera translation in `TR`, absolute vertex in `V`" is exact only while every
+absolute coordinate fits `s16` (`TR` is 32-bit and `RTPS` sums in 44 bits, so the translation itself is no problem). It is true of the shipped tracks and of no
+larger or off-origin world: a coordinate above 32767 wraps when it is narrowed for `VXY/VZ`. The recipe above depends only on the distance to the camera,
+wherever the world is.
 Vertices are shared: ring `r` (the start of section `r`) is vertices `6r .. 6r+5`, and section `N-1` ends at ring 0.
 
 Ring cross-section (looking along the direction of travel; the generated tracks have half width 600, wall height 250, three 400-wide lanes):
@@ -734,7 +737,7 @@ right edge is lower (larger `y`). The ring layout is a property of the generated
 | +0x0A | u8 | tex | Texture index into the track `.TPK`, or `0xFF` = untextured. |
 | +0x0B | u8 | pad | 0 |
 | +0x0C | u8[8] | uv | `u0,v0,u1,v1,u2,v2,u3,v3`, texture-local (E.0; 0..63 for the 64x64 tiles). Stored for the **unflipped** face. |
-| +0x14 | u8[4] | color | `r,g,b,0`: the face's untextured colour (the Chapter 34 flat render uses it; textured renders use neutral 128). |
+| +0x14 | u8[4] | color | `r,g,b,0`: the face's untextured colour. The generated tracks store the Chapter 34 legend colour of the face's flags; Chapter 34 derives the colour from the flags and ignores this field (a track may leave it 0); textured renders use neutral 128. |
 
 Face flags:
 
@@ -827,7 +830,7 @@ and walls meet exactly; subdivision (Ch 36) must split shared edges identically 
 **Reference implementation:** `tools/assets/trkgen.py OUT.TRK [--track 1|2] [--sections N] --manifest m.json`; `formats.py` (`build_trk`, `parse_trk`).
 **Manifest** (`TRACK.TRK.json`): `file, name, size, sha256, section_count, vertex_count, face_count, vis_entries, texture_count, start_section, total_length, bbox[6],
 face_counts{floor,wall,boost,start,flip_h}, boost_sections[], start_faces[], centre_line[[x,y,z] per section], section_lengths[], half_width, edges[[L0,R0,L1,R1 coordinates] per section],
-vis[[...] per section], vis_rule{ahead,behind,near_factor}, max_slope, max_bank_deg, exceeds_int16`. Chapter 34 compares counts, 38 the nearest section against `centre_line`, 40 the collision against `edges`.
+vis[[...] per section], vis_rule{ahead,behind,near_factor}, max_slope, max_bank_deg, exceeds_int16` (true when a coordinate or the x extent is beyond 32767: the extent, for both generated tracks). Chapter 34 compares counts, 38 the nearest section against `centre_line`, 40 the collision against `edges`.
 
 ## E.11 Generating and checking everything
 

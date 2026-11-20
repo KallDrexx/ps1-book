@@ -5,8 +5,9 @@
 
 Track 1: 112 sections (about 1000 units each), banked bends and rolling hills, a lap of about 112000 units.
 Track 2: 104 sections, a three-lobed circuit. Geometry follows Appendix E (".TRK"):
-+Y is down, so a hill has NEGATIVE y; vertices are int32 world units and the track spans more than
-+-32767, so renderers must work camera-relative (Chapter 34).
++Y is down, so a hill has NEGATIVE y; vertices are int32 world units. Each generated coordinate fits int16,
+but the track's extent (about 47000 units) does not, and the format allows any int32 world: renderers work
+camera-relative (Chapter 34).
 Cross-section (6 vertices per ring):  0 LT  1 L  2 CL  3 CR  4 R  5 RT
      LT                        RT        (walls are 250 high, road half-width 600,
      |  L___CL___CR___R  |              three 400-unit lanes; the road is the three

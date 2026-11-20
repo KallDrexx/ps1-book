@@ -9,7 +9,7 @@
 | # | Chapter | You build | Status |
 |---|---|---|---|
 | 33 | [Game Architecture: Objects, Scenes, and Input Events](ch33-game-architecture-objects-scenes-and-input/README.md) | "Hoverline Skeleton": a title screen (press Start), then a linked list of 35 landscape objects loaded from `SCENE.BIN`, flown through with the Ch 28 fly camera (plus an L2/R2 heading), distant objects culled | available |
-| 34 | Track Geometry | `TRACK.TRK` rendered at world scale with the 16-bit GTE limit handled | planned |
+| 34 | [Track Geometry](ch34-track-geometry/README.md) | `TRACK.TRK` parsed in place with validation, then rendered at world scale (camera-relative `s32` vertices, the 16-bit GTE limit handled) as flag-coloured flat faces with a Select wireframe overlay | available |
 | 35 | Track Texturing | the track textured from `TRACK.TPK`, manual VRAM layout, flipped tiles | planned |
 | 36 | Polygon Subdivision and Tessellation | near track faces subdivided; T-junction cracks avoided | planned |
 | 37 | Ship Movement and Physics | the ship on the start line: thrust, steering, banking, chase camera | planned |
