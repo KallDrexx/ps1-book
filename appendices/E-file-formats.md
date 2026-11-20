@@ -790,7 +790,7 @@ A renderer may use these lists instead of computing its own window; this is the 
 
 ### E.10.6 Start position and units
 
-The ship starts at `sections[start_section].centre` (on the road surface), heading `forward`, raised along `up` by the hover height (Chapter 37). World units are arbitrary: the road is 1200 wide,
+The ship starts at `sections[start_section].centre` (on the road surface), heading `forward`, raised along `up` by the hover height (Chapter 37: `pos = centre + ((up * hover) >> 12)` per axis, `hover` = 120; `up` has negative `y`, so the ship ends above the road). World units are arbitrary: the road is 1200 wide,
 a section about 1000 long, a lap about 112000, the ships 450 (`MODEL.BIN`) and 530 (`SHIP.SHP`) long. `TRACK2.TRK` (104 sections, a different outline) exists for Chapter 40's menu.
 
 ```
