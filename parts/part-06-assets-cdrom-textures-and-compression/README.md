@@ -10,7 +10,7 @@
 |---|---|---|---|
 | 29 | [The CD-ROM and Loading Files](ch29-the-cd-rom-and-loading-files/README.md) | "Ship from Disc": `cd_load_file`, a `MODEL.BIN` parser, and a flat-shaded ship read from a bootable `.cue/.bin` | available |
 | 30 | [Textured Polygons](ch30-textured-polygons/README.md) | "Crates and Logos": the rotating cube with a different TIM texture on each face, loaded from disc | available |
-| 31 | Compression: LZSS Texture Packs | `tpkpack.py` (host) and `tpk.c` (PS1): a pack of 8 textures shown as a grid of quads | planned |
+| 31 | [Compression: LZSS Texture Packs](ch31-compression-lzss-texture-packs/README.md) | "Eight Textures, One File": `tpkpack.py` (host) and `tpk.c` (PS1): a pack of 8 textures shown as a grid of quads | available |
 | 32 | A Real Model Format: `.SHP` | a parser for the book's `.SHP` ship, rendered flat-shaded and then textured | planned |
 
 ## How the part flows
