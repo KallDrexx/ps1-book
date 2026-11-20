@@ -204,15 +204,16 @@ def _(ctx):
     expect_true(not defined, "the headers define no functions or variables", f"defines {sorted(defined)}", "Declarations only (extern, prototypes, macros).")
 
 
-@static_check("the reference solution mirrors common/psxe (the copy later chapters start from)", hint="Keep solution/psxe and common/psxe identical.")
+@static_check("the reference solution mirrors common/psxe (the copy later chapters start from)", hint="Keep solution/psxe's display, ot, gfx and input files identical to common/psxe.")
 def _(ctx):
     if not ctx.solution:
         return
+    # common/psxe keeps growing (Chapter 24 adds the `fixed` module), so compare this chapter's four modules only.
     ref = ROOT_DIR / "common" / "psxe"
-    for p in sorted(ref.rglob("*")):
-        if p.is_file():
-            q = ctx.project / "psxe" / p.relative_to(ref)
-            expect_true(q.exists() and q.read_bytes() == p.read_bytes(), f"solution/psxe/{p.relative_to(ref)} == common/psxe/...", "differs or missing")
+    for m in HEADERS:
+        for rel in (f"include/psxe/{m}.h", f"src/{m}.c"):
+            p, q = ref / rel, ctx.project / "psxe" / rel
+            expect_true(q.exists() and q.read_bytes() == p.read_bytes(), f"solution/psxe/{rel} == common/psxe/{rel}", "differs or missing")
 
 
 def code_lines(path):

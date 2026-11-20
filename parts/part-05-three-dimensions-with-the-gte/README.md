@@ -9,7 +9,7 @@
 | # | Chapter | You build | Status |
 |---|---|---|---|
 | 23 | [Fixed-Point Math](ch23-fixed-point-math/README.md) | `fixed.h/.c`: `fx_mul`, `fx_div`, `fx_from_int`, `fx_lerp`, `fx_sqrt`, `fx_rotate`, and a float-vs-fixed benchmark | available |
-| 24 | 3D Projection Fundamentals | "Software Cube": a spinning wireframe cube projected on the CPU | planned |
+| 24 | [3D Projection Fundamentals](ch24-3d-projection-fundamentals/README.md) | "Software Cube": a spinning wireframe cube projected on the CPU; `fixed` joins `psxe` | available |
 | 25 | The GTE Coprocessor | "Solid Cube": a flat-shaded cube with GTE transforms, back-face culling and depth sorting | planned |
 | 26 | Multiple Objects and Simple Motion | "Bouncing Cubes": three cubes under fixed-point gravity on a checkerboard floor | planned |
 | 27 | Inline GTE Instructions | The Chapter 25 renderer rewritten with inline GTE macros, and a 64-cube field | planned |
@@ -44,4 +44,4 @@ Part V uses two formats throughout:
 | 4.12 | `int16_t` | 4096 | GTE matrices, `SVECTOR`s, `isin`/`icos` results |
 | 20.12 | `int32_t` (`fx`) | 4096 | CPU-side math |
 
-psx-spx names the same formats 1.3.12 and 1.19.12 (sign bit counted separately). Angles are **4096 units per full turn**. From Chapter 24 on, `fixed.h/.c` lives in the `psxe` library as the `fixed` module.
+psx-spx names the same formats 1.3.12 and 1.19.12 (sign bit counted separately). Angles are **4096 units per full turn**. From Chapter 24 on, `fixed.h/.c` lives in the `psxe` library as the `fixed` module (`#include <psxe/fixed.h>`); see the module table in the [Part IV README](../part-04-c-on-the-playstation/README.md#the-psxe-library).

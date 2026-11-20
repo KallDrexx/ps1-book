@@ -43,8 +43,9 @@ From Chapter 21 the engine lives in `common/psxe/` (headers in `include/psxe/`, 
 | `ot` | Ch 21 (from Ch 20) | `ot_begin_frame`, `ot_alloc`, `ot_add`, `ot_draw`, `ot_frames` |
 | `gfx` | Ch 21 | `gfx_quad_f4` |
 | `input` | Ch 22 | `input_init`, `input_update`, `input_held`, `input_pressed`, `input_released` |
+| `fixed` | Ch 24 (written in Ch 23, Part V) | `fx_from_int`, `fx_mul`, `fx_div`, `fx_lerp`, `fx_sqrt`, `fx_rotate` (and the `fx`, `fx_vec2` types) |
 
-Open the reference only after you pass the chapter that writes the module. Chapter folders stay self-contained: each chapter that uses the library ships its own copy in `starter/psxe/` and `solution/psxe/`, taken from `common/psxe/` as it stands at that chapter (Chapter 21's copy has three modules, Chapter 22's four).
+Open the reference only after you pass the chapter that writes the module. Chapter folders stay self-contained: each chapter that uses the library ships its own copy in `starter/psxe/` and `solution/psxe/`, taken from `common/psxe/` as it stands at that chapter (Chapter 21's copy has three modules, Chapter 22's four, Chapter 24's five).
 
 ## Capstone for the part
 
