@@ -13,7 +13,7 @@
 | 35 | [Track Texturing](ch35-track-texturing/README.md) | the track textured from `TRACK.TPK`: a hand-planned VRAM layout (`vram_layout.md` + `vram_layout.h`), tiles relocated from their TIMs, UVs from the faces, mirrored tiles on `FLIP_H` faces | available |
 | 36 | [Polygon Subdivision and Tessellation](ch36-polygon-subdivision-and-tessellation/README.md) | the near track faces split into 4 or 16 quads (exact UV midpoints, RTPT batches, a primitive budget), T-junction cracks closed with a backing quad, a Triangle debug view with one outline colour per level | available |
 | 37 | [Ship Movement and Physics](ch37-ship-movement-and-physics/README.md) | the ship on the start line: X thrust, Square brake, D-pad steering with a banking roll, a fixed time step (several ticks per slow frame, NTSC 4096 / PAL 4915 `dt_scale`), a chase camera behind and above; verified against an exact Python model | available |
-| 38 | Track Visibility | nearest-section tracking and windowed rendering | planned |
+| 38 | [Track Visibility](ch38-track-visibility/README.md) | the nearest section found exactly (a 64-bit metric, brute force then an incremental walk through the section links with a teleport fall-back), only a window of 24 sections ahead and 4 behind drawn (CPU work per frame drops from about one vertical blank, 47% of frames over it, to 43% of one), an on-screen `SEC / PRIMS` readout; verified on a posed lap against a Python reference | available |
 | 39 | Audio | engine hum, collision thud, boost chime, CD music | planned |
 | 40 | Track Collision | wall collision, boost pads, two tracks | planned |
 | 41 | Handling, Game Loop, and Polish | skid, drag, laps, timer, countdown, results: a finished game | planned |
