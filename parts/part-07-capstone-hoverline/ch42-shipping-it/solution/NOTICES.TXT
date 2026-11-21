@@ -1,0 +1,38 @@
+HOVERLINE 1.0 - NOTICES
+=======================
+
+Hoverline is a homebrew game for the Sony PlayStation made as the capstone of the textbook
+"PlayStation Programming from the Metal Up". It is not licensed, endorsed or published by, or
+affiliated with, Sony Interactive Entertainment. "PlayStation" is a trademark of its owner; it is
+used here only to say which console the program runs on. This disc carries no Sony license data
+and no Sony code or artwork.
+
+Content
+-------
+Every file on this disc is original to the book's project and is produced by the generator scripts
+in the book's tools/assets directory (python tools/assets/mkassets.py --music). No scanned,
+sampled, traced or copied material from any commercial game is used.
+
+  DATA/LOGO.TIM                               title logo (generated: texgen.py, img2tim.py)
+  DATA/PROPS.TPK                              scenery textures (generated: texgen.py, tpkpack_ref.py)
+  DATA/PYLON.SHP, ARCH.SHP, TOWER.SHP         scenery models (generated: shpgen.py)
+  DATA/SCENE.BIN                              scenery layout (generated: scenegen.py)
+  DATA/TRACK.TRK, TRACK2.TRK                  the two tracks (generated: trkgen.py)
+  DATA/TRACK.TPK                              track textures (generated: texgen.py, tpkpack_ref.py)
+  DATA/SHIP.SHP, SHIP.TPK                     the ship and its textures (generated: shpgen.py, texgen.py)
+  DATA/ENGINE.VAG, BOOST.VAG, THUD.VAG,
+       BEEP.VAG, GO.VAG                       sound effects (synthesised: sfxgen.py, wav2vag.py)
+  Audio track 2                               music loop (synthesised: musicgen.py)
+  HOVER.EXE                                   the program (C, built with PSn00bSDK)
+
+Software
+--------
+Built with PSn00bSDK 0.24 (https://github.com/Lameguy64/PSn00bSDK), whose runtime libraries are
+distributed under the Mozilla Public License 2.0 and are used unmodified; their source is available
+at that address. The
+disc image is made with mkpsxiso 2.30 (a build tool: nothing of it is on the disc).
+
+Copyright and terms
+-------------------
+The program and the generated content are the work of the book's author(s) and are distributed
+under the terms of the book project's license. They come without warranty of any kind.

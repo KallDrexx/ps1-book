@@ -46,3 +46,5 @@ expand.O*.s
 build/assets/
 assets-out/
 tools/assets/out/
+build-release/
+release/

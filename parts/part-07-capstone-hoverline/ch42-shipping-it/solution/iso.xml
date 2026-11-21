@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Processed by CMake (configure_file) and then by mkpsxiso. Chapter 42: every timestamp is fixed (README 5.2), so the same inputs give the same image. Paths are relative to the build directory;
+     a file from the source tree needs ${PROJECT_SOURCE_DIR} in front. -->
+<iso_project>
+	<track type="data">
+		<identifiers
+			system        ="PLAYSTATION"
+			application   ="PLAYSTATION"
+			volume        ="HOVERLINE"
+			volume_set    ="HOVERLINE"
+			publisher     ="PS1BOOK"
+			data_preparer ="MKPSXISO"
+			copyright     ="NOTICES.TXT;1"
+			creation_date ="2026010100000000"
+			modification_date="2026010100000000"
+		/>
+		<directory_tree date="20260101000000">
+			<file name="SYSTEM.CNF" type="data" source="${PROJECT_SOURCE_DIR}/system.cnf" date="20260101000000" />
+			<file name="NOTICES.TXT" type="data" source="${PROJECT_SOURCE_DIR}/NOTICES.TXT" date="20260101000000" />
+			<file name="HOVER.EXE"  type="data" source="game.exe" date="20260101000000" />
+			<dir name="DATA" date="20260101000000">
+				<file name="LOGO.TIM"   type="data" source="assets/LOGO.TIM" date="20260101000000" />
+				<file name="PROPS.TPK"  type="data" source="assets/PROPS.TPK" date="20260101000000" />
+				<file name="PYLON.SHP"  type="data" source="assets/PYLON.SHP" date="20260101000000" />
+				<file name="ARCH.SHP"   type="data" source="assets/ARCH.SHP" date="20260101000000" />
+				<file name="TOWER.SHP"  type="data" source="assets/TOWER.SHP" date="20260101000000" />
+				<file name="SCENE.BIN"  type="data" source="assets/SCENE.BIN" date="20260101000000" />
+				<file name="TRACK.TRK"  type="data" source="assets/TRACK.TRK" date="20260101000000" />
+				<file name="TRACK2.TRK" type="data" source="assets/TRACK2.TRK" date="20260101000000" />
+				<file name="TRACK.TPK"  type="data" source="assets/TRACK.TPK" date="20260101000000" />
+				<file name="SHIP.SHP"   type="data" source="assets/SHIP.SHP" date="20260101000000" />
+				<file name="SHIP.TPK"   type="data" source="assets/SHIP.TPK" date="20260101000000" />
+				<file name="ENGINE.VAG" type="data" source="assets/ENGINE.VAG" date="20260101000000" />
+				<file name="BOOST.VAG"  type="data" source="assets/BOOST.VAG" date="20260101000000" />
+				<file name="THUD.VAG"   type="data" source="assets/THUD.VAG" date="20260101000000" />
+				<file name="BEEP.VAG"   type="data" source="assets/BEEP.VAG" date="20260101000000" />
+				<file name="GO.VAG"     type="data" source="assets/GO.VAG" date="20260101000000" />
+			</dir>
+			<dummy sectors="1024"/>
+		</directory_tree>
+	</track>
+	<!-- Chapter 39: the music, as a CD-DA track (track 2). The WAV must be 44.1 kHz, 16-bit, stereo. -->
+	<track type="audio" source="assets/MUSIC.WAV" />
+</iso_project>
