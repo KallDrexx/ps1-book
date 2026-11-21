@@ -1,3 +1,5 @@
 # Python packages for the book's asset tools (img2tim.py etc.).
 # The verification harness itself uses only the standard library.
 pillow
+markdown-it-py
+pypdf

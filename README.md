@@ -139,8 +139,10 @@ common/                 shared code: psxexe.inc (the PSX-EXE header for Parts I-
 tools/
   setup.sh doctor.sh env.sh versions.txt requirements.txt Dockerfile
   ci.sh                 proves every chapter: solution passes, untouched starter fails
+  build-book.sh REV     builds the book as PDF and EPUB into output/ (needs Chromium for the PDF)
   verify-lib/           the verification harness (see its README.md for the chapter-author API)
   assets/               asset generators and their selftest (see its README.md)
+output/                 the built book: Programming-PS1-Games-r<REV>.pdf and .epub
 appendices/             reference material A-G (MIPS, memory map, GPU, GTE, file formats, troubleshooting, PsyQ name map)
 parts/part-NN-slug/README.md                part intro
 parts/part-NN-slug/chNN-slug/{README.md, starter/, solution/, verify/, quiz.md}   README.md = chapter text
