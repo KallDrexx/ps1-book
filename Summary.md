@@ -57,12 +57,13 @@ ps1-book/
 │   └── assets/                 # generators + selftest (see its README): img2tim.py, tim.py, lzss.py, tpkpack_ref.py, shpgen.py, trkgen.py, scenegen.py, texgen.py, wav2vag.py, vag2wav.py, vag.py, sfxgen.py, formats.py, layout.py, examples.py, mkassets.py, selftest.py
 ├── common/                     # shared code: psxexe.inc (Parts I–III); psxe/ (C engine library, the Ch 21 reference, copied into later chapters)
 ├── appendices/
-│   ├── A-mips-cheatsheet.md
-│   ├── B-memory-map-and-io-registers.md
-│   ├── C-gpu-command-reference.md
+│   ├── A-mips-cheat-sheet.md
+│   ├── B-memory-map-and-io.md
+│   ├── C-gpu-commands.md
 │   ├── D-gte-reference.md
 │   ├── E-file-formats.md       # PSX-EXE, SYSTEM.CNF, TIM, VAG, LZSS, MODEL.BIN, .SHP, .TPK, .TRK, SCENE.BIN (written; the generators are tested against it)
-│   └── F-troubleshooting.md
+│   ├── F-troubleshooting.md
+│   └── G-psyq-to-psn00bsdk.md
 └── parts/
     └── part-NN-slug/
         ├── README.md           # part intro: theme, goals, what you'll build
@@ -418,13 +419,13 @@ The book has **8 parts, 42 chapters**. Course-section mapping is shown as *(Piku
 ---
 
 ### Part VIII — Appendices (reference material, no projects)
-- **A. MIPS R3000A cheat sheet:** every instruction, its encoding, delay-slot behavior, and pseudo-instruction expansions.
-- **B. Memory map & I/O registers:** RAM, scratchpad, BIOS, GPU, SPU, CD, DMA, timers, interrupts.
-- **C. GPU command reference:** every GP0/GP1 command with packet layouts.
-- **D. GTE reference:** registers and their formats, commands, cycle counts, hazards, and the `<inline_c.h>` macros with the register each one reads or writes.
-- **E. File formats:** PSX-EXE, TIM, VAG, `SYSTEM.CNF`, and the book's own `MODEL.BIN`, `.SHP`, `.TPK`, `.TRK`, `SCENE.BIN` (byte-exact specifications that authoring agents must keep consistent with the generator scripts).
-- **F. Troubleshooting:** black screens, emulator crashes, address errors, delay-slot bugs, GTE overflow, CD-loading failures. Must include the PSn00bSDK 0.24 defect: `gte_SetRotMatrix`, `gte_SetTransMatrix`, `gte_SetLightMatrix` and `gte_SetColorMatrix` write `$t0`/`$t1` but declare only `$t2` clobbered, so a value GCC keeps there is silently destroyed (typically a crash through a garbage pointer, depending on register allocation). Call them only from a `noipa` function (Ch 25–27's `load_matrix`); `noinline` is not enough because `-fipa-ra` lets the caller keep values in `$t0`/`$t1` across the call. Also: cycle counts in Redux mean something only under `-interpreter`.
-- **G. PsyQ ↔ PSn00bSDK name map:** helps the reader follow older tutorials and the reference course. It must record that PSn00bSDK 0.24 has no `RotTransPers`, `RotTransPers3`, `RotTransPers4`, `RotAverage3/4`, `RotAverageNclip3/4`, `RotNclip3/4`, `NormalClip`, `AverageZ3/4`, `SetGeomOffset`, `SetGeomScreen`, `SetRotMatrix`, `SetTransMatrix` functions, and give each one's `gte_*` macro sequence (e.g. `RotTransPers` = `gte_ldv0`, `gte_rtps`, `gte_stsxy`, `gte_stsz`, `gte_stflg`; `NormalClip` = `gte_ldsxy3`, `gte_nclip`, `gte_stopz`; `SetGeomOffset` = `gte_SetGeomOffset`). The matrix routines (`RotMatrix`, `TransMatrix`, `MulMatrix0`, `CompMatrixLV`, `PushMatrix`, …) keep their PsyQ names. Note that the `SetRotMatrix`/`SetTransMatrix` replacements (`gte_SetRotMatrix`/`gte_SetTransMatrix`) have the clobber defect of Appendix F, and that `inline_c.h` (Nugget's `inline_n.h` equivalent) has a bare `gte_*_b()` variant of most commands without the two `nop`s (e.g. `gte_rtpt_b()`).
+- **A. MIPS R3000A cheat sheet** (`A-mips-cheat-sheet.md`): registers and the O32 convention, every instruction with its opcode/funct, the hazards (branch delay, load delay, HI/LO), multiply/divide timing and divide-by-zero results, COP0 and exception codes, the pseudo-instructions and what armips emits, the armips directives the book relies on.
+- **B. Memory map & I/O registers** (`B-memory-map-and-io.md`): segments and the physical map, RAM/scratchpad/BIOS, interrupts, DMA, timers, GPU and GPUSTAT, CD-ROM, controllers and the pad buffer, SPU, frame timing in CPU cycles (Redux and hardware).
+- **C. GPU command reference** (`C-gpu-commands.md`): every GP0/GP1 command with word-by-word packet layouts (the ones the book never sends are marked), texture page/CLUT words, semi-transparency, display modes, NTSC/PAL, limits, and the SDK primitive names.
+- **D. GTE reference** (`D-gte-reference.md`): registers and their formats, commands with numbers and cycle counts, `FLAG` bits, hazards, every `<inline_c.h>` macro with the GTE register it reads or writes, the `libpsxgte` functions (and the true `isin` unit, 4096 per turn, which the 0.24 header misstates).
+- **E. File formats** (`E-file-formats.md`): PSX-EXE, TIM, VAG, `SYSTEM.CNF`, and the book's own `MODEL.BIN`, `.SHP`, `.TPK`, `.TRK`, `SCENE.BIN` (byte-exact specifications that authoring agents must keep consistent with the generator scripts).
+- **F. Troubleshooting** (`F-troubleshooting.md`): symptom tables for the tools, verifier exit codes and messages, black screens, CPU exceptions, address errors, delay-slot bugs, GTE problems, CD loading, debugging and cycle counts (meaningful only under `-interpreter`), disk/temp use, C build errors. F.7 documents the PSn00bSDK 0.24 defect: `gte_SetRotMatrix`, `gte_SetTransMatrix`, `gte_SetLightMatrix` and `gte_SetColorMatrix` write `$t0`/`$t1` but declare only `$t2` clobbered; call them only from a `noipa` function (Ch 25–27's `load_matrix`), since `noinline` is not enough under `-fipa-ra`.
+- **G. PsyQ ↔ PSn00bSDK name map** (`G-psyq-to-psn00bsdk.md`): for following older tutorials and the reference course. Each PsyQ GTE wrapper absent from 0.24 (`RotTransPers`, `RotTransPers3/4`, `RotAverage3/4`, `RotAverageNclip3/4`, `RotNclip3/4`, `NormalClip`, `AverageZ3/4`, `SetGeomOffset`, `SetGeomScreen`, `SetRotMatrix`, `SetTransMatrix`, …) with its `gte_*` macro sequence; the matrix routines that keep their names; the clobber defect; `inline_c.h` vs Nugget's `inline_n.h` and the bare `gte_*_b()` variants; GPU, CD, pad, event and SPU name differences, all checked against the 0.24 headers and libraries.
 
 ---
 

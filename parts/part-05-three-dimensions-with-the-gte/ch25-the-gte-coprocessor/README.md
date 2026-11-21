@@ -51,7 +51,7 @@ The GTE is **coprocessor 2** (COP2) of the R3000. It has no program of its own: 
 
 The CPU keeps running while a command works. An instruction that reads a GTE register (or starts another command) before the current one has finished simply waits for it, so no padding is needed *after* a command. Two delays do need care: a value read with `mfc2`/`cfc2` reaches the CPU register one instruction late (like `lw`), and a register just written should not be used by a command in the next two instructions. The SDK macros (5.2) contain these `nop`s.
 
-The registers you meet in this chapter (Appendix D lists all of them with their bit formats):
+The registers you meet in this chapter ([Appendix D](../../../appendices/D-gte-reference.md) lists all of them with their bit formats):
 
 | Group | Registers | Holds |
 |---|---|---|

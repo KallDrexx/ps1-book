@@ -45,7 +45,7 @@ Sony's own libraries (`libgpu`, `libgte`, `libcd`, ...) were written to be calle
 | `libcd.h` | `psxcd.h` | CD-ROM |
 | `libspu.h` | `psxspu.h` | Sound |
 
-Function names such as `ResetGraph`, `PutDispEnv` and `VSync` match PsyQ, which is why PsyQ-era code mostly ports with small edits. Appendix G will carry the full name map. In this book, check the headers under `.toolchain/opt/psn00bsdk/include/libpsn00b/` before you use a function: only what exists in 0.24 counts.
+Function names such as `ResetGraph`, `PutDispEnv` and `VSync` match PsyQ, which is why PsyQ-era code mostly ports with small edits. [Appendix G](../../../appendices/G-psyq-to-psn00bsdk.md) carries the full name map. In this book, check the headers under `.toolchain/opt/psn00bsdk/include/libpsn00b/` before you use a function: only what exists in 0.24 counts.
 
 ### 5.3 The stack of software
 

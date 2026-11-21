@@ -23,7 +23,7 @@ After this chapter you can:
 
 ## 4. Prerequisites
 
-[Chapter 30](../../part-06-assets-cdrom-textures-and-compression/ch30-textured-polygons/README.md) (affine warp, the UV rule), [Chapters 25 to 27](../../part-05-3d-math-and-the-gte/) (the GTE, `RTPS`/`RTPT`/`NCLIP`/`AVSZ4`), [Chapter 34](../ch34-track-geometry/README.md) (camera-relative `d = v - eye`, the far / near / back / big rules, `track_stats`), [Chapter 35](../ch35-track-texturing/README.md) (the textured packet, `FLIP_H`) and Appendix E.10 (`.TRK`: the section's `edges`).
+[Chapter 30](../../part-06-assets-cdrom-textures-and-compression/ch30-textured-polygons/README.md) (affine warp, the UV rule), [Chapters 25 to 27](../../part-05-three-dimensions-with-the-gte/) (the GTE, `RTPS`/`RTPT`/`NCLIP`/`AVSZ4`), [Chapter 34](../ch34-track-geometry/README.md) (camera-relative `d = v - eye`, the far / near / back / big rules, `track_stats`), [Chapter 35](../ch35-track-texturing/README.md) (the textured packet, `FLIP_H`) and Appendix E.10 (`.TRK`: the section's `edges`).
 
 ## 5. Explanation
 

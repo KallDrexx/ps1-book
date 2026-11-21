@@ -22,7 +22,7 @@ After this chapter you can:
 
 ## 4. Prerequisites
 
-[Chapter 23](../../part-05-3d-math-and-the-gte/ch23-fixed-point-math/README.md) (fixed point, squared distances and their overflow), [Chapter 22](../../part-04-c-on-the-playstation/ch22-controller-input-and-the-bios/README.md) (edge-triggered input), Chapters [34](../ch34-track-geometry/README.md) (sections, the face buckets, `track_stats`), [35](../ch35-track-texturing/README.md) (the VRAM plan), [36](../ch36-polygon-subdivision-and-tessellation/README.md) (the primitive budget), [37](../ch37-ship-movement-and-physics/README.md) (the ship, the fixed time step) and Appendix E.10 (`.TRK` sections, E.10.5 the visibility block).
+[Chapter 23](../../part-05-three-dimensions-with-the-gte/ch23-fixed-point-math/README.md) (fixed point, squared distances and their overflow), [Chapter 22](../../part-04-c-on-the-playstation/ch22-controller-input-and-the-bios/README.md) (edge-triggered input), Chapters [34](../ch34-track-geometry/README.md) (sections, the face buckets, `track_stats`), [35](../ch35-track-texturing/README.md) (the VRAM plan), [36](../ch36-polygon-subdivision-and-tessellation/README.md) (the primitive budget), [37](../ch37-ship-movement-and-physics/README.md) (the ship, the fixed time step) and Appendix E.10 (`.TRK` sections, E.10.5 the visibility block).
 
 ## 5. Explanation
 

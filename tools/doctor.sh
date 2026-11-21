@@ -37,7 +37,7 @@ else bad psn00bsdk "sdk.cmake not found under PSN00BSDK_LIBS=$PSN00BSDK_LIBS; ru
 # PCSX-Redux
 if command -v pcsx-redux >/dev/null 2>&1; then
   v="$(pcsx-redux -version 2>/dev/null | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' | head -1)"
-  if [[ -z "$v" ]]; then bad pcsx-redux "installed but '-version' failed (needs OpenGL libs? see appendices/F)"
+  if [[ -z "$v" ]]; then bad pcsx-redux "installed but '-version' failed (needs OpenGL libs? see appendices/F-troubleshooting.md)"
   elif [[ "$v" == "$REDUX_VERSION" ]]; then ok pcsx-redux "build $v"
   else warn pcsx-redux "build $v (book pinned to $REDUX_VERSION)"; fi
 else bad pcsx-redux "not found; run tools/setup.sh"; fi

@@ -50,7 +50,7 @@ Every address is a 32-bit number, and the CPU puts it on the bus. The hardware r
 | `0x1F802000` | 8 KB | Expansion region 2 (debug hardware) |
 | `0x1FC00000` - `0x1FC7FFFF` | 512 KB | **BIOS** ROM |
 
-Chapter 1 already used the I/O area: GP0 at `0x1F801810`. Writing there does not store a number; it sends a command to a chip. The CPU does not know the difference. The full I/O map is in psx-spx and, later, in Appendix B.
+Chapter 1 already used the I/O area: GP0 at `0x1F801810`. Writing there does not store a number; it sends a command to a chip. The CPU does not know the difference. The full I/O map is in psx-spx and in [Appendix B](../../../appendices/B-memory-map-and-io.md).
 
 ### 5.3 Segments: KUSEG, KSEG0, KSEG1
 

@@ -324,5 +324,5 @@ A pass ends with `CHAPTER 34: PASSED (23/23 checks)`. The untouched starter fail
 
 - Appendix E.10 (`.TRK`), `tools/assets/trkgen.py` (the generator and manifest), `formats.py` (`parse_trk`).
 - psx-spx, "GTE Division Inaccuracy" and "GTE Coordinate Calculation" (the saturations of 5.5).
-- Chapter 14 and Appendix C (`POLY_F4`, polyline `0x48`).
+- Chapter 14 and [Appendix C](../../../appendices/C-gpu-commands.md) (`POLY_F4`, polyline `0x48`).
 - Next: Chapter 35 textures the same faces from `TRACK.TPK`.

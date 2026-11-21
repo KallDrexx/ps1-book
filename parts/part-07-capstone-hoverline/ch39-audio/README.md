@@ -24,7 +24,7 @@ After this chapter you can:
 
 ## 4. Prerequisites
 
-[Chapter 29](../../part-06-assets-and-file-formats/ch29-reading-the-cd-in-code/README.md) (`cd_load_file`), [Chapter 33](../ch33-game-architecture-objects-scenes-and-input/README.md) (the state machine), Chapters [37](../ch37-ship-movement-and-physics/README.md) (the ship, `speed`) and [38](../ch38-track-visibility/README.md) (`ship_section`), and Appendix E.2 (the disc layout) and **E.4** (the VAG format). This chapter starts from Chapter 38's `solution/`.
+[Chapter 29](../../part-06-assets-cdrom-textures-and-compression/ch29-the-cd-rom-and-loading-files/README.md) (`cd_load_file`), [Chapter 33](../ch33-game-architecture-objects-scenes-and-input/README.md) (the state machine), Chapters [37](../ch37-ship-movement-and-physics/README.md) (the ship, `speed`) and [38](../ch38-track-visibility/README.md) (`ship_section`), and Appendix E.2 (the disc layout) and **E.4** (the VAG format). This chapter starts from Chapter 38's `solution/`.
 
 ## 5. Explanation
 
@@ -337,7 +337,7 @@ A pass ends with `CHAPTER 39: PASSED (15/15 checks)`. The untouched starter fail
 
 ## 11. Further reading
 
-- Appendix E.4 (VAG), E.2 (the disc layout; the audio track), Appendix B (SPU registers), `tools/assets/README.md` (`musicgen.py`, `--music`).
+- Appendix E.4 (VAG), E.2 (the disc layout; the audio track), [Appendix B](../../../appendices/B-memory-map-and-io.md) (SPU registers), `tools/assets/README.md` (`musicgen.py`, `--music`).
 - psx-spx: *SPU Overview*, *SPU Voice Registers*, *SPU ADPCM Samples*, *SPU ADSR Envelope*, *SPU Reverb*, *CDROM Control Commands* (Play, Setmode), *CDROM Audio*.
 - The SDK's examples `sound/vagsample`, `sound/spustream` (streaming from main RAM), `sound/cdstream`, `cdrom/cdxa`.
 - Chapter 40 (collision events replace the thud), Chapter 41 (countdown beeps, the lap chime).

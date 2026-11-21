@@ -31,7 +31,7 @@ After this chapter you can:
 | `jal target` | `$ra = address of the jal + 8`, then jump to `target` |
 | `jr rs` | jump to the address in `rs` |
 | `jalr rs` | `$ra = address of the jalr + 8`, jump to the address in `rs` (indirect call) |
-| `jalr rd, rs` | same, but the return address goes into `rd` |
+| `jalr rs, rd` | same, but the return address goes into `rd` (armips order; GNU `as` writes `jalr rd, rs`) |
 
 `jal` is "jump and link": the **link** is the return address. It is `+ 8`, not `+ 4`, because the delay slot belongs to the call (Chapter 7). The slot runs first, then the callee, and on return execution resumes after the slot.
 
@@ -50,7 +50,7 @@ caller                          callee
 `jr $ra` is the standard return. Two more facts:
 
 - `jal` encodes a 26-bit word target, so it reaches only within the same 256 MB region. Everything in this book is in one region.
-- `jalr` calls a function whose address is in a register: a function pointer, a table of handlers, a BIOS entry. `jalr $t2` is shorthand for `jalr $ra, $t2`.
+- `jalr` calls a function whose address is in a register: a function pointer, a table of handlers, a BIOS entry. `jalr $t2` is shorthand for `jalr $t2, $ra` (armips puts the target register first; GNU `as` and objdump write it `jalr $ra, $t2`).
 
 ### 5.2 The calling convention
 

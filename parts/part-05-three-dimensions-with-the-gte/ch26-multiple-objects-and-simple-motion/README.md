@@ -320,7 +320,7 @@ A pass ends with `CHAPTER 26: PASSED (13/13 checks)`. The shipped run is 300 fra
 - **32-bit products**: `vy * bounce` overflows `int32_t`; use `fx_mul` (64-bit).
 - **Update order**: velocity first, then position (5.5).
 - **Scaling the wrong thing**: `ScaleMatrix` takes 4.12 factors: `size` as given means a cube of half-edge `size`, not `size * 4096`.
-- **Forgetting `& 4095`** on a negative step: the angle goes negative and `isin` misbehaves.
+- **Forgetting `& 4095`** on a negative step: the angle goes negative and leaves the 0..4095 range the `scene` layout promises and the verifier checks. (`isin`/`RotMatrix` themselves accept any angle: only its low 12 bits count.)
 - **Floor in the middle of the table**: cubes below it are hidden by tiles that are nearer in depth.
 - **Counting the buffer**: 2048 bytes is 85 `POLY_F4`s; a bigger floor needs a different plan.
 

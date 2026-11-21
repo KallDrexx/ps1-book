@@ -30,7 +30,7 @@ after_call:
     la    $s1, fn_table         ; $s1 survives calls; $t1 would not
     lw    $t2, 0($s1)           ; &factorial
     li    $a0, 4
-    jalr  $t2                   ; jalr rs  ==  jalr $ra, rs
+    jalr  $t2                   ; jalr rs  ==  jalr rs, $ra (armips operand order)
     nop
     sw    $v0, 12($s0)          ; results[3] = 4! = 24
     lw    $t2, 4($s1)           ; &double_fact

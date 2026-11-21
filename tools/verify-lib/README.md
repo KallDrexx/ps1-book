@@ -217,3 +217,7 @@ pcsx-redux -cli -testmode -stdout -lua_stdout -interpreter -debugger -1mbvram \
 * The SDK program reaches `main` after ~30 frames on OpenBIOS (side-loaded); a clear via `DRAWENV.isbg` is visible after `DrawSync(0)`. A 4-run chapter takes ~6 s wall.
 * **Overriding a routine's result from the probe** (used to prove C really consumes an assembly return value): set a breakpoint at `$ra` on entry and write `PCSX.getRegisters().GPR.r[2]` there; the breakpoint fires before the instruction at `$ra` executes, so the new `$v0` is what the caller sees. Trigger it by a sentinel in a patched data word.
 * Compiling one file to assembly outside CMake: `mipsel-none-elf-gcc -O2 -S -ffreestanding -march=r3000 -msoft-float -fno-pic -mno-abicalls f.c` (`-ffreestanding` is what makes `<stdint.h>` resolve). GCC prints numeric register names (`$2`), `objdump -d` prints names.
+
+## Troubleshooting
+
+User-facing symptoms and fixes (black screens, CPU exceptions, the SDK `$t0`/`$t1` clobber defect, GTE overflow, CD failures, `-interpreter -debugger`, temp space, exit codes) are in [`appendices/F-troubleshooting.md`](../../appendices/F-troubleshooting.md).
