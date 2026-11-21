@@ -18,7 +18,7 @@ commit a small file only when the reader needs it before the chapter introduces 
 
 | Tool | Command line | Notes |
 |---|---|---|
-| `mkassets.py` | `mkassets.py OUTDIR [--seed N] [--keep-png]` | The whole set (below) plus `OUTDIR/manifest/*.json`. |
+| `mkassets.py` | `mkassets.py OUTDIR [--seed N] [--keep-png] [--music]` | The whole set (below) plus `OUTDIR/manifest/*.json`. `--music` also writes `MUSIC.WAV` (the CD-DA track; Chapter 39 on; off by default so earlier chapters' builds and checksums are unchanged). |
 | `texgen.py` | `texgen.py OUTDIR [--seed N]`, `--list` | 17 PNGs: `crate` (8 bpp), `panel`, `logo` (128x64 "HOVERLINE"), `hull_a`, `hull_b`, `wing`, `asphalt`, `asphalt_worn`, `lane_stripe`, `boost`, `start_line`, `wall_a`, `wall_b`, `glow`, `pylon`, `tower`, `sky16` (16 bpp). |
 | `img2tim.py` | `img2tim.py in.png out.tim --bpp 4\|8\|16\|24 [--x --y --cx --cy]`; `--check f.tim...`; `--to-png f.tim out.png` | Palette from the PNG's colours (exact when it has at most 16/256), else median-cut. Alpha < 128 is transparent (CLUT index 0). `--check` exits 1 on an invalid TIM. |
 | `tim.py` | library | `parse`, `build`, `decode_rgba`, `tsb`, `cba`, `uv_origin`, `fits_in_page`. |
@@ -28,16 +28,17 @@ commit a small file only when the reader needs it before the chapter introduces 
 | `trkgen.py` | `trkgen.py OUT.TRK [--track 1\|2] [--sections N] [--manifest m.json]` | Track 1: 112 sections (~1000 units each); track 2: 104. |
 | `scenegen.py` | `scenegen.py TRACK.TRK OUT.BIN [--manifest m.json]` | 35 objects around the track. |
 | `sfxgen.py` | `sfxgen.py OUTDIR` | `ENGINE BOOST THUD BEEP GO` `.WAV`, 16-bit mono 22050 Hz. |
+| `musicgen.py` | `musicgen.py OUT.WAV` | `MUSIC.WAV`: an original 24 s loop (A minor, 120 BPM, 12 bars; bass, arpeggio, pad, drums), 44.1 kHz 16-bit stereo = Red Book CD audio, 4,233,644 bytes, 2.7 s to generate, deterministic, stdlib only. The last 1500 frames fade out so a restart does not click. |
 | `wav2vag.py` | `wav2vag.py in.wav out.vag [--name N] [--loop] [--loop-start SAMPLE]` | SPU-ADPCM encoder (5 filters, shift search per block). |
 | `vag2wav.py`, `vag.py` | `vag2wav.py in.vag out.wav` | Decoder for verification. |
 | `formats.py` | library | Reference writers/parsers: `build_/parse_` `model_bin`, `tpk`, `shp`, `trk`, `scene`. Dicts out, `FormatError` on bad input. |
-| `layout.py` | library | Default VRAM placement of every texture (`SETS`). |
+| `layout.py` | library | Default VRAM placement of every texture (`SETS`). (The *disc* layout is each chapter's `iso.xml`; from Chapter 39 it adds `<track type="audio" source="assets/MUSIC.WAV"/>`.) |
 | `examples.py` | `examples.py` prints the dumps used in the appendix | |
 | `selftest.py` | `selftest.py [-v]` | PASS/FAIL table; exit 1 on failure. Run by `tools/ci.sh`. |
 
 `mkassets.py` output (names are 8.3 for the disc): `CRATE.TIM PANEL.TIM LOGO.TIM SKY16.TIM`, `SHIP.TPK` (3 textures: hull_a, hull_b, wing),
 `TRACK.TPK` (8 tiles), `PROPS.TPK` (pylon, tower), `SHIP.SHP PYLON.SHP ARCH.SHP TOWER.SHP`, `MODEL.BIN`, `TRACK.TRK TRACK2.TRK`, `SCENE.BIN`,
-`ENGINE.VAG` (looped) `BOOST.VAG THUD.VAG BEEP.VAG GO.VAG`, and `manifest/<file>.json` plus `manifest/index.json` (sha256 of each file).
+`ENGINE.VAG` (looped) `BOOST.VAG THUD.VAG BEEP.VAG GO.VAG`, (with `--music`) `MUSIC.WAV`, and `manifest/<file>.json` plus `manifest/index.json` (sha256 of each file).
 
 ## Manifests (what `verify` scripts compare against)
 
@@ -52,6 +53,7 @@ One JSON file per asset, `manifest/<FILE>.json`, keys sorted, integers only (exc
 | `SCENE.BIN.json` | `object_count shapes[...] cull_radius objects[{pos,rot,shape,flags}]` | Ch 33 |
 | `TRACK.TRK.json` | `section_count vertex_count face_count total_length centre_line edges vis boost_sections start_faces face_counts` | Ch 34-40 |
 | `<NAME>.VAG.json` | `sample_rate samples loop blocks header_hex wav_crc32` | Ch 39 |
+| `MUSIC.WAV.json` | `size sha256 sample_rate channels bits frames seconds bpm bars pcm_crc32 peak` | Ch 39 (the disc check) |
 
 ## Using the tools from a chapter's `verify/checks.py`
 

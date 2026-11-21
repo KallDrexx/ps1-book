@@ -89,9 +89,23 @@ mkpsxiso layout used from Chapter 29 on (tested with mkpsxiso 2.30: `mkpsxiso -y
       <dummy sectors="1024"/>
     </directory_tree>
   </track>
-  <!-- Chapter 39 adds: <track type="audio" source="music.wav"/> -->
+  <!-- Chapter 39 on: the music, a second track after the data track -->
+  <track type="audio" source="build/assets/MUSIC.WAV"/>
 </iso_project>
 ```
+
+**Audio track (Chapter 39 on).** `<track type="audio" source="...">` takes a Red Book WAV: **44,100 Hz, 16-bit, stereo** (the book gives it nothing else; `MUSIC.WAV` from `tools/assets/musicgen.py` is exactly that, 24 s: 4,233,600 bytes of PCM in a 4,233,644-byte file). The generated `hoverline.cue` then holds (the times depend on the size of the data track; these are Chapter 39's)
+
+```
+FILE "hoverline.bin" BINARY
+  TRACK 01 MODE2/2352
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    INDEX 00 00:15:36        <- start of the 2-second pregap (150 silent sectors, present in the .bin)
+    INDEX 01 00:17:36        <- the music
+```
+
+and the `.bin` ends with the WAV's PCM rounded up to whole 2352-byte sectors (checked by Chapter 39's `disc_has_audio_track`). The data track stays track 1, so `CdSearchFile` and every earlier chapter's code are unaffected; the program plays the music with `CdlPlay` and the track number 2. Earlier chapters' `iso.xml` files have no audio track.
 
 Rules worth remembering: names are 8.3 and case-insensitive (mkpsxiso warns beyond 12 characters); the root directory
 holds at most 30 entries and the disc at most 45 directories (PSn00bSDK template comments); `system` and `application`
@@ -242,7 +256,7 @@ Flag byte values (psx-spx, *SPU ADPCM Samples*):
 The repeat address is a voice register (`1F801C0Eh + 16*voice`). Key-on copies the start address to the current address but does not
 reset the repeat address, so a one-shot's `01` end block jumps somewhere arbitrary; that is harmless because its envelope is already at 0.
 A voice keeps running after `01` (the SPU cannot stop a voice); `ENDX` tells the program that the sample finished.
-(How each emulator handles `01` versus a silent `07` block is for Chapter 39 to confirm in PCSX-Redux, DuckStation and Mednafen.)
+Chapter 39 measured, in PCSX-Redux (build `dd3497b5`): a looped sample (flag 4 at block 1, flag 3 at the last block) keeps its envelope level at the top for the whole run and sets its voice's ENDX bit at each loop end; a one-shot ending in the book's `01` block has its **envelope level forced to 0** (the voice is muted with no key-off) and its ENDX bit set. A one-off run with the thud's last block changed to a silent `07` block gave the **same visible result in Redux** (envelope level 0 after the sample, ENDX set), which is not what the flag table above predicts for a block that loops onto itself. That is one emulator's behaviour, seen in one run, not a statement about the hardware; the book writes `01`, which mutes the voice under either reading. **Not verified** (only PCSX-Redux is installed): DuckStation and Mednafen for either ending, blocks with shift 13 to 15, and real hardware.
 
 ### E.4.3 Layout of a file written by `wav2vag.py`
 
@@ -848,6 +862,7 @@ $PS1BOOK_PYTHON tools/assets/selftest.py                   # proves generators =
 | `shpgen.py` | ship, scenery and `MODEL.BIN` generator |
 | `trkgen.py`, `scenegen.py` | track and scene generators |
 | `sfxgen.py`, `wav2vag.py`, `vag2wav.py`, `vag.py` | sound effects, VAG encoder/decoder |
+| `musicgen.py` | the CD-DA music loop (`mkassets.py --music` writes `MUSIC.WAV`) |
 | `formats.py` | reference readers/writers for the book's formats |
 | `mkassets.py` | the whole pipeline in one call |
 

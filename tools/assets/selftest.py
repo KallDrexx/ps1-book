@@ -475,6 +475,34 @@ def _():
     s = Fm.parse_shp(CTX.files["SHIP.SHP"]); need(len(s["prims"]) == shp_walk(CTX.files["SHIP.SHP"])["nv"] * 0 + CTX.man["SHIP.SHP"]["prim_count"], "prims")
     return "ok"
 
+@check("music: MUSIC.WAV is CD-DA PCM (44.1 kHz stereo 16-bit), 20-30 s, <= 5 MB, loud, deterministic, additive")
+def _():
+    import mkassets, musicgen
+    d2 = Path(tempfile.mkdtemp(prefix="assets-music-"))
+    f2, m2 = mkassets.build(d2, 1, False, music=True)
+    import shutil; shutil.rmtree(d2, ignore_errors=True)
+    need(all(f2[k] == CTX.files[k] for k in CTX.files) and set(f2) - set(CTX.files) == {"MUSIC.WAV"}, "--music must only add MUSIC.WAV")
+    wav = f2["MUSIC.WAV"]
+    need(wav == musicgen.wav_bytes(musicgen.render()), "musicgen.render is not deterministic")
+    need(wav[:4] == b"RIFF" and wav[8:16] == b"WAVEfmt " and wav[36:40] == b"data", "RIFF layout")
+    ch, rate, bps = struct.unpack_from("<HIxxxxxxH", wav, 22)[0], struct.unpack_from("<I", wav, 24)[0], struct.unpack_from("<H", wav, 34)[0]
+    need((ch, rate, bps) == (2, 44100, 16), f"format {ch} ch {rate} Hz {bps} bit")
+    n = struct.unpack_from("<I", wav, 40)[0]
+    need(n == len(wav) - 44 and n % 4 == 0, "data chunk size")
+    secs = n / 4 / 44100
+    need(20 <= secs <= 30, f"{secs:.1f} s is not 20-30 s")
+    need(len(wav) <= 5 * 1024 * 1024, f"{len(wav)} bytes is over 5 MB")
+    pcm = struct.unpack("<%dh" % (n // 2), wav[44:])
+    peak = max(max(pcm), -min(pcm)); rms = math.sqrt(sum(x * x for x in pcm[::7]) / len(pcm[::7]))
+    need(20000 < peak < 32768 and rms > 3000, f"level peak {peak} rms {rms:.0f}")
+    left, right = pcm[0::2], pcm[1::2]
+    need(left != right, "not stereo")
+    tail = max(abs(x) for x in pcm[-400:])
+    need(tail < 3000, f"the loop end is not quiet (tail peak {tail})")
+    m = m2["MUSIC.WAV"]
+    need(m["frames"] == n // 4 and m["sample_rate"] == 44100 and m["channels"] == 2 and m["size"] == len(wav) and m["pcm_crc32"] == zlib.crc32(wav[44:]) & 0xFFFFFFFF, "manifest")
+    return f"{secs:.0f} s, {len(wav)} bytes, peak {peak}, rms {rms:.0f}"
+
 @check("appendix: hex dumps match what the generators produce")
 def _():
     import examples as E

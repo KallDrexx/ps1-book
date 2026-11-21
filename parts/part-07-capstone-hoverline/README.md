@@ -14,7 +14,7 @@
 | 36 | [Polygon Subdivision and Tessellation](ch36-polygon-subdivision-and-tessellation/README.md) | the near track faces split into 4 or 16 quads (exact UV midpoints, RTPT batches, a primitive budget), T-junction cracks closed with a backing quad, a Triangle debug view with one outline colour per level | available |
 | 37 | [Ship Movement and Physics](ch37-ship-movement-and-physics/README.md) | the ship on the start line: X thrust, Square brake, D-pad steering with a banking roll, a fixed time step (several ticks per slow frame, NTSC 4096 / PAL 4915 `dt_scale`), a chase camera behind and above; verified against an exact Python model | available |
 | 38 | [Track Visibility](ch38-track-visibility/README.md) | the nearest section found exactly (a 64-bit metric, brute force then an incremental walk through the section links with a teleport fall-back), only a window of 24 sections ahead and 4 behind drawn (CPU work per frame drops from about one vertical blank, 47% of frames over it, to 43% of one), an on-screen `SEC / PRIMS` readout; verified on a posed lap against a Python reference | available |
-| 39 | Audio | engine hum, collision thud, boost chime, CD music | planned |
+| 39 | [Audio](ch39-audio/README.md) | the SPU: the five generated samples uploaded to SPU RAM, an engine hum on a fixed voice whose pitch follows the ship's speed (an exact, monotone mapping), a boost chime and an off-road thud as round-robin one-shots, and a looping CD-DA music track (a second disc track made by `musicgen.py`); verified by logging the SPU register writes and reading SPU RAM from an emulator dump | available |
 | 40 | Track Collision | wall collision, boost pads, two tracks | planned |
 | 41 | Handling, Game Loop, and Polish | skid, drag, laps, timer, countdown, results: a finished game | planned |
 | 42 | Shipping It | `make release`, cross-emulator tests, next steps | planned |
@@ -36,7 +36,7 @@ Finish Parts IV to VI. You will use:
 - fixed-point math, the GTE pipeline and the camera (Part V);
 - booting from a disc image, TIM textures, `.TPK` packs and the `.SHP` model parser (Part VI), all of which are **given** from Chapter 33 on.
 
-The generated assets are **not committed**. `make` in a chapter's `starter/` runs `tools/assets/mkassets.py` (`make assets`) into `build/assets/` and builds `hoverline.bin` and `hoverline.cue`; the formats are specified in [Appendix E](../../appendices/E-file-formats.md). The workflow is the same as in Part VI: `source tools/env.sh`, `make`, `make run`, `verify/verify.sh`.
+The generated assets are **not committed**. `make` in a chapter's `starter/` runs `tools/assets/mkassets.py` (`make assets`) into `build/assets/` and builds `hoverline.bin` and `hoverline.cue`; the formats are specified in [Appendix E](../../appendices/E-file-formats.md). The workflow is the same as in Part VI: `source tools/env.sh`, `make`, `make run`, `verify/verify.sh`. From Chapter 39 on the CMake rule runs `mkassets.py --music` as well, and the disc has a second, audio track (`MUSIC.WAV`, 4.2 MB, 2.7 s to generate); earlier chapters' discs are unchanged.
 
 ## What changes in Part VII
 

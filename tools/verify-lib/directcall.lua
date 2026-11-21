@@ -58,6 +58,7 @@ function DC.new(o)
     for i, n in ipairs(CALLEE) do
       local v = 0xC0DE0000 + i * 0x101
       if n == 'sp' then v = SP end
+      if n == 'gp' and saved and saved[IDX.gp] ~= 0 then v = saved[IDX.gp] end   -- a GPREL (SDK) program addresses small globals through $gp: keep its real value
       regset(IDX[n], v); c.sent[n] = v
     end
     for _, a in ipairs({ 'a0','a1','a2','a3' }) do

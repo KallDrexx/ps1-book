@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """mkassets.py -- build the whole Hoverline asset set (what a chapter's `make assets` calls).
 
-  mkassets.py OUTDIR [--seed N] [--keep-png]
+  mkassets.py OUTDIR [--seed N] [--keep-png] [--music]
 
 Writes into OUTDIR:   demo TIMs (CRATE PANEL LOGO SKY16 .TIM)  SHIP/TRACK/PROPS .TPK
                       SHIP PYLON ARCH TOWER .SHP  MODEL.BIN  TRACK.TRK TRACK2.TRK  SCENE.BIN
                       ENGINE BOOST THUD BEEP GO .VAG        manifest/*.json (one per file) + manifest/index.json
+                      with --music (Chapter 39 on): MUSIC.WAV, the CD-DA track (about 4.2 MB, 2.7 s to generate)
 Everything is deterministic: the same seed gives byte-identical files.
 """
 import argparse, hashlib, json, shutil, sys, tempfile, zlib
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import formats as F, img2tim, layout, shpgen, scenegen, sfxgen, texgen, tim, trkgen, wav2vag
+import formats as F, img2tim, layout, musicgen, shpgen, scenegen, sfxgen, texgen, tim, trkgen, wav2vag
 
 
 def _sha(b): return hashlib.sha256(b).hexdigest()
@@ -28,7 +29,7 @@ def tim_info(name, data, extra=None):
     return m
 
 
-def build(out: Path, seed=1, keep_png=False):
+def build(out: Path, seed=1, keep_png=False, music=False):
     out.mkdir(parents=True, exist_ok=True)
     man = out / "manifest"; man.mkdir(exist_ok=True)
     files = {}                                     # filename -> bytes
@@ -78,6 +79,13 @@ def build(out: Path, seed=1, keep_png=False):
         manifests[name + ".VAG"] = dict(file=name + ".VAG", size=len(data), sha256=_sha(data), samples=len(s), sample_rate=sfxgen.RATE,
                                         loop=loop, blocks=(len(data) - 48) // 16, header_hex=data[:48].hex(), wav_crc32=zlib.crc32(
                                             b"".join(int(v).to_bytes(2, "little", signed=True) for v in s)) & 0xFFFFFFFF)
+    if music:
+        pcm = musicgen.render()
+        data = musicgen.wav_bytes(pcm)
+        files["MUSIC.WAV"] = data
+        manifests["MUSIC.WAV"] = dict(file="MUSIC.WAV", size=len(data), sha256=_sha(data), sample_rate=musicgen.RATE, channels=2, bits=16,
+                                      frames=len(pcm) // 2, seconds=len(pcm) // 2 // musicgen.RATE, bpm=musicgen.BPM, bars=musicgen.BARS,
+                                      pcm_crc32=zlib.crc32(data[44:]) & 0xFFFFFFFF, peak=max(max(pcm), -min(pcm)))
     for fn, data in files.items():
         (out / fn).write_bytes(data)
         (man / (fn + ".json")).write_text(json.dumps(manifests[fn], indent=1, sort_keys=True) + "\n")
@@ -90,8 +98,9 @@ def build(out: Path, seed=1, keep_png=False):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("outdir"); ap.add_argument("--seed", type=int, default=1); ap.add_argument("--keep-png", action="store_true")
+    ap.add_argument("--music", action="store_true", help="also write MUSIC.WAV (the CD-DA track of Chapter 39 on)")
     a = ap.parse_args(argv)
-    files, _ = build(Path(a.outdir), a.seed, a.keep_png)
+    files, _ = build(Path(a.outdir), a.seed, a.keep_png, a.music)
     print(f"{len(files)} files written to {a.outdir}")
 
 

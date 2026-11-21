@@ -180,6 +180,34 @@ function V.on_access(kind, ref, width, fn)
   return bp
 end
 
+-- Hardware-register writes (Chapter 39): fn(offset, width, value, pc) for every store into [base, base + len) made by guest code in RAM.
+-- `base` is a physical I/O address (0x1F801C00 = the first SPU register; 0x1F801800 = the CD controller). PCSX-Redux fires 'Write'
+-- breakpoints on I/O addresses (the address it passes is the KSEG1 spelling 0xBF80xxxx, which is why only the low 16 bits are given to
+-- fn), but it passes neither the value nor a way to read the register back: the value is the register named by the store instruction
+-- at `pc` (sb / sh / sw: opcode 0x28 / 0x29 / 0x2B, rt = bits 20-16), read from the CPU state. Stores made by the BIOS (pc in ROM) are
+-- ignored. Returns the breakpoint object (kept alive in `keep`).
+function V.on_hwwrite(base, len, fn)
+  local GPR = PCSX.getRegisters().GPR.r
+  local bp = PCSX.addBreakpoint(base, 'Write', len, 'verify hwwrite', function(a, w)
+    local pc = tonumber(PCSX.getRegisters().pc) % 4294967296
+    if pc < 0x80000000 or pc >= 0x80200000 then
+      if pc < 0xA0000000 or pc >= 0xA0200000 then return end
+    end
+    local ok, res = safe(function()
+      local insn = V.u32(pc)
+      local op, rt = bit.rshift(insn, 26), bit.band(bit.rshift(insn, 16), 31)
+      local v = tonumber(GPR[rt]) % 4294967296
+      local width = (op == 0x28 and 1) or (op == 0x29 and 2) or (op == 0x2B and 4) or nil
+      if not width then return end
+      if width == 1 then v = bit.band(v, 0xFF) elseif width == 2 then v = bit.band(v, 0xFFFF) end
+      return fn(tonumber(a) % 0x10000, width, v, pc)
+    end)
+    if not ok or res == false then return false end
+  end)
+  keep[#keep + 1] = bp
+  return bp
+end
+
 -- ---------------------------------------------------------------- pad
 local pad = PCSX.SIO0.slots[1].pads[1]
 local BUTTON = PCSX.CONSTS.PAD.BUTTON
