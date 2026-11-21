@@ -25,7 +25,7 @@
 typedef struct {
 	int32_t pos[3];               /* +0   world units */
 	int32_t pos_frac[3];          /* +12  the sub-unit remainder of each coordinate, 0..4095 (1/4096 unit) */
-	int32_t vel[3];               /* +24  4.12 world units per NTSC tick, = forward * speed */
+	int32_t vel[3];               /* +24  4.12 world units per NTSC tick; follows forward * speed (handling_skid, Chapter 41) */
 	int32_t speed;                /* +36  4.12 units per NTSC tick along `forward`, 0 .. speed_cap */
 	int32_t yaw;                  /* +40  12.12 angle: turns +z toward +x (the book's RotMatrix vy); heading of the nose */
 	int32_t pitch;                /* +44  nose up is positive (set at the start, then eased toward the road's slope by handling_auto_pitch, Chapter 41) */
@@ -70,11 +70,11 @@ extern TpkTextures ship_store;    /* SHIP.TPK's textures */
 int ship_place(Ship *s, const Track *t);
 
 /* The heading of the direction (x, z): the whole-unit angle a in 0..4095, 0 along +z and 1024 along +x, that points the same way
-   (isin(a) * x + icos(a) * z > 0) and minimises |isin(a) * z - icos(a) * x| (the first one on a tie). Minimising the CROSS product, not
+   (isin(a) * x + icos(a) * z > 0) and minimizes |isin(a) * z - icos(a) * x| (the first one on a tie). Minimising the CROSS product, not
    maximising the dot product: the dot is flat at its peak, so table errors would move the maximum by a few units. (0, 0) gives 0. |x|, |z| <= 8192. */
 int32_t heading_angle(int32_t x, int32_t z);
 
-/* The whole-unit angle p in -1024..1024 that minimises |isin(p) + y| (the first on a tie), y the 4.12 y component of a unit
+/* The whole-unit angle p in -1024..1024 that minimizes |isin(p) + y| (the first on a tie), y the 4.12 y component of a unit
    direction: nose up for y < 0 (+y is down). |y| <= 4096. */
 int32_t pitch_angle(int32_t y);
 

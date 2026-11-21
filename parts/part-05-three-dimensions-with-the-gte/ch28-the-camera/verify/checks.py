@@ -9,13 +9,13 @@ DYNAMIC. Three kinds of run:
     `entry_tol`), the translation with -R * eye of the reader's OWN rows, and orthonormality / handedness are checked on
     every result. The callee-saved registers must survive and the arguments must be untouched.
   * base (probe.lua): the shipped numbers, 300 frames, with a pad script (RIGHT, L1, UP, R1, LEFT, DOWN, opposite pairs).
-  * patched: another start eye / up / speed / clamp box and another place for the centre cube, with a script that runs
+  * patched: another start eye / up / speed / clamp box and another place for the center cube, with a script that runs
     into every clamp.
   In the two program runs the probe records, every frame, the eye, target, up, view_mtx, the objects, and the quads found by
   walking the ordering table. Checks: the view matrix is camera_look_at's answer for the recorded eye/target/up; the target is
-  the centre cube; the eye moves exactly as the movement rule says (README 7.2), clamps included; every cube face and floor
-  tile is where the reference puts it THROUGH THE READER'S view matrix (so the composition order is judged); the centre cube's
-  pixels are centred on the screen; the frame stays inside its cycle budget."""
+  the center cube; the eye moves exactly as the movement rule says (README 7.2), clamps included; every cube face and floor
+  tile is where the reference puts it THROUGH THE READER'S view matrix (so the composition order is judged); the center cube's
+  pixels are centered on the screen; the frame stays inside its cycle budget."""
 import math
 import re
 import shutil
@@ -45,7 +45,7 @@ FACES = [(0, 1, 2, 3), (5, 4, 7, 6), (4, 0, 6, 2), (1, 5, 3, 7), (4, 5, 0, 1), (
 SHADE = [256, 208, 176, 232, 192, 160]
 FLOOR_COLORS = [(72, 72, 96), (168, 168, 190)]
 DEGEN = 1 / 32                    # sin(angle between forward and up) below this: up is "parallel" to forward
-CENTRE_TOL = 16                   # px: the centroid of the centre cube's pixels vs the screen centre (other cubes may hide part of it)
+CENTRE_TOL = 16                   # px: the centroid of the center cube's pixels vs the screen center (other cubes may hide part of it)
 NEAR_Z = 400                      # a corner nearer than this (view z) is not judged: the GTE gives garbage behind the eye
 
 
@@ -149,7 +149,7 @@ def check_orthonormal(label, m):
     for i in range(3):
         l2 = dot(mine[i], mine[i]) / 4096
         expect_true(abs(l2 - 4096) <= 48, f"{label}: row {i} has length 1.0 (|row|^2 / 4096 = 4096 +-48)", f"{l2:.0f}",
-                    "Normalise right and forward; down = forward x right of two unit vectors needs no more.")
+                    "Normalize right and forward; down = forward x right of two unit vectors needs no more.")
         for j in range(i + 1, 3):
             d = dot(mine[i], mine[j]) / 4096
             expect_true(abs(d) <= 48, f"{label}: rows {i} and {j} are perpendicular (dot / 4096 = 0 +-48)", f"{d:.0f}",
@@ -443,11 +443,11 @@ def _(ctx):
         expect_true(c["kept"], f"{label_of(c)} preserves $s0-$s7, $fp, $sp", "a callee-saved register changed",
                     "Registers $s0-$s7 must be saved and restored by a function that uses them; the compiler does it for you in C.")
         expect_eq((c["eye2"], c["target2"], c["up2"]), (c["eye"], c["target"], c["up"]), f"{label_of(c)}: the arguments are const",
-                  hint="Do not normalise or write into the caller's vectors; copy them first.")
+                  hint="Do not normalize or write into the caller's vectors; copy them first.")
 
 
 @check("the view matrix: rows right, down, forward and t = -R * eye match the float reference for 30+ triples (axes, rolls, |up| tiny and huge, 32000-unit differences)",
-       hint="right = normalize(forward x up); down = forward x right; forward = normalize(target - eye); t = -R * eye (README 5).")
+       hint="The five look-at steps of README 5.4, with the rows and t of README 7.2.")
 def _(ctx):
     n = 0
     for c in direct_calls(ctx):
@@ -460,7 +460,7 @@ def _(ctx):
 
 
 @check("degenerate cases: up parallel to forward (and up = 0) falls back to +z, then -y; eye == target looks along +z; the result is still a rotation",
-       hint="If |forward x up| < 1/32 (4.12-unit sin), replace up by (0,0,1); if that is parallel too, by (0,-1,0). If eye == target, forward = (0,0,1).")
+       hint="The fallback table of README 5.4: test |forward x up| against 1/32 with both vectors normalized, and never feed a zero vector to the normalizer.")
 def _(ctx):
     n = 0
     for c in direct_calls(ctx):
@@ -473,7 +473,7 @@ def _(ctx):
 
 
 @check("every result is orthonormal and right-handed: unit rows, mutually perpendicular, right x down = forward",
-       hint="One Newton step after VectorNormalS keeps the rows within 1%; down = forward x right (unit vectors) needs no extra normalise.")
+       hint="One Newton step after VectorNormalS keeps the rows within 1%; down = forward x right (unit vectors) needs no extra normalize.")
 def _(ctx):
     for c in direct_calls(ctx):
         check_orthonormal(label_of(c), c["view"][:9])
@@ -493,8 +493,8 @@ def _(ctx):
         expect_eq(rows[0].up, list(d["up"]), f"{name}: cam_up is never written by the program", hint="cam_up is input.")
 
 
-@check("the camera looks at the centre cube: every frame cam_target == (x, y >> 12, z) of objects[1]",
-       hint="After update_objects(): cam_target = (objects[1].x, objects[1].y >> 12, objects[1].z). y is 20.12.")
+@check("the camera looks at the center cube: every frame cam_target == (x, y >> 12, z) of objects[1]",
+       hint="Set cam_target after update_objects(), from the center cube's position in plain units; its y is stored as 20.12 (README 7.2).")
 def _(ctx):
     for name in ("base", "patched"):
         r, d, rows, t = observe(ctx, name)
@@ -506,7 +506,7 @@ def _(ctx):
 
 
 @check("the pad moves the eye exactly: D-pad = x/z, R1 lowers, L1 raises, cam_speed per frame, opposite buttons cancel, clamped to [cam_min, cam_max]",
-       hint="dx = RIGHT - LEFT, dy = R1 - L1 (y points down), dz = UP - DOWN; eye += speed * (dx, dy, dz); then clamp each component (README 7.2).")
+       hint="The movement rule of README 7.2: one axis per button pair (y points down), cam_speed per frame, then clamp each component.")
 def _(ctx):
     for name in ("base", "patched"):
         r, d, rows, t = observe(ctx, name)
@@ -515,7 +515,7 @@ def _(ctx):
         for x, want in zip(rows, sim):
             held = sorted(held_at(d["inputs"], x.vf))
             expect_eq(x.eye, want, f"{name}, frame {x.n} (vsync {x.vf}, buttons {held}): cam_eye", hint=
-                      "The rule: dx = RIGHT - LEFT; dy = R1 - L1; dz = UP - DOWN; eye += speed * (dx, dy, dz); clamp each component to [cam_min, cam_max]. "
+                      "README 7.2: each held direction moves its axis by cam_speed, opposite buttons cancel, then each component is clamped to [cam_min, cam_max]. "
                       "input_update() once per frame, input_held() for the buttons.")
         if name == "patched":
             final = sim[-1]
@@ -529,7 +529,7 @@ def _(ctx):
 
 
 @check("the view reaches every object: cube faces and floor tiles are where the reference puts them THROUGH YOUR view matrix (+-3 px), hidden faces are absent",
-       hint="Floor: load_matrix(&view_mtx). Cubes: RotMatrix, ScaleMatrix, TransMatrix, then CompMatrixLV(&view_mtx, &obj, &world) in THIS order, upload world.")
+       hint="Floor: the view matrix alone. Cubes: the object's matrix composed with the view, view first (README 5.6).")
 def _(ctx):
     judged_faces = judged_tiles = 0
     for name in ("base", "patched"):
@@ -545,7 +545,7 @@ def _(ctx):
                     for f in range(6):
                         if near(q["rgb"], face_rgb(x.objs[i], f), 1):
                             key = (i, f)
-                expect_true(key is not None, f"{name}, frame {x.n}: every cube quad has a face colour", str(q["rgb"]), "colour channel * face_shade[f] >> 8.")
+                expect_true(key is not None, f"{name}, frame {x.n}: every cube quad has a face color", str(q["rgb"]), "color channel * face_shade[f] >> 8.")
                 seen[key] = q
             for i in range(3):
                 rc = ref_cube(x.objs[i], view)
@@ -562,7 +562,7 @@ def _(ctx):
                         expect_true(q is not None, f"{name}, frame {x.n}: object {i} face {f} faces the camera (NCLIP {a}) and is drawn", "not drawn",
                                     "Back-face culling uses the screen-space NCLIP; it only works if the view matrix was applied before RTPS.")
                         expect_true(near(q["xy"], want, TOL_CORNER), f"{name}, frame {x.n}: object {i} face {f} corners {want} (+-{TOL_CORNER} px)", str(q["xy"]),
-                                    "Compose in this order: world = view * object (CompMatrixLV(&view_mtx, &obj, &world)); the other order moves and spins the whole world with the cube.")
+                                    "Composition order (README 5.6): the view goes first; the other order applies the cube's rotation and size to the camera's translation.")
                         expect_true(q["slot"] < OT_LEN - 1, f"{name}, frame {x.n}: object {i} face {f} is nearer than the floor", f"slot {q['slot']}")
                     else:
                         expect_true(q is None, f"{name}, frame {x.n}: object {i} face {f} points away (NCLIP {a}) and is not drawn", "drawn", "A face is drawn only if its NCLIP is positive.")
@@ -585,7 +585,7 @@ def _(ctx):
 
 # ---- the picture ------------------------------------------------------------------------------------------------------------------------------
 def green_pixels(img):
-    """(count, mean x, mean y) of the pixels coloured like the centre cube's faces (g well above r and b)."""
+    """(count, mean x, mean y) of the pixels colored like the center cube's faces (g well above r and b)."""
     sx = sy = n = 0
     for y in range(img.height):
         for x in range(img.width):
@@ -597,8 +597,8 @@ def green_pixels(img):
     return n, (sx / n if n else 0), (sy / n if n else 0)
 
 
-@check(f"picture: the centre cube's pixels are centred on the screen, whatever the eye does (centroid within {CENTRE_TOL} px of ({CX}, {CY}))",
-       hint="The view matrix must turn the eye->target direction into +z: the target then projects to the screen centre. A fixed camera, or a transposed or un-translated view, drifts as the eye moves.")
+@check(f"picture: the center cube's pixels are centered on the screen, whatever the eye does (centroid within {CENTRE_TOL} px of ({CX}, {CY}))",
+       hint="The view matrix must turn the eye->target direction into +z: the target then projects to the screen center. A fixed camera, or a transposed or un-translated view, drifts as the eye moves.")
 def _(ctx):
     judged = 0
     for name, shots in (("base", (3, 60, 100, 140, 180, 215, 260, 295)), ("patched", (3, 60, 100, 140, 180, 215))):
@@ -610,9 +610,9 @@ def _(ctx):
             x = rows[fr - 1]
             n, mx, my = green_pixels(img)
             judged += 1
-            expect_true(n >= 300, f"{name}, frame {fr}: the centre cube is visible (300+ pixels)", f"{n} pixels")
+            expect_true(n >= 300, f"{name}, frame {fr}: the center cube is visible (300+ pixels)", f"{n} pixels")
             expect_true(abs(mx - CX) <= CENTRE_TOL and abs(my - CY) <= CENTRE_TOL,
-                        f"{name}, frame {fr} (eye {x.eye}): centroid of the centre cube ({n} px) within {CENTRE_TOL} px of ({CX}, {CY})", f"({mx:.1f}, {my:.1f})",
+                        f"{name}, frame {fr} (eye {x.eye}): centroid of the center cube ({n} px) within {CENTRE_TOL} px of ({CX}, {CY})", f"({mx:.1f}, {my:.1f})",
                         "The target must land in the middle of the screen. Check the sign of the translation and the order of the rows.")
     expect_true(judged == 14, "all 14 screenshots were judged (checker design)", str(judged))
 

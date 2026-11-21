@@ -35,7 +35,7 @@ These apply to every book format unless a field says otherwise.
 | Winding | A face is front-facing when its vertices run **clockwise as seen from outside** (`NCLIP` positive, Ch 25). Consequently the cross product `(v1-v0) x (v2-v0)` points **into** the solid. Stored normals point **out**. |
 | Quads | **Z order**: the quad is the triangles `(v0,v1,v2)` and `(v1,v3,v2)`; the outline runs `v0, v1, v3, v2`. Same as `POLY_F4`/`POLY_FT4`. |
 | Fixed point | **4.12**: `4096 = 1.0`, stored as `s16`. Unit vectors have components in `-4096..4096`. Angles: `4096 = 360 degrees` (`isin`/`icos` units). |
-| Colours | Three bytes **R, G, B** (0..255), then one zero byte, exactly the order `setRGB0` expects. In a textured primitive `128` is the neutral modulation colour. VRAM and CLUT colours are 16-bit **BGR555** (`R` in bits 0-4). |
+| Colors | Three bytes **R, G, B** (0..255), then one zero byte, exactly the order `setRGB0` expects. In a textured primitive `128` is the neutral modulation color. VRAM and CLUT colors are 16-bit **BGR555** (`R` in bits 0-4). |
 | UV | Bytes `u, v` in **texels**, `0..255`, measured from the top-left of the texture's own image (see E.3.4 for how a loader adds the texture's VRAM offset). The last texel of an `n`-wide texture is `u = n-1`. |
 | Checksums | Only `.TPK` has one (CRC-32, the zlib/PNG polynomial). |
 
@@ -109,7 +109,7 @@ and the `.bin` ends with the WAV's PCM rounded up to whole 2352-byte sectors (ch
 
 Rules worth remembering: names are 8.3 and case-insensitive (mkpsxiso warns beyond 12 characters); the root directory
 holds at most 30 entries and the disc at most 45 directories (PSn00bSDK template comments); `system` and `application`
-must read `PLAYSTATION`; `CdSearchFile` takes the path `\DATA\MODEL.BIN;1`. No licence file is needed for emulators
+must read `PLAYSTATION`; `CdSearchFile` takes the path `\DATA\MODEL.BIN;1`. No license file is needed for emulators
 (real Japanese/PAL consoles may demand one; Chapter 42). `<dummy sectors="1024"/>` pads the image end, as the SDK template does.
 
 ## E.3 TIM (texture image)
@@ -157,7 +157,7 @@ Uploading a block means `LoadImage` with the rectangle in its header; the pixel 
 | 16 | none | `P` | 1 pixel, BGR555; bit 15 = STP (semi-transparency) |
 | 24 | none | `P*3/2` | 3 bytes R,G,B per pixel, packed back to back (`P` even) |
 
-A CLUT entry is a 16-bit BGR555 colour. **Entry value `0x0000` is transparent** when drawn; a real black must be non-zero.
+A CLUT entry is a 16-bit BGR555 color. **Entry value `0x0000` is transparent** when drawn; a real black must be non-zero.
 `img2tim.py` writes opaque black as `0x0421` and transparent PNG pixels (alpha < 128) as `0x0000`.
 A CLUT block may have `h > 1` rows (several palettes); the book writes one.
 `bnum` and the data size must agree, and the book keeps `w*h` even so every TIM is a multiple of 4 bytes.
@@ -253,10 +253,18 @@ Flag byte values (psx-spx, *SPU ADPCM Samples*):
 | `04` | loop start: this block becomes the repeat address | the first block of a loop |
 | `06`, `07` | loop start combined with repeat / end + repeat: a block that loops onto itself (other tools end one-shots with a silent `07` block) | never |
 
-The repeat address is a voice register (`1F801C0Eh + 16*voice`). Key-on copies the start address to the current address but does not
-reset the repeat address, so a one-shot's `01` end block jumps somewhere arbitrary; that is harmless because its envelope is already at 0.
-A voice keeps running after `01` (the SPU cannot stop a voice); `ENDX` tells the program that the sample finished.
-Chapter 39 measured, in PCSX-Redux (build `dd3497b5`): a looped sample (flag 4 at block 1, flag 3 at the last block) keeps its envelope level at the top for the whole run and sets its voice's ENDX bit at each loop end; a one-shot ending in the book's `01` block has its **envelope level forced to 0** (the voice is muted with no key-off) and its ENDX bit set. A one-off run with the thud's last block changed to a silent `07` block gave the **same visible result in Redux** (envelope level 0 after the sample, ENDX set), which is not what the flag table above predicts for a block that loops onto itself. That is one emulator's behaviour, seen in one run, not a statement about the hardware; the book writes `01`, which mutes the voice under either reading. **Not verified** (only PCSX-Redux is installed): DuckStation and Mednafen for either ending, blocks with shift 13 to 15, and real hardware.
+The repeat address is a voice register (`1F801C0Eh + 16*voice`). Key-on copies the start address to the current address and, according to
+psx-spx (Key ON, `1F801D88h`: "copies Voice Start Address to Voice Repeat Address"), to the repeat address too. A one-shot with no loop-start
+block therefore jumps from its `01` end block back to its own start and replays with the envelope at 0: silent and harmless. The book did not
+measure the copy (its probe cannot read SPU registers). A voice keeps running after `01` (the SPU cannot stop a voice); `ENDX` tells the
+program that the sample finished.
+
+Chapter 39 measured, in PCSX-Redux (build `dd3497b5`): a looped sample (flag 4 at block 1, flag 3 at the last block) keeps its envelope
+level at the top for the whole run and sets its voice's `ENDX` bit at each loop end; a one-shot ending in the book's `01` block has its
+**envelope level forced to 0** with no key-off, and its `ENDX` bit set. One run with the thud's last block changed to a silent `07` block
+gave the same visible result (envelope level 0 after the sample, `ENDX` set), which the flag table does not predict for a block that loops
+onto itself; that is one emulator in one run, not a statement about the hardware. The book writes `01`, which mutes the voice under either
+reading. **Not verified** (only PCSX-Redux is installed): DuckStation and Mednafen for either ending, blocks with shift 13 to 15, and real hardware.
 
 ### E.4.3 Layout of a file written by `wav2vag.py`
 
@@ -429,8 +437,8 @@ Do not CRC the compressed bytes.
 
 ## E.7 `MODEL.BIN` (Chapter 29)
 
-The first model format: just enough structure to practise reading bytes and fixing byte order. It holds a ship-like mesh of
-flat-coloured triangles and quads. **The two counts are big-endian on purpose** (a classic cross-platform file header), while the
+The first model format: just enough structure to practice reading bytes and fixing byte order. It holds a ship-like mesh of
+flat-colored triangles and quads. **The two counts are big-endian on purpose** (a classic cross-platform file header), while the
 vertex and face data are little-endian (native). Everything is 4-byte aligned.
 
 ```
@@ -447,7 +455,7 @@ vertex and face data are little-endian (native). Everything is 4-byte aligned.
 | vertex_count `V` | u32 **BE** | 1..255 |
 | vertex | 8 | `s16 x, s16 y, s16 z, s16 pad(0)` little-endian, model units (the `SVECTOR` layout) |
 | face_count `F` | u32 **BE** | |
-| face | 8 | `u8 i0, i1, i2, i3` vertex indices; **`i3 = 0xFF` means triangle**; then `u8 r, g, b, 0` flat colour |
+| face | 8 | `u8 i0, i1, i2, i3` vertex indices; **`i3 = 0xFF` means triangle**; then `u8 r, g, b, 0` flat color |
 
 File size is `12 + 8*V + 8*F`. Quads are Z order and faces are clockwise from outside (E.0), so Chapter 25's `NCLIP` back-face
 culling works unchanged. The generated ship is a convex hull (13 vertices, 4 triangles, 9 quads), nose along +Z at z = 300, about 450 units long (z from -150 to 300).
@@ -521,8 +529,8 @@ Every record starts with a 4-byte prefix and its size is a multiple of 4:
 | Offset | Size | Field | Meaning |
 |---|---|---|---|
 | +0 | u8 | type | 0 `F3`, 1 `F4`, 2 `G3`, 3 `G4`, 4 `FT3`, 5 `FT4`, 6 `GT3`, 7 `GT4` (F flat, G Gouraud, T textured, 3 triangle, 4 quad) |
-| +1 | u8 | flags | bit 0 **double sided** (skip back-face culling), bit 1 **semi-transparent** (set the primitive's semi-transparency bit with `setSemiTrans`; the blend mode is bits 5-6 of the TSB for a textured primitive, and of the current draw mode (a `DR_TPAGE` primitive or `DRAWENV.tpage`) for an untextured one; the book uses mode 0, 50%+50%), bit 2 **unlit** (colours are final, skip lighting). Other bits 0. |
-| +2 | u16 | size | Total bytes of this record, from the table below. A parser may use it to skip unknown types. |
+| +1 | u8 | flags | bit 0 **double sided** (skip back-face culling), bit 1 **semi-transparent** (set the primitive's semi-transparency bit with `setSemiTrans`; the blend mode is bits 5-6 of the TSB for a textured primitive, and of the current draw mode (a `DR_TPAGE` primitive or `DRAWENV.tpage`) for an untextured one; the book uses mode 0, 50%+50%), bit 2 **unlit** (colors are final, skip lighting). Other bits 0. |
+| +2 | u16 | size | Total bytes of this record, from the table below. The field would let a parser skip a type it does not know, but the book's loader does not: Chapter 32's `shp_parse` rejects a tag above 7 and a `size` that differs from the tag's size. |
 
 The body follows in this order; items that do not apply are absent:
 
@@ -534,7 +542,7 @@ The body follows in this order; items that do not apply are absent:
 | 4 | UVs | 3 or 4 x (`u8 u, u8 v`) | `FT*`, `GT*` |
 | 5 | texture index | u16 | `FT*`, `GT*`: index into the `.TPK` |
 | 6 | zero pad | u16 | textured quads only |
-| 7 | colours | 1 x (`r,g,b,0`) for flat types, 3 or 4 for Gouraud types | all |
+| 7 | colors | 1 x (`r,g,b,0`) for flat types, 3 or 4 for Gouraud types | all |
 
 | Type | Tag | Size (bytes) | Maps to |
 |---|---|---|---|
@@ -542,7 +550,7 @@ The body follows in this order; items that do not apply are absent:
 | `F4` | 1 | 20 | `POLY_F4` |
 | `G3` | 2 | 24 | `POLY_G3` |
 | `G4` | 3 | 32 | `POLY_G4` |
-| `FT3` | 4 | 24 | `POLY_FT3` (one modulation colour) |
+| `FT3` | 4 | 24 | `POLY_FT3` (one modulation color) |
 | `FT4` | 5 | 32 | `POLY_FT4` |
 | `GT3` | 6 | 32 | `POLY_GT3` |
 | `GT4` | 7 | 44 | `POLY_GT4` |
@@ -553,12 +561,12 @@ Layout of the biggest one, `GT4` (44 bytes):
 
 ```
 +0  type=7 flags size=44        +4  v0 v1 v2 v3 (4 x u16)      +12 normal u16, pad u16
-+16 u0 v0 u1 v1 u2 v2 u3 v3     +24 tex u16, pad u16           +28 colour0..colour3 (4 x r,g,b,0)
++16 u0 v0 u1 v1 u2 v2 u3 v3     +24 tex u16, pad u16           +28 color0..color3 (4 x r,g,b,0)
 ```
 
 Texture handling: UVs are texture-local (E.0). A loader looks up texture `tex` in the TPK store, adds `(u0, v0)` from E.3.4 to every UV, and
 fills `tpage = TSB` and `clut = CBA` from where that texture's TIM was uploaded. Expect `TSB`/`CBA` to differ per texture and UVs to be non-zero-based
-whenever two textures share a page. The colour of a textured primitive modulates the texel (128 = unchanged).
+whenever two textures share a page. The color of a textured primitive modulates the texel (128 = unchanged).
 
 Real file (first 0x40 bytes of the generated `SHIP.SHP`: 46 vertices, 27 normals, 33 primitives, 3 textures, bbox -330..330 x -190..40 x -230..300):
 
@@ -578,12 +586,12 @@ and the first two primitives (a `GT3`, 32 bytes, then a `G3`, 24 bytes):
 000002b8: 46 4b 5a 00 46 4b 5a 00                          FKZ.FKZ.
 ```
 
-`06 00 20 00`: type 6 (`GT3`), flags 0, size 32; vertices 0, 1, 2; normal 0; UVs (0,63) (63,63) (32,0); texture 0; three colours `C8 C8 D2`, `96 96 AA`, `96 96 AA`.
-`02 00 18 00`: type 2 (`G3`), size 24; vertices 0, 2, 3 (the nose and the next edge of the first ring); normal 1; then three colours.
+`06 00 20 00`: type 6 (`GT3`), flags 0, size 32; vertices 0, 1, 2; normal 0; UVs (0,63) (63,63) (32,0); texture 0; three colors `C8 C8 D2`, `96 96 AA`, `96 96 AA`.
+`02 00 18 00`: type 2 (`G3`), size 24; vertices 0, 2, 3 (the nose and the next edge of the first ring); normal 1; then three colors.
 
 **Pitfalls.** Records are variable-length: advance by `size`, never by `sizeof` a struct. Quads are Z order, so a GPU `POLY_*4` takes `v0 v1 v2 v3` as stored (do not
 "fix" it to a loop order). Double-sided faces need either sign of the `NCLIP` result. A texture never straddles two texture pages: the generator keeps each one inside a page.
-Modulation colours above 128 brighten the texel (up to 2x), saturating at full intensity per channel.
+Modulation colors above 128 brighten the texel (up to 2x), saturating at full intensity per channel.
 
 **Reference implementation:** `tools/assets/shpgen.py ship|pylon|arch|tower OUT.SHP --manifest m.json` writes; `formats.py` (`build_shp`, `parse_shp`) reads.
 The ship mixes all eight types (every entry of the manifest's `prim_counts` is non-zero). **Manifest schema** (`SHIP.SHP.json`): `file, name, size, sha256, vertex_count, normal_count,
@@ -648,10 +656,10 @@ convention, so the rotation is `RotMatrix` with `vx = rx, vy = ry, vz = rz`, no 
 `53 43 4E 31` magic; `98 03 00 00` size 920; 3 shapes; `0x23` = 35 objects; shapes at 0x20, objects at 0x50; cull radius `0x4E20` = 20000;
 then the shape table: `PYLON.SHP` radius `0x191` = 401, `ARCH.SHP` 962, `TOWER.SHP` 1500.
 
-The generated scene (from `TRACK.TRK`): 1 arch over the start line (`ALWAYS_DRAW`), 28 pylons (a pair at every section `i` with `i mod 8 = 4`, 1000 units either side of the centre line), 6 towers on an outer ring.
+The generated scene (from `TRACK.TRK`): 1 arch over the start line (`ALWAYS_DRAW`), 28 pylons (a pair at every section `i` with `i mod 8 = 4`, 1000 units either side of the center line), 6 towers on an outer ring.
 
 **Pitfalls.** Objects are not sorted; do not assume a pylon follows another. Position fields are 32-bit while the GTE wants 16-bit camera-relative values
-(subtract the camera first). The model radius is measured about the model origin, not the bounding-box centre.
+(subtract the camera first). The model radius is measured about the model origin, not the bounding-box center.
 
 **Reference implementation:** `tools/assets/scenegen.py TRACK.TRK OUT.BIN --manifest m.json`; `formats.py` (`build_scene`, `parse_scene`).
 **Manifest** (`SCENE.BIN.json`): `file, size, sha256, object_count, shape_count, shapes[{name,radius,count}], cull_radius, pos_bbox[6], objects[{index,shape,flags,pos,rot,scale}]`.
@@ -696,7 +704,7 @@ and collision edges, face flags and section frames (40, 41). All little-endian, 
 | 0x2C | u32 | faces_offset | `0x60 + 12*vertex_count` |
 | 0x30 | u32 | sections_offset | `faces_offset + 24*face_count` |
 | 0x34 | u32 | vis_offset | `sections_offset + 64*section_count` |
-| 0x38 | u32 | total_length | Sum of all section `length`s: one lap along the centre line, world units. |
+| 0x38 | u32 | total_length | Sum of all section `length`s: one lap along the center line, world units. |
 | 0x3C | u32 | reserved | 0 |
 | 0x40 | s32[6] | bbox | `min x,y,z, max x,y,z` of all vertices. |
 | 0x58 | 8 | reserved | 0 |
@@ -727,7 +735,7 @@ Ring cross-section (looking along the direction of travel; the generated tracks 
     |                                         |
     |  wall        road (3 lanes)       wall  |
     1 L ---- 2 CL ---- 3 CR ---- 4 R
-         left      centre     right
+         left      center     right
 ```
 
 | Ring vertex | Lateral (units, + = right) | Height (+ = up = -Y) |
@@ -751,7 +759,7 @@ right edge is lower (larger `y`). The ring layout is a property of the generated
 | +0x0A | u8 | tex | Texture index into the track `.TPK`, or `0xFF` = untextured. |
 | +0x0B | u8 | pad | 0 |
 | +0x0C | u8[8] | uv | `u0,v0,u1,v1,u2,v2,u3,v3`, texture-local (E.0; 0..63 for the 64x64 tiles). Stored for the **unflipped** face. |
-| +0x14 | u8[4] | color | `r,g,b,0`: the face's untextured colour. The generated tracks store the Chapter 34 legend colour of the face's flags; Chapter 34 derives the colour from the flags and ignores this field (a track may leave it 0); textured renders use neutral 128. |
+| +0x14 | u8[4] | color | `r,g,b,0`: the face's untextured color. The generated tracks store the Chapter 34 legend color of the face's flags; Chapter 34 derives the color from the flags and ignores this field (a track may leave it 0); textured renders use neutral 128. |
 
 Face flags:
 
@@ -759,12 +767,12 @@ Face flags:
 |---|---|---|
 | 0 | `FLOOR` | Drivable surface (the three lane quads). |
 | 1 | `WALL` | A side wall, facing the road. |
-| 2 | `BOOST` | Boost pad (centre lane of the sections in the manifest's `boost_sections`). Always with `FLOOR`. |
+| 2 | `BOOST` | Boost pad (center lane of the sections in the manifest's `boost_sections`). Always with `FLOOR`. |
 | 3 | `START` | Start/finish line (the three lane quads of the start section). With `FLOOR`. |
 | 4 | `FLIP_H` | Render **mirrored in U**: every corner's `u` becomes `u_min + u_max - u`, where `u_min`, `u_max` are the smallest and largest of the face's four `u` values (the generated faces use the whole tile, so `u -> 63 - u`); `v` is unchanged. On a lane quad (U runs along `v0 -> v1`) this equals using the UVs `(u1,u0,u3,u2)` for the vertices `(v0,v1,v2,v3)`; on a wall quad (U runs along `v0 -> v2`) it swaps `(u0,u2)` and `(u1,u3)`. The texture itself is not modified. |
 | 5-15 | | 0 |
 
-Per section the 5 faces are, in order: left wall (ring vertices 0,1), left lane (1,2), centre lane (2,3), right lane (3,4), right wall (4,5).
+Per section the 5 faces are, in order: left wall (ring vertices 0,1), left lane (1,2), center lane (2,3), right lane (3,4), right wall (4,5).
 Each face joins a pair of ring vertices of the section's start ring with the same pair of its end ring; the generator reverses the quad's winding where needed
 so it is front-facing from the road side, and the UVs follow the vertices through that reversal. Faces of a section are consecutive: `first_face .. first_face + face_count - 1`.
 
@@ -772,11 +780,11 @@ so it is front-facing from the road side, and the UVs follow the vertices throug
 
 | Offset | Size | Field | Meaning |
 |---|---|---|---|
-| +0x00 | s32[3] | centre | Midpoint of the section's centre line: the average of the start and end ring centres, where a ring centre is the average of its `L` and `R` vertices. |
-| +0x0C | u16 | half_width | Distance from the centre line to `L`/`R` (600). |
-| +0x0E | u16 | length | Distance between the start and end ring centres, world units. |
-| +0x10 | s16[3] + pad | forward | Unit vector (4.12) from the start ring centre toward the end ring centre. |
-| +0x18 | s16[3] + pad | right | Unit vector (4.12), the normalised mean of the two rings' `L->R` directions made orthogonal to `forward`. `normalize(forward x (0,-1,0))` on level road; banked sections tilt it. |
+| +0x00 | s32[3] | centre | Midpoint of the section's center line: the average of the start and end ring centers, where a ring center is the average of its `L` and `R` vertices. |
+| +0x0C | u16 | half_width | Distance from the center line to `L`/`R` (600). |
+| +0x0E | u16 | length | Distance between the start and end ring centers, world units. |
+| +0x10 | s16[3] + pad | forward | Unit vector (4.12) from the start ring center toward the end ring center. |
+| +0x18 | s16[3] + pad | right | Unit vector (4.12), the normalized mean of the two rings' `L->R` directions made orthogonal to `forward`. `normalize(forward x (0,-1,0))` on level road; banked sections tilt it. |
 | +0x20 | s16[3] + pad | up | Unit vector (4.12) out of the road surface (negative `y` on level road), orthogonal to both. Right-handed in the book's Y-down axes: `down = forward x right`. |
 | +0x28 | u16 | first_face | |
 | +0x2A | u16 | face_count | 5 |
@@ -798,8 +806,8 @@ The edge direction `L1-L0` also gives the heading to steer toward after an impac
 ### E.10.5 Visibility lists (Chapter 38)
 
 `vis_count` `u16` section indices; section `i` owns the slice `vis[vis_first .. vis_first + vis_count - 1]`. For the generated tracks the slice for section `i` holds every
-section `j` with `(j - i) mod N <= 24` (ahead, including `i` itself), **or** `(j - i) mod N >= N - 4` (the 4 behind), **or** whose centre is within `6 x` the average section length of
-section `i`'s centre (spatially close, e.g. across a bend). Entries are in order of `(j - i) mod N`, so the first entry is always `i`. The parameters are in the manifest (`vis_rule`).
+section `j` with `(j - i) mod N <= 24` (ahead, including `i` itself), **or** `(j - i) mod N >= N - 4` (the 4 behind), **or** whose center is within `6 x` the average section length of
+section `i`'s center (spatially close, e.g. across a bend). Entries are in order of `(j - i) mod N`, so the first entry is always `i`. The parameters are in the manifest (`vis_rule`).
 A renderer may use these lists instead of computing its own window; this is the book's optional `.VIS` table, carried inside the `.TRK`.
 
 ### E.10.6 Start position and units
@@ -820,14 +828,14 @@ a section about 1000 long, a lap about 112000, the ships 450 (`MODEL.BIN`) and 5
 start section 0; flags 1 (`LOOP`); 8 textures; offsets `0x60`, `0x1FE0`, `0x5460`, `0x7060`; total length `0x1B882` = 112770; then the bounding box
 (`x` from -22416 to 24474, ...).
 
-One face (the first, a left wall, offset `0x1FE0`): vertices 1, 0, 7, 6; flags `02` (`WALL`); texture 5; UVs `(0,63) (0,0) (63,63) (63,0)`; colour (40,60,120):
+One face (the first, a left wall, offset `0x1FE0`): vertices 1, 0, 7, 6; flags `02` (`WALL`); texture 5; UVs `(0,63) (0,0) (63,63) (63,0)`; color (40,60,120):
 
 ```
 00001fe0: 01 00 00 00 07 00 06 00 02 00 05 00 00 3f 00 00  .............?..
 00001ff0: 3f 3f 3f 00 28 3c 78 00                          ???.(<x.
 ```
 
-and the first section (offset `0x5460`): centre `(23883, -639, 496)`, half width 600 (`58 02`), length `0x03ED` = 1005, then `forward`, `right`, `up`, faces 0..4, next 1, prev 111,
+and the first section (offset `0x5460`): center `(23883, -639, 496)`, half width 600 (`58 02`), length `0x03ED` = 1005, then `forward`, `right`, `up`, faces 0..4, next 1, prev 111,
 flags 2 (`START`), visibility entries 0..30, edges 1, 4, 7, 10:
 
 ```
@@ -838,7 +846,7 @@ flags 2 (`START`), visibility entries 0..30, edges 1, 4, 7, 10:
 ```
 
 **Pitfalls.** Vertices are `s32`: reading them as `s16` makes every coordinate garbage. Camera-relative subtraction first, GTE load second. Faces are Z-ordered quads that already
-include the winding fix: render them as stored. `FLIP_H` changes the UVs, not the vertices. Ring vertices are shared between neighbouring sections, so edges
+include the winding fix: render them as stored. `FLIP_H` changes the UVs, not the vertices. Ring vertices are shared between neighboring sections, so edges
 and walls meet exactly; subdivision (Ch 36) must split shared edges identically or T-junction cracks appear. `up` has negative `y`: do not add it to a height as if `+y` were up.
 
 **Reference implementation:** `tools/assets/trkgen.py OUT.TRK [--track 1|2] [--sections N] --manifest m.json`; `formats.py` (`build_trk`, `parse_trk`).

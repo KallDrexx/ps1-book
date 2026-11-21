@@ -52,7 +52,7 @@ static void draw_grid(void)
 		if (!p)
 			break;
 		setPolyFT4(p);
-		setRGB0(p, 128, 128, 128);                     /* neutral: the texel's own colour */
+		setRGB0(p, 128, 128, 128);                     /* neutral: the texel's own color */
 		setXY4(p, x0, y0, x0 + QUAD, y0, x0, y0 + QUAD, x0 + QUAD, y0 + QUAD);
 		setUV4(p, t->u, t->v, u1, t->v, t->u, v1, u1, v1);
 		p->clut = t->clut;

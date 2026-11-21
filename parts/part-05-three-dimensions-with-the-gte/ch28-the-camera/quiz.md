@@ -32,7 +32,7 @@ In `forward x up` when `forward` is parallel to `up` (looking straight up or dow
 
 <details><summary>Answer</summary>
 
-It adds the three squares with MIPS `add`, which traps on signed overflow: `3 * 30000^2 = 2.7e9` is more than 2^31, so the CPU raises an arithmetic-overflow exception and never returns. (Components beyond +-32767 would also wrap in its 16-bit GTE registers.) Shift the vector right until its largest component is at most 8192 first (for example), normalise, and the unit direction is the same: only the length changed.
+It adds the three squares with MIPS `add`, which traps on signed overflow: `3 * 30000^2 = 2.7e9` is more than 2^31, so the CPU raises an arithmetic-overflow exception and never returns. (Components beyond +-32767 would also wrap in its 16-bit GTE registers.) Shift the vector right first (for example until its largest component is at most 8192), then normalize: the shift changes only the length, not the direction.
 </details>
 
 **6.** After `VectorNormalS` a vector has squared length `2^24 * 1.012` (1.2% too long, so about 0.6% in length). What factor does one Newton step multiply it by, and what is the new squared length?
@@ -53,5 +53,5 @@ The first: `out.R = V.R * W.R` and `out.t = V.R * W.t + V.t`, so the object is p
 
 <details><summary>Answer</summary>
 
-(1) Geometry behind or at the eye: a vertex with view z <= 0 has no valid screen position (the GTE's divide overflows), so polygons smear across the screen. (2) Depth range: the ordering table has 64 slots of `SZ / 512` units; beyond the last slot, faces share slot 63 with the floor and are drawn in the wrong order. A third: a 16-bit limit: `CompMatrixLV` returns `out.T` (the object's view-space position) through 16-bit GTE registers, so an object more than 32,767 from the eye along any view axis is drawn in the wrong place.
+(1) Geometry behind or at the eye: a vertex with view z <= 0 has no valid screen position (the GTE's divide overflows), so polygons smear across the screen. (2) Depth range: the ordering table has 64 slots and a face's slot is `SZ / 512`; a face beyond 32,256 units shares slot 63 with the floor and is drawn in the wrong order. A third, the 16-bit limit: `CompMatrixLV` returns `out.T` (the object's view-space position) through 16-bit GTE registers, so an object more than 32,767 from the eye along any view axis is drawn in the wrong place.
 </details>

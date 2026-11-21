@@ -6,8 +6,8 @@ view_mtx, track_stats, the per-vertex arrays (trk_vstate, trk_rel, trk_sxy, trk_
 Everything the program must produce is derived here, in exact integers, from the generated .TRK (formats.parse_trk): the camera-relative vector of every vertex,
 the GTE projection (bit-exact RTPS), the face rules in README 5.6 and the packets with their ordering-table slots.
 ALT RUN: a second disc whose TRACK.TRK is track 2 (104 sections) translated by (+60000, 0, +45000) so that every ABSOLUTE x and z exceeds 16 bits, with
-every face colour field zeroed (the legend comes from the FLAGS) and the camera box widened: hard-coded counts, the absolute-vertex shortcut and the
-colour-field shortcut all fail there.
+every face color field zeroed (the legend comes from the FLAGS) and the camera box widened: hard-coded counts, the absolute-vertex shortcut and the
+color-field shortcut all fail there.
 DIRECT CALLS (probe_direct.lua): track_parse on crafted files (documented codes, check order, limits, the input and *out left alone), the accessors, track_colour,
 track_draw windows (wrap, count cut, empty, negative first) and the primitive budget over several calls."""
 import atexit
@@ -65,7 +65,7 @@ SHIFT = (60000, 0, 45000)
 
 
 def make_alt_track():
-    """Track 2, translated, face colour fields zeroed."""
+    """Track 2, translated, face color fields zeroed."""
     t = formats.parse_trk(FILES["TRACK2.TRK"])
     verts = [(x + SHIFT[0], y + SHIFT[1], z + SHIFT[2]) for x, y, z in t["vertices"]]
     secs = []
@@ -488,7 +488,7 @@ def snaps(r):
 
 
 @check("wireframe toggle: Select is edge-triggered: held 20 frames in the game -> wire_mode 1 exactly once; a 2-frame press -> back to 0; the game state stays STATE_GAME",
-       hint="In game_update: `if (input_pressed(INPUT_SELECT)) wire_mode ^= 1;` (pressed, not held: held would flip it every frame).")
+       hint="In game_update, toggle wire_mode on the press edge of Select (pressed, not held: held would flip it every frame).")
 def _(ctx):
     r, info = observe(ctx, "main")
     expect_eq((info["game_state"], info["wire_mode"]), (0, 0), "at boot (game_state, wire_mode)", fmt="dec")
@@ -666,7 +666,7 @@ def check_packets(ctx, name):
             ex = (missing or extra)[0]
             kind = "missing" if missing else "unexpected"
             raise CheckFailure(expected=f"{lab}: {len(want)} packets (e.g. slot {ex[0]}: {[hex(x) for x in ex[1]]})", actual=f"{len(got)} packets; {kind} {len(missing) if missing else len(extra)} (first: slot {ex[0]}, words {[hex(x) for x in ex[1]]})",
-                               hint="POLY_F4: code 0x28 + the legend colour, the four projected corners in the file's order v0..v3; slot = (ZSF4 AVSZ4 of the four view z) >> 7; wire: command 0x48, "
+                               hint="POLY_F4: code 0x28 + the legend color, the four projected corners in the file's order v0..v3; slot = (ZSF4 AVSZ4 of the four view z) >> 7; wire: command 0x48, "
                                     "corners v0 v1 v3 v2 v0, terminator 0x55555555, same slot as its face.")
         # the outline is drawn after its fill
         if p["wire"]:
@@ -687,14 +687,14 @@ def check_packets(ctx, name):
     expect_true(total > 200, f"{name}: enough packets were compared", str(total))
 
 
-@check("main disc: for every pose the ordering table holds exactly the Python-computed packets (colour by flag, the four corners, the slot); outlines come after their fills",
+@check("main disc: for every pose the ordering table holds exactly the Python-computed packets (color by flag, the four corners, the slot); outlines come after their fills",
        hint="Legend: START white (240,240,240), BOOST (0,200,255), WALL (40,60,120), FLOOR (70,72,80); the corners are the projected vertices v0..v3 of the face record.")
 def _(ctx):
     check_packets(ctx, "main")
 
 
-@check("alt disc: the same packets (colour fields in the file are zero: the colour comes from the flags)",
-       hint="Do not read TrkFace.color: derive the colour from flags with track_colour().")
+@check("alt disc: the same packets (color fields in the file are zero: the color comes from the flags)",
+       hint="Do not read TrkFace.color: derive the color from flags with track_colour().")
 def _(ctx):
     check_packets(ctx, "alt")
 
@@ -753,7 +753,7 @@ def check_pictures(ctx, name):
                     return False
             return True
 
-        # centres of drawn faces (boost and start faces first): the colour at a safely interior point is the painter's winner
+        # centers of drawn faces (boost and start faces first): the color at a safely interior point is the painter's winner
         cand = []
         for kind, pts, c, fi in fills:
             cx_, cy_ = sum(q[0] for q in pts) / 4, sum(q[1] for q in pts) / 4
@@ -772,8 +772,8 @@ def check_pictures(ctx, name):
                 continue
             want = winner(pt)
             got = img.pixel(*pt)
-            expect_true(max(abs(got[k] - want[k]) for k in range(3)) <= 14, f"{lab}: pixel {pt} (centre of face {fi}, flags {trk['faces'][fi]['flags']}) is {fmt_rgb(want)}",
-                        fmt_rgb(got), "The face's colour comes from its flags; faces are linked at the slot of the average view z, nearer ones are drawn later.")
+            expect_true(max(abs(got[k] - want[k]) for k in range(3)) <= 14, f"{lab}: pixel {pt} (center of face {fi}, flags {trk['faces'][fi]['flags']}) is {fmt_rgb(want)}",
+                        fmt_rgb(got), "The face's color comes from its flags; faces are linked at the slot of the average view z, nearer ones are drawn later.")
             used += 1
             n_samples += 1
             if want == COL["boost"]:
@@ -796,18 +796,18 @@ def check_pictures(ctx, name):
             expect_true(hits >= tried * 0.9, f"{lab}: the outline is on screen: yellow pixels at {tried} edge midpoints", f"{hits} of {tried}",
                         "The overlay is one 5-point polyline per face in yellow (255,255,0), drawn after the fill.")
             n_wire += tried
-    expect_true(n_samples >= 60, f"{name}: enough face colours were sampled", str(n_samples))
-    expect_true(n_boost >= 2, f"{name}: boost-pad coloured pixels (0,200,255) were found at projected boost faces", str(n_boost))
+    expect_true(n_samples >= 60, f"{name}: enough face colors were sampled", str(n_samples))
+    expect_true(n_boost >= 2, f"{name}: boost-pad colored pixels (0,200,255) were found at projected boost faces", str(n_boost))
     expect_true(n_wire >= 30, f"{name}: outline edges were sampled", str(n_wire))
 
 
-@check("main disc pictures: the colour at the centre of drawn faces (painter's order) matches the legend, including the cyan boost pads of sections 28 and 76; wireframe edges are yellow",
-       hint="Floor grey, wall blue, boost cyan, start white; nearer faces are drawn later (OT slot from AVSZ4 of the four view z).")
+@check("main disc pictures: the color at the center of drawn faces (painter's order) matches the legend, including the cyan boost pads; wireframe edges are yellow",
+       hint="Floor gray, wall blue, boost cyan, start white; nearer faces are drawn later (OT slot from AVSZ4 of the four view z).")
 def _(ctx):
     check_pictures(ctx, "main")
 
 
-@check("alt disc pictures: the same (colour fields zeroed in the file: black faces mean the colour field was used)",
+@check("alt disc pictures: the same (color fields zeroed in the file: black faces mean the color field was used)",
        hint="Use track_colour(flags).")
 def _(ctx):
     check_pictures(ctx, "alt")
@@ -1057,7 +1057,7 @@ def _(ctx):
                   hint="Codes: 0 ok, -2 ALIGN, -3 MAGIC, -4 HEADER, -5 VERTEX, -6 FACE, -7 SECTION, -8 VIS. Widen u16 values before adding them.")
         out = bytes.fromhex(rec["reads"][0])
         if c["want"] != 0:
-            expect_eq(out, bytes(48), f"{c['name']}: *out is all zero after a failure", hint="memset(out, 0, sizeof *out) first (or on every failure path).")
+            expect_eq(out, bytes(48), f"{c['name']}: *out is all zero after a failure", hint="Zero *out first (or on every failure path).")
         else:
             w = struct.unpack("<12i", out)
             blob = c["blob"]
@@ -1072,7 +1072,7 @@ def _(ctx):
 
 
 @check("track_vertex / track_face / track_section return the address of record i of the loaded track, or NULL for any index below 0 or at or above the count",
-       hint="`i >= 0 && i < count`: compare as signed ints (a size_t or unsigned comparison lets -1 through).")
+       hint="Check both ends of the range, comparing as signed ints (a size_t or unsigned comparison lets -1 through).")
 def _(ctx):
     for c, rec in direct(ctx):
         if c["kind"] != "acc":
@@ -1083,7 +1083,7 @@ def _(ctx):
         expect_eq(rec["v0"] & 0xFFFFFFFF, want, c["name"], fmt="hex", hint="NULL for an index outside 0 .. count-1.")
 
 
-@check("track_colour(flags): START white, else BOOST cyan, else WALL blue, else FLOOR grey, else magenta (the legend), as a GPU word r | g << 8 | b << 16",
+@check("track_colour(flags): START white, else BOOST cyan, else WALL blue, else FLOOR gray, else magenta (the legend), as a GPU word r | g << 8 | b << 16",
        hint="Test the flags in the order START, BOOST, WALL, FLOOR. A boost pad is FLOOR | BOOST, the start line FLOOR | START.")
 def _(ctx):
     for c, rec in direct(ctx):
@@ -1094,7 +1094,7 @@ def _(ctx):
 
 
 @check("track_draw(t, first, count): windows of sections: wrap modulo section_count, count cut to the section count, count <= 0 draws nothing, negative first; stats and vertices seen equal the model; view_mtx.t is not used",
-       hint="Section k of the window is (first + k) mod section_count (first normalised to 0..n-1 even when negative); count > n draws each section once. The matrix is the ROTATION of view_mtx, TR = 0.")
+       hint="Section k of the window is (first + k) mod section_count (first normalized to 0..n-1 even when negative); count > n draws each section once. The matrix is the ROTATION of view_mtx, TR = 0.")
 def _(ctx):
     eye, m, vb = window_setup()
     cap = prim_buf_size(ctx.project)
@@ -1114,7 +1114,7 @@ def _(ctx):
 
 
 @check("the primitive budget: repeated draws on one frame fill the buffer; faces that find it full are counted dropped (once full, all later faces of the call), the guard bytes survive",
-       hint="`fill = ot_alloc(bytes)`: on NULL count the face in faces_dropped and prims_dropped, and allocate nothing more in this track_draw.")
+       hint="When ot_alloc returns NULL, count the face in faces_dropped and prims_dropped, and allocate nothing more in this track_draw.")
 def _(ctx):
     eye, m, vb = window_setup()
     cap = prim_buf_size(ctx.project)

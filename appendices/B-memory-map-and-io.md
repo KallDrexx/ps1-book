@@ -27,32 +27,33 @@ The CPU's 32-bit virtual address picks a segment (Ch 2):
 | `0xA0000000-0xBFFFFFFF` | KSEG1 | **no** | `addr & 0x1FFFFFFF` |
 | `0xC0000000-0xFFFFFFFF` | KSEG2 | n/a | cache-control register `0xFFFE0130` only; ignore |
 
-Only **instruction fetches** are cached (4 KB instruction cache), and only through KUSEG and KSEG0. The 1 KB "data cache" is wired as the scratchpad. Data loads and stores behave identically through every segment. The scratchpad is **not reachable through KSEG1** (Ch 2). RAM offset `0x10000` is one place named `0x00010000`, `0x80010000` or `0xA0010000`.
+Only **instruction fetches** are cached (4 KB instruction cache), and only through KUSEG and KSEG0. The 1 KB "data cache" is wired as the scratchpad. Data loads and stores behave identically through every segment. On real hardware the scratchpad is **not reachable through KSEG1**; PCSX-Redux lets an access to `0xBF800000` through all the same (measured), so use `0x1F800000` (Ch 2). RAM offset `0x10000` is one place named `0x00010000`, `0x80010000` or `0xA0010000`.
 
 | Physical range | Size | What answers |
 |---|---|---|
 | `0x00000000-0x001FFFFF` | 2 MB | main RAM; mirrored at `0x00200000`, `0x00400000`, `0x00600000` (8 MB window). Never rely on the mirrors. |
-| `0x1F000000-0x1F7FFFFF` | up to 8 MB | expansion region 1 (cartridge port) |
+| `0x1F000000-0x1F7FFFFF` | up to 8 MB | expansion region 1 (parallel I/O port) |
 | `0x1F800000-0x1F8003FF` | 1 KB | **scratchpad** (fast on-chip RAM) |
 | `0x1F801000-0x1F801FFF` | 4 KB | **I/O registers** (B.3) |
 | `0x1F802000-0x1F803FFF` | 8 KB | expansion region 2 (debug hardware, POST/`DUART`) |
+| `0x1FA00000-0x1FBFFFFF` | 2 MB | expansion region 3 (unused) |
 | `0x1FC00000-0x1FC7FFFF` | 512 KB | **BIOS ROM** (reset vector `0xBFC00000`) |
 | `0xFFFE0130` | 4 | cache control (KSEG2) |
 
-Reading an unmapped address returns garbage or raises a bus error (exception 6/7, Appendix A.7).
+Reading an unmapped address raises a bus error on hardware (exception 6/7, Appendix A.7); an emulator may return garbage instead (Ch 2).
 
 ## B.2 RAM, scratchpad, BIOS
 
 | Item | Fact |
 |---|---|
 | Kernel area | the first 64 KB of RAM (`0x80000000-0x8000FFFF`) belongs to the BIOS kernel; programs load at `0x80010000` (Ch 2, 5) |
-| Exception vector | the BIOS installs its general-exception handler at `0x80000080` (breakpoint `0x80000040`) |
+| Exception vector | the BIOS installs its general-exception handler at `0x80000080` (COP0 debug-breakpoint vector: `0x80000040`) |
 | BIOS call tables | `A0h`, `B0h`, `C0h`: put the function number in `$t1` and jump to the table address (the SDK stubs do this, Ch 22). The pad functions used by the book: `B(12h)` `InitPAD`, `B(13h)` `StartPAD`, `B(14h)` `StopPAD`, `B(5Bh)` `ChangeClearPAD` |
 | Default stack | `0x801FFFF0` (`EXE_STACK` in `common/psxexe.inc`); PSX-EXE header field at 0x30 (Appendix E.1) |
 | Scratchpad use | 1 KB at `0x1F800000-0x1F8003FF` (or `0x9F800000` in KSEG0): hot data for the GTE chapters. **Not executable**: jumping into it crashes (Ch 2). |
 | Instruction cache | 4 KB; the book never controls it explicitly |
 | Byte order | little-endian (Ch 2) |
-| BIOS in the harness | PCSX-Redux runs **OpenBIOS** (a reimplementation) when given no BIOS file: same call tables, but undocumented details may differ. It takes about 31 frames to reach `main`, with `SR = 0x40000000`, `I_MASK = 0`, `I_STAT` bit 0 already set (Ch 17). |
+| BIOS in the harness | PCSX-Redux runs **OpenBIOS** (a reimplementation) when given no BIOS file: same call tables, but undocumented details may differ. With fast boot it takes about 31 frames to reach `main`, where `SR = 0x40000000` (interrupts off), `I_MASK = 0` and `I_STAT` = 1 (bit 0 already set); measured (Ch 17). |
 
 ## B.3 I/O register overview
 
@@ -75,7 +76,7 @@ Memory control 1, for reference *(not checked in the book)*: `0x1F801000` EXP1 b
 
 ## B.4 Interrupts
 
-`I_STAT` = `0x1F801070` (status, 16 significant bits), `I_MASK` = `0x1F801074` (enable). Bit assignments (Ch 17):
+`I_STAT` = `0x1F801070` (status), `I_MASK` = `0x1F801074` (enable); bits 0-10 are used. Bit assignments (Ch 17):
 
 | Bit | Source | Bit | Source |
 |---|---|---|---|
@@ -158,7 +159,7 @@ Both take a **word**: use `sw`. A GP1 word is `cc pppppp` (command in the top by
 | 0-3 | texture page X base (N * 64 units), as in `E1h` bits 0-3 |
 | 4 | texture page Y base (0 = line 0, 1 = line 256) |
 | 5-6 | semi-transparency mode (`E1h`) |
-| 7-8 | texture colour depth: 0 = 4 bpp, 1 = 8 bpp, 2 = 15 bpp |
+| 7-8 | texture color depth: 0 = 4 bpp, 1 = 8 bpp, 2 = 15 bpp |
 | 9 | dither enable |
 | 10 | drawing to the display area allowed |
 | 11 | set mask bit when drawing (`E6h` bit 0) |
@@ -170,7 +171,7 @@ Both take a **word**: use `sw`. A GP1 word is `cc pppppp` (command in the top by
 | 17-18 | horizontal resolution 1: 0 = 256, 1 = 320, 2 = 512, 3 = 640 |
 | 19 | vertical resolution: 0 = 240, 1 = 480 |
 | 20 | video mode: 0 = NTSC, 1 = PAL |
-| 21 | colour depth: 0 = 15-bit, 1 = 24-bit |
+| 21 | color depth: 0 = 15-bit, 1 = 24-bit |
 | 22 | vertical interlace |
 | 23 | display disabled (1 = off) |
 | 24 | GPU interrupt request |
@@ -181,7 +182,7 @@ Both take a **word**: use `sw`. A GP1 word is `cc pppppp` (command in the top by
 | 29-30 | DMA direction (GP1(04h)): 0 off, 1 FIFO, 2 CPU to GP0, 3 GPUREAD to CPU |
 | 31 | even/odd line in interlace modes (0 during vertical blank) |
 
-Bits 16-22 echo the GP1(08h) word you wrote and bit 23 echoes GP1(03h), so GPUSTAT checks a mode word (Ch 13).
+Bits 16-22 reflect the GP1(08h) word you wrote (its bits 0-5 appear in 17-22, bit 6 in 16) and bit 23 reflects GP1(03h), so GPUSTAT checks a mode word (Ch 13).
 
 **The bit-26 rules (Ch 13, 15, 16).**
 
@@ -269,7 +270,7 @@ Pads and memory cards share the serial port **SIO0**, a master/slave link: the c
 | +6 | **start address** | in **8-byte units** (`addr / 8`; `getSPUAddr` rounds up) |
 | +8 | ADSR1 | bits 15-8 attack (bit 15 mode, 14-10 shift, 9-8 step), 7-4 decay shift, 3-0 sustain level (0-15; 15 = full) |
 | +10 | ADSR2 | bits 15-6 sustain (mode, direction, shift, step), bit 5 release mode, bits 4-0 release shift |
-| +12 | envelope level | current level, read-only |
+| +12 | envelope level | current level (the book only reads it) |
 | +14 | repeat address | set by a flag-4 block as it plays |
 
 The book writes `ADSR1 = 0x00FF` (fastest attack, sustain level 15: no shaping) and `ADSR2 = 0x000A` (release shift 10, a fade of about 50 ms). After `SpuInit` the ADSR registers hold nothing useful, so every voice needs them. Set every register of the voice **before** the key-on. Pitch examples: 22,050 Hz sample at `0x0800`; `0x0400` plays at 11,025 Hz, one octave down.
@@ -318,6 +319,6 @@ The CPU clock is **33.8688 MHz** (768 x 44,100). Vertical-blank periods in CPU c
 | PAL, PCSX-Redux, measured | about **675,900** cycles (50.11 Hz) with the GPU PAL bit set | Ch 37 |
 | PAL, real hardware (psx-spx) | about **680,600** cycles (49.76 Hz) | Ch 37, 42 |
 
-These do not contradict each other. psx-spx ("GPU Timings") gives the non-interlaced refresh as **59.826 Hz** (NTSC) and **49.761 Hz** (PAL) on the nominal video clocks (NTSC 53.693175 MHz, PAL 53.203425 MHz; 263 / 314 lines of about 3413 / 3406 video clocks). Dividing the CPU clock by them gives **566,120** (NTSC, exactly what Redux counts) and about **680,600** (PAL). Redux's PAL figure is about 0.7% lower than that; the book reports it as measured and does not explain the difference. A "frame" for a cycle budget in Chapters 34 to 38 is the 566,120 of Redux. Cycle counts in Redux are meaningful only under `-interpreter` (Appendix F). Scanlines per frame (non-interlaced) 263 / 314 and the display-range centres are in Appendix C (GP1 `06h`/`07h`).
+These do not contradict each other. psx-spx ("GPU Timings") gives the non-interlaced refresh as **59.826 Hz** (NTSC) and **49.761 Hz** (PAL) on the nominal video clocks (NTSC 53.693175 MHz, PAL 53.203425 MHz; 263 / 314 lines of about 3413 / 3406 video clocks). Dividing the CPU clock by them gives **566,120** (NTSC, exactly what Redux counts) and about **680,600** (PAL). Redux's PAL figure is about 0.7% lower than that. It equals 314 lines at Redux's NTSC line length (566,120 / 263 = about 2,152.5 cycles), which suggests Redux keeps one line length for both standards; the book reports the figure as measured and does not investigate. A "frame" for a cycle budget in Chapters 34 to 38 is the 566,120 of Redux. Cycle counts in Redux are meaningful only under `-interpreter` (Appendix F). Scanlines per frame (non-interlaced) 263 / 314 and the display-range centers are in Appendix C (GP1 `06h`/`07h`).
 
 Other timings the book quotes: 150 KB/s (single) and 300 KB/s (double) disc speed; one sector about 7 ms at double speed; spinning up a stopped disc about a second (Ch 29).

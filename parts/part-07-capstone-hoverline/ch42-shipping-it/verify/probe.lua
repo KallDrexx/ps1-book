@@ -1,6 +1,6 @@
 -- Chapter 42 probe: boots the RELEASE disc (release/hoverline.cue) and plays the start of a race. checks.py writes PARAMS and dofile()s this file.
 --   PARAMS.pal = true    make the console a PAL one: a PAL BIOS leaves the GPU in its PAL display mode (GPUSTAT bit 20 set) when it starts the game, and OpenBIOS,
---                        which this emulator runs, does not, so a three-instruction stub does what the BIOS would have done (GP1 command 0x08000008)
+--                        which this emulator runs, does not, so a short stub does what the BIOS would have done (GP1 command 0x08000008)
 --                        before `main`'s first instruction. The program has to find out for itself
 --   PARAMS.race_frames   how many frames of RACE to record before stopping (CROSS held all the time)
 -- Recorded: rows = one table per frame_done (after the first game frame): n, state, ticks, cycles, wire, dbg, sub, speed, text (race_text[0]),

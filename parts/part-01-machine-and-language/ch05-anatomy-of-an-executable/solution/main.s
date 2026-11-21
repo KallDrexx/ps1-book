@@ -2,8 +2,8 @@
 ; A PSX-EXE whose header is written by hand: no `.include "common/psxexe.inc"`.
 
 .psx
-.definelabel LOAD, 0x80040000          ; where the BIOS copies the code (2 KB aligned, not the default)
-.create "main.ps-exe", 0x8003F800          ; = LOAD - 0x800: file offset 0
+.definelabel LOAD, 0x80040000          ; where the loader copies the code (2 KB aligned, not the default)
+.create "main.ps-exe", 0x8003F800      ; = LOAD - 0x800: file offset 0
 
 ; ---- the 2048-byte header ------------------------------------------------
 .org LOAD - 0x800
@@ -13,7 +13,7 @@
 .word LOAD + 0x8000                    ; 0x14 initial GP
 .word LOAD                             ; 0x18 load address
 .word __exe_end - LOAD                 ; 0x1C size of the payload
-.fill 16, 0                            ; 0x20 unused / memfill
+.fill 16, 0                            ; 0x20 data, BSS (unused)
 .word 0x801FFF00                       ; 0x30 initial SP base
 .word 0                                ; 0x34 initial SP offset
 .fill 0x14, 0                          ; 0x38 reserved
@@ -25,8 +25,8 @@
 
 main:
     la    $s0, results
-    sw    $gp, 0x00($s0)               ; GP as the BIOS set it
-    sw    $sp, 0x04($s0)               ; SP as the BIOS set it
+    sw    $gp, 0x00($s0)               ; GP as the loader set it
+    sw    $sp, 0x04($s0)               ; SP as the loader set it
     la    $t0, main
     sw    $t0, 0x08($s0)               ; where this code really is
 

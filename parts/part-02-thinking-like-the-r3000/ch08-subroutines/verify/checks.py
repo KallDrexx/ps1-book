@@ -109,7 +109,7 @@ def _(ctx):
 
 @static_check("armips reports no warnings",
               hint="Usually a load delay: a loaded register used by the very next instruction. "
-                   "Careful with `lw $a0` directly before `jal` when the callee uses $a0 at once.")
+                   "armips cannot see a `lw` in a `jal` delay slot, which is just as wrong: load before the call.")
 def _(ctx):
     bad = [l.strip() for l in ctx.build_log.splitlines() if "warning" in l.lower()]
     expect_true(not bad, "no warnings", "; ".join(bad[:2]))
@@ -177,7 +177,7 @@ def _(ctx): result_check(ctx, "factorial")
 
 
 @check("sum_array(a0 = ptr, a1 = len) returns the sum, including len 0 and wrap-around",
-       hint="Zero elements sum to 0 and must read no memory. Sums wrap modulo 2^32. Initialise $v0 yourself.")
+       hint="Zero elements sum to 0 and must read no memory. Sums wrap modulo 2^32. Initialize $v0 yourself.")
 def _(ctx): result_check(ctx, "sum_array")
 
 

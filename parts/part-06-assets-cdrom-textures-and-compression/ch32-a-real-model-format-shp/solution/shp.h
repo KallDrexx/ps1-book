@@ -73,14 +73,14 @@ uint32_t shp_decode(const uint8_t *rec, ShpPrim *p);
 int shp_parse(const void *data, size_t size, Shp *s);
 
 /* The GPU packet built from a record: sizeof(POLY_F3) ... sizeof(POLY_GT4). With tex != NULL the record's own type decides;
-   with tex == NULL (the flat fallback) a textured type becomes the untextured packet of the same shape and colour kind:
+   with tex == NULL (the flat fallback) a textured type becomes the untextured packet of the same shape and color kind:
    FT3 -> F3, FT4 -> F4, GT3 -> G3, GT4 -> G4. Returns 0 for a bad type. */
 uint32_t shp_packet_size(unsigned type, int textured);
 
-/* Fill the packet at `pkt` (shp_packet_size bytes, not initialised) from record *p. `sxy[i]` is the screen position of vertex i as
+/* Fill the packet at `pkt` (shp_packet_size bytes, not initialized) from record *p. `sxy[i]` is the screen position of vertex i as
    gte_stsxy stored it (x in the low 16 bits, y in the high 16). The packet's OT tag length and command byte are set (setPolyXX),
    but the packet is NOT linked. tex != NULL: add the texture's (u, v) to every UV, set tpage and clut from it (textured types only).
-   Colours are the record's: flat types use rgb[0] for the whole polygon, Gouraud types one colour per vertex.
+   Colors are the record's: flat types use rgb[0] for the whole polygon, Gouraud types one color per vertex.
    SHP_SEMI_TRANS sets the primitive's semi-transparency bit. */
 void shp_fill(void *pkt, const ShpPrim *p, const int32_t *sxy, const Tex *tex);
 

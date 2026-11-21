@@ -12,7 +12,7 @@ void display_init(void)
 void display_clear(uint8_t r, uint8_t g, uint8_t b)
 {
 	(void) r; (void) g; (void) b;
-	/* TODO: set the clear colour of the back buffer's DRAWENV, then PutDrawEnv it. */
+	/* TODO: set the clear color of the back buffer's DRAWENV, then PutDrawEnv it. */
 }
 
 void display_swap(void)

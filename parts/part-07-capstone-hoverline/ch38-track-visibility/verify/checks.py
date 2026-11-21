@@ -3,7 +3,7 @@ Build: CMake + PSn00bSDK; the CMake rule runs tools/assets/mkassets.py. The emul
 HOW THE LAP IS DRIVEN (README 5.9): the ship has no collision yet and flies straight, so a lap cannot be driven by the pad. The probe (probe.lua) writes the ship's pose
 (pos, yaw; speed 0) at the end of every frame; the pad is idle, so ship_update leaves it alone; the game then updates the section and draws; at the next frame_done the
 probe records the row: ship_section, the counters, the vertex states, the packets of the frame's ordering table, the frame's work in CPU cycles.
-THE POSES come from the generated .TRK (centre line, section frames): a smooth run with lateral sway across the lap boundary, a fast stretch (several sections per frame),
+THE POSES come from the generated .TRK (center line, section frames): a smooth run with lateral sway across the lap boundary, a fast stretch (several sections per frame),
 teleports, a run BACKWARDS, an off-road excursion, a stretch 150,000 units away (squares above 32 bits) and a full lap; the alt disc is track 2 translated by (+60000, 0, +45000) with a different script.
 THE MODEL: example/vis_ref.py (the exact metric in Python integers, brute force, the window).
 Runs: main (track 1, defaults), whole (the same poses with the window wider than the track: the cost of drawing everything), narrow (vis_ahead 9, vis_behind 2),
@@ -73,7 +73,7 @@ TRK2 = formats.parse_trk(ALT_BIN)
 
 # ---- the scripted laps ---------------------------------------------------------------------------------------------------------------------------
 def interp(trk, u, lat, hover=120):
-    """The point u sections along the centre line (u = i is section i's centre), `lat` units to the right, `hover` above the road."""
+    """The point u sections along the center line (u = i is section i's center), `lat` units to the right, `hover` above the road."""
     secs = trk["sections"]
     n = len(secs)
     i0 = math.floor(u)
@@ -287,7 +287,7 @@ def _(ctx):
     ship = [x for x in st["ship"][:3]]
     want = M.nearest(TRK1["sections"], ship)
     expect_eq(st["section"], want, f"ship_section when the game starts (ship at {show(ship)}: the section nearest to it, by brute force)",
-              hint="track_nearest_brute: the smallest squared distance to a section centre, the lowest index on a tie.")
+              hint="track_nearest_brute: the metric and the tie rule of README 5.3.")
     check_poked(rows, "main")
 
 
@@ -302,7 +302,7 @@ def nearest_check(ctx, name):
     kinds = [p["kind"] for p in POSES[name]]
     first = ", ".join(f"pose {k} ({kinds[k]}): got {rows[k]['section']}, want {ref[k][0]}" for k in bad[:4])
     expect_true(frac >= 0.99, f"{name}: ship_section equals the brute-force nearest section on >= 99% of the {len(rows)} frames", f"{frac:.1%} ({len(bad)} wrong; {first})",
-                "Metric: squared 3D distance to the section centre, 64-bit; ties go to the lowest index. Update through next/prev, brute force after a teleport.")
+                "The metric and the tie rule: README 5.3. The update and its fall-backs: README 5.4 and 5.5.")
     for k in bad:
         expect_true(k + 1 not in bad, f"{name}: a wrong frame is followed by a right one (recovery within one frame)", f"poses {k} and {k + 1} both wrong ({first})",
                     "After a jump (more than VIS_MAX_STEPS sections) or when the section is farther than vis_lost, search every section.")
@@ -317,7 +317,7 @@ def _(ctx):
                 "With the update rule of track_vis.h the result IS the brute-force answer for these poses; a mismatch is a bug in the metric, the tie rule or the wrap.")
 
 
-@check("teleports_recover", hint="After a teleport (a jump of many sections) the very next frame's answer must be right: brute force when the neighbour walk gives up.")
+@check("teleports_recover", hint="After a teleport (a jump of many sections) the very next frame's answer must be right: brute force when the neighbor walk gives up.")
 def _(ctx):
     r, rows = run_of(ctx, "main")
     ref = REF["main"]
@@ -331,14 +331,14 @@ def _(ctx):
                           hint="A jump over more than VIS_MAX_STEPS sections must fall back to the full search (and so must a result beyond vis_lost).")
 
 
-@check("update_uses_the_links_not_the_whole_track", hint="Normal frames walk the neighbours (a few hundred cycles); the full search runs only when it must (teleports, fast flight, off the road).")
+@check("update_uses_the_links_not_the_whole_track", hint="Normal frames walk the neighbors (a few hundred cycles); the full search runs only when it must (teleports, fast flight, off the road).")
 def _(ctx):
     r, rows = run_of(ctx, "main")
     ref = REF["main"]
     need = sum(1 for k in range(len(ref)) if ref[k][2])
     brute = rows[-1]["brute"] - rows[0]["brute"] + 1
     expect_true(rows[-1]["brute"] <= need + 3, f"full searches over the lap: at most the {need} frames that need one (+ the start and 2 spare)", f"{rows[-1]['brute']} searches",
-                "Searching every frame is correct but is exactly what the incremental update avoids: test the section and its neighbours first.")
+                "Searching every frame is correct but is exactly what the incremental update avoids: test the section and its neighbors first (README 5.4).")
     upd = r.record("upd") or []
     expect_true(len(upd) >= len(rows) - 2, "track_nearest_update is called once per game frame", f"{len(upd)} calls for {len(rows)} frames", "game_update: ship_section = track_nearest_update(...) after chase_camera_update.")
     cheap = sorted(u["cyc"] for u in upd if u["brute"] == 0)
@@ -360,7 +360,7 @@ def window_check(rows, name, ahead, behind):
         first, count = M.window(n, s, ahead, behind)
         where = f"{name} pose {k} (section {s}, ahead {ahead}, behind {behind})"
         expect_eq((row["first"], row["count"]), (first, count), f"{where}: window (first, count)",
-                  hint="Sections s - behind .. s + ahead modulo the section count: first = (s - behind) mod n, count = behind + ahead + 1, or the whole track.")
+                  hint="The window rule is the table of README 5.2 (wrap, the whole-track case, the patched vis_ahead / vis_behind).")
         st = row["stats"]
         expect_eq(st[0], 5 * count, f"{where}: faces seen by track_draw (5 per section)", hint="Draw exactly the window: nothing more, nothing less.")
         expect_eq(sum(st[1:7]), st[0], f"{where}: every face in exactly one bucket", hint="Chapter 34's buckets are unchanged.")
@@ -373,7 +373,7 @@ def window_check(rows, name, ahead, behind):
         if got != want:
             extra, miss = sorted(got - want), sorted(want - got)
             raise CheckFailure(expected=f"{where}: vertices touched = those of sections {first}..{(first + count - 1) % n}", actual=f"{len(extra)} extra {extra[:4]}, {len(miss)} missing {miss[:4]}",
-                               hint="track_draw(first, count): the window wraps at the end of the loop (use modulo), and section s itself is inside it.")
+                               hint="The window wraps at the end of the loop, and section s itself is inside it (README 5.2).")
 
 
 @check("window_rule_main", hint="Each frame draws exactly sections s - 4 .. s + 24 around the reader's own ship_section, wrapped at the lap boundary: checked on the vertices track_draw touched.")
@@ -435,7 +435,7 @@ def _(ctx):
 def _(ctx):
     r, rows = nearest_check(ctx, "alt")
     bad, ref = nearest_report(rows, "alt")
-    expect_true(not bad, "alt lap: every frame matches the reference", f"{len(bad)} wrong, first at pose {bad[:1]}", "Use 64-bit squared distances (s64 differences).")
+    expect_true(not bad, "alt lap: every frame matches the reference", f"{len(bad)} wrong, first at pose {bad[:1]}", "The far poses need the 64-bit metric of README 5.3; nothing may depend on track 1's section count or position.")
     window_check(rows, "alt", 24, 4)
     for k, row in enumerate(rows):
         expect_true(row["work"] <= WORK_LIMIT, f"alt pose {k}: frame work <= {WORK_LIMIT}", str(row["work"]), "")
@@ -447,7 +447,7 @@ def _(ctx):
     r, rows = run_of(ctx, "main")
     for k, row in enumerate(rows):
         want = "SEC %3d  PRIMS %4d" % (row["section"], row["prims"])
-        expect_eq(row["text"], want, f"pose {k}: the readout line", hint="vis_readout_format: snprintf(vis_text, ..., \"SEC %3d  PRIMS %4d\", ship_section, prims_this_frame).")
+        expect_eq(row["text"], want, f"pose {k}: the readout line", hint="vis_readout_format: the format of README 5.7, from the same frame's ship_section and prims_this_frame.")
 
 
 @check("readout_on_screen", hint="The text is on the screen at (8, 8), in the SDK font, over the track: white characters in the top-left corner.")
@@ -456,7 +456,7 @@ def _(ctx):
     shots = r.record("shots")
     expect_true(len(shots) == 2, "two screenshots taken", str(len(shots)), "")
     font = r.vram().rect(960, 0, 32, 32)
-    expect_true(sum(1 for b in font if b) > 100, "the SDK font is in VRAM at x 960..991, y 0..31 (FntLoad(960, 0))", "that area is empty", "Call FntLoad(960, 0) once after the display is initialised.")
+    expect_true(sum(1 for b in font if b) > 100, "the SDK font is in VRAM at x 960..991, y 0..31 (FntLoad(960, 0))", "that area is empty", "Call FntLoad(960, 0) once after the display is initialized.")
     for sh in shots:
         img = r.screenshot(sh["name"])
         row = rows[sh["row"] - 1]

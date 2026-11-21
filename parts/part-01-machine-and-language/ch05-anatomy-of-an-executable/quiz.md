@@ -35,12 +35,12 @@ Little-endian: reverse the bytes to `80 01 10 00`, so `0x80011000`.
 A CD-ROM sector holds 2048 bytes of data, and the loader reads whole sectors.
 </details>
 
-**8. You change the load word in your header to `0x80050000` but leave `.org 0x80040000` for the code. The file passes header validation. What happens when it runs?**
+**8. You change the load word in your header to `0x80050000` but leave `.org 0x80040000` for the code. What happens when it runs, and what does `exeinfo.py` say?**
 <details><summary>Answer</summary>
-The loader copies the payload to `0x80050000`, but the code was assembled for `0x80040000`: absolute addresses (`la`, `j`) point at the wrong place, so it jumps into memory that does not hold your code and never reaches `done`.
+The loader copies the payload to `0x80050000`, but the code was assembled for `0x80040000`. The PC word (`main`) and every absolute address (`la`, `j`) still point there, so the CPU starts in memory that does not hold your code and never reaches `done`. `exeinfo.py` prints `INVALID: pc`: `main` is outside `[load, load + size)`.
 </details>
 
 **9. What does the `$sp` register contain when your program starts?**
 <details><summary>Answer</summary>
-The header's SP base plus SP offset, set by the loader (PCSX-Redux's side-loader uses the base alone, which is why the offset is kept 0). Nothing else sets it, so a header with the wrong stack leaves any function-calling code (Chapter 8 onward) with a bad stack.
+When side-loaded, the header's SP base plus SP offset (PCSX-Redux's side-loader uses the base alone, which is why the offset is kept 0). On a CD boot the BIOS uses the `STACK` value from `SYSTEM.CNF` instead. Your code never sets it, so a wrong value leaves any function-calling code (Chapter 8 onward) with a bad stack.
 </details>

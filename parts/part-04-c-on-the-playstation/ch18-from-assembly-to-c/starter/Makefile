@@ -10,7 +10,7 @@ all:
 	cmake --build build
 run: all
 	$(BOOK_ROOT)/.toolchain/bin/pcsx-redux -exe build/game.exe -run -fastboot
-# `make asm` writes expand.O0.s and expand.O2.s: the same function, unoptimised and optimised.
+# `make asm` writes expand.O0.s and expand.O2.s: the same function, unoptimized and optimized.
 asm:
 	$(CC) -O0 -S $(ASMFLAGS) expand.c -o expand.O0.s
 	$(CC) -O2 -S $(ASMFLAGS) expand.c -o expand.O2.s

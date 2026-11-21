@@ -11,7 +11,7 @@ Coprocessor 2 of the R3000: a fixed-function unit with its own data and control 
 
 <details><summary>Answer</summary>
 
-`RotMatrix` and `TransMatrix` fill only the C structure; `gte_SetRotMatrix(&mtx)` and `gte_SetTransMatrix(&mtx)` load it into the GTE. The matrix is 4.12, but the translation is in the same plain-integer units as the vertices (the GTE computes `(R * v) >> 12 + T`).
+`RotMatrix` and `TransMatrix` fill only the C structure; `gte_SetRotMatrix(&mtx)` and `gte_SetTransMatrix(&mtx)` load it into the GTE. The matrix is 4.12, but the translation is in the same plain-integer units as the vertices (the GTE computes `((R * v) >> 12) + T`).
 </details>
 
 **3.** With `h = 256`, screen offset `(160, 120)`, a vertex `(4096, 0, 0)` and the translation `(0, 0, 24576)` (no rotation), where does `RTPS` put it? What are `SZ3` and the flags?

@@ -7,11 +7,11 @@
 `e = (1000, 0)`, `len = 1000`. `cross(v) = ex * vz - ez * vx = 1000 * vz`. For the reference point `cross(r - a) = 700,000 > 0`, so `s = +1`. For the ship `cross(p - a) = 40,000`, so `dist = 40,000 / 1000 = 40`: the ship is 40 units inside the edge, on the road's side. The normal is `(s * -ez * 4096 / len, s * ex * 4096 / len) = (0, 4096)`: a unit vector pointing along +z, toward the reference point. A dot product with the unit normal gives the same number: `(p - a) . n = 40 * 4096 / 4096`. The cross product with the edge *is* the dot product with the edge's perpendicular, just not yet divided by the length.
 </details>
 
-**2.** Chapter 38's `ship_section` is the nearest centre. Why is that not enough for collision, and what does `collide_section` test instead?
+**2.** Chapter 38's `ship_section` is the nearest center. Why is that not enough for collision, and what does `collide_section` test instead?
 
 <details><summary>Answer</summary>
 
-The nearest centre is decided by the *bisector plane* between two centres, which passes through the midpoint of the line joining them. The sections meet at a *ring*, a line across the road that is not that plane when the road bends or when the two sections differ in length (a point near the ring can be closer to one centre while lying inside the other section's quad). Colliding with the wrong section's edges pushes the ship the wrong way. `collide_section` tests the two ring lines of the section: ahead of the end ring means the next section, behind the start ring the previous one, and it walks until the ring tests agree. The edges used for the push are then those of the section the ship is actually over.
+The nearest center is decided by the *bisector plane* between two centers, which passes through the midpoint of the line joining them. The sections meet at a *ring*, a line across the road that is not that plane when the road bends or when the two sections differ in length (a point near the ring can be closer to one center while lying inside the other section's quad). Colliding with the wrong section's edges pushes the ship the wrong way. `collide_section` tests the two ring lines of the section: ahead of the end ring means the next section, behind the start ring the previous one, and it walks until the ring tests agree. The edges used for the push are then those of the section the ship is actually over.
 </details>
 
 **3.** A hit pushes the ship by `(n.x * depth) >> 12`. The ship is 30 units inside the edge and `radius` is 90. What is `depth`, and what happens to the edge distance after the push? Why can it end up at 89 instead of 90?
@@ -35,11 +35,11 @@ Angles live on a circle of `ANGLE_TURN = 2^24` units. `target - yaw` can be anyw
 `err` can be as large as `2^23` (half a turn in 12.12 angle units) and `yaw_fix` is up to `4096 = 2^12`: the product reaches `2^35` and overflows 32 bits. At the default `yaw_fix` of 2048 (`2^11`) it already overflows for any error above `2^20`, a sixteenth of a turn (22.5 degrees), an ordinary hit. `fx_mul` of the `psxe` library keeps the full 64-bit product and shifts afterwards. A 32-bit multiply would give a wrapped, meaningless correction, often in the wrong direction.
 </details>
 
-**6.** Boost pads on track 1 are sections 28 and 29, but the ship gets one speed impulse for driving through both. Why, and how is that different from Chapter 39's chime?
+**6.** Sections 28 and 29 of track 1 are both boost-pad sections, but the ship gets one speed impulse for driving through both. Why, and how is that different from Chapter 39's chime?
 
 <details><summary>Answer</summary>
 
-Chapter 40 decides it from the **face under the ship**: `on_boost` is 1 while the ship is over a face with `TRK_BOOST`, and the impulse comes on the *entry* (0 to 1). Driving from section 28's centre lane into section 29's keeps `on_boost` at 1, so there is no new entry. Chapter 39 looked at the *section* (a change into a section that has a boost face), so two sections gave two chimes, and a ship in a side lane of a pad section also got one. Using the face is more accurate and is why the chime now comes from `collide_ship`.
+Chapter 40 decides it from the **face under the ship**: `on_boost` is 1 while the ship is over a face with `TRK_BOOST`, and the impulse comes on the *entry* (0 to 1). Driving from section 28's center lane into section 29's keeps `on_boost` at 1, so there is no new entry. Chapter 39 looked at the *section* (a change into a section that has a boost face), so two sections gave two chimes, and a ship in a side lane of a pad section also got one. Using the face is more accurate and is why the chime now comes from `collide_ship`.
 </details>
 
 **7.** A hit raises `EV_THUD` only if `ship_ticks - last_hit >= thud_gap`, yet `last_hit` is set on *every* hit. Why not set it only when a thud is raised?

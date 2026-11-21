@@ -20,7 +20,7 @@ commit a small file only when the reader needs it before the chapter introduces 
 |---|---|---|
 | `mkassets.py` | `mkassets.py OUTDIR [--seed N] [--keep-png] [--music]` | The whole set (below) plus `OUTDIR/manifest/*.json`. `--music` also writes `MUSIC.WAV` (the CD-DA track; Chapter 39 on; off by default so earlier chapters' builds and checksums are unchanged). |
 | `texgen.py` | `texgen.py OUTDIR [--seed N]`, `--list` | 17 PNGs: `crate` (8 bpp), `panel`, `logo` (128x64 "HOVERLINE"), `hull_a`, `hull_b`, `wing`, `asphalt`, `asphalt_worn`, `lane_stripe`, `boost`, `start_line`, `wall_a`, `wall_b`, `glow`, `pylon`, `tower`, `sky16` (16 bpp). |
-| `img2tim.py` | `img2tim.py in.png out.tim --bpp 4\|8\|16\|24 [--x --y --cx --cy]`; `--check f.tim...`; `--to-png f.tim out.png` | Palette from the PNG's colours (exact when it has at most 16/256), else median-cut. Alpha < 128 is transparent (CLUT index 0). `--check` exits 1 on an invalid TIM. |
+| `img2tim.py` | `img2tim.py in.png out.tim --bpp 4\|8\|16\|24 [--x --y --cx --cy]`; `--check f.tim...`; `--to-png f.tim out.png` | Palette from the PNG's colors (exact when it has at most 16/256), else median-cut. Alpha < 128 is transparent (CLUT index 0). `--check` exits 1 on an invalid TIM. |
 | `tim.py` | library | `parse`, `build`, `decode_rgba`, `tsb`, `cba`, `uv_origin`, `fits_in_page`. |
 | `lzss.py` | library | `compress(data)`, `decompress(data, out_size=None)`. Appendix E.5. |
 | `tpkpack_ref.py` | `pack OUT.TPK a.tim ...` (or a directory), `unpack IN.TPK DIR`, `verify IN.TPK` | The **oracle**. Chapter 31's reader writes their own `tpkpack.py`; use this one to check it. |

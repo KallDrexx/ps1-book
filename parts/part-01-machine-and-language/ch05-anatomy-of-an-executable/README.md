@@ -6,7 +6,7 @@ A PS1 program is a **PSX-EXE**: a 2 KB header telling the BIOS where to load the
 
 ## 2. Why it matters
 
-So far a macro (`common/psxexe.inc`) hid the header from you. Every build tool, emulator, disc image and homebrew loader reads these same few fields. When a program "does nothing" on a console or an emulator, a wrong header is one of the first suspects. This chapter also teaches you to read raw bytes as instructions, which is what a hex dump in a debugger gives you.
+So far the include file `common/psxexe.inc` wrote the header for you. Every build tool, emulator and loader reads these same few fields, and when a program "does nothing", a wrong header is one of the first suspects. This chapter also teaches you to read raw bytes as instructions, which is what a memory dump in a debugger gives you.
 
 ## 3. Learning objectives
 
@@ -38,7 +38,7 @@ An EXE file is copied into RAM, then the CPU jumps into it. Two address spaces a
                +----------------+                                +----------------+
 ```
 
-The header says *which* RAM address receives the payload. The default in this book is `0x80010000` (the first 64 KB of RAM belong to the BIOS and kernel), but any address that fits works.
+The header says *which* RAM address receives the payload. This book's default is `0x80010000`, the lowest usable address: the first 64 KB of RAM belong to the BIOS kernel (Chapter 2). Any higher address works as long as the payload still ends inside RAM.
 
 ### 5.2 The header
 
@@ -53,29 +53,19 @@ All fields are little-endian 32-bit words unless noted. Offsets are in the **fil
 | `0x18` | 4 | load address | RAM address where the payload is copied. |
 | `0x1C` | 4 | size | Payload size in bytes, **not** counting the header. A multiple of `0x800`. |
 | `0x20` | 16 | data, BSS | Two address/size pairs (data section, BSS). Usually zero; if the BSS size is non-zero the BIOS zero-fills that range. |
-| `0x30` | 4 | SP base | Initial stack pointer. Zero means "keep the loader's stack". |
+| `0x30` | 4 | SP base | Initial `$sp` (the BIOS copies it to `$fp` too). Zero means "keep the loader's stack". |
 | `0x34` | 4 | SP offset | The BIOS adds it to the base. PCSX-Redux's side-loader ignores it, so keep it 0. |
 | `0x38` | 20 | reserved | Zero. |
-| `0x4C` | text | region marker | `Sony Computer Entertainment Inc. for Japan area`, `... for Europe area` or `... for North America area`, zero-terminated. |
+| `0x4C` | varies | region marker | `Sony Computer Entertainment Inc. for Japan area`, `... for Europe area` or `... for North America area`, zero-terminated. |
 | after | | padding | Zeros up to `0x800`. |
-
-```
- 0x00  P S - X   E X E 00 00 00 00 00 00 00 00      magic + zeros
- 0x10  [  PC  ] [  GP  ] [ load ] [ size ]          the four words you care about most
- 0x20  00 .. 00 (16 bytes)
- 0x30  [SP base][SP off ] 00 .. 00 (20 bytes)
- 0x4C  "Sony Computer Entertainment Inc. for North America area" 00 00 ... 00
- 0x7FF
-```
 
 Notes:
 
 - **Why 2 KB multiples?** A CD sector holds 2048 bytes. The loader reads whole sectors, so both the header and the payload are sector-sized.
 - **The region marker** is informational. Neither the BIOS nor emulators check it, and many homebrew EXEs leave it zero. (Region locking on real hardware is done by the CD-ROM controller reading the disc, not by the EXE.) This book writes a valid one anyway.
-- **Stack.** The PS1 stack grows downward from the top of the 2 MB RAM, which ends at `0x80200000`. An initial `$sp` of `0x801FFF00` leaves 256 bytes of slack above it.
-- **Memory the BIOS keeps.** The first `0x10000` bytes of RAM are the BIOS and kernel's. Never load below `0x80010000`.
+- **Stack.** By convention the stack starts near the top of the 2 MB of RAM, which ends at `0x80200000`, and grows downward. An initial `$sp` of `0x801FFF00` leaves 256 bytes free above it.
 
-Real header from this chapter's reference solution (`xxd` of the first `0x50` bytes):
+The header of this chapter's reference solution, as `xxd` shows it (the all-zero row `0x20` is left out):
 
 ```
 00000000: 5053 2d58 2045 5845 0000 0000 0000 0000  PS-X EXE........
@@ -87,26 +77,29 @@ Read `0000 0480` as bytes `00 00 04 80`; reversed that is `0x80040000`.
 
 ### 5.3 How armips produces it
 
-`.psx` only selects the R3000 instruction set. It writes **no header**. You place the header yourself, because `.create` starts a file at a chosen *address*, and the bytes you emit first land at the start of the file:
+`.psx` only selects the R3000 instruction set. It writes **no header**: you emit those 2048 bytes yourself, as data, before the code. These directives do it:
 
 | Directive | Effect |
 |---|---|
-| `.create "file", ADDR` | Open an output file. `ADDR` is the address of file offset 0. It must be a plain number (a label will not work here). |
-| `.org ADDR` | Move the output position to `ADDR`; bytes after it are assembled for that address. The file offset follows. |
+| `.create "file", ADDR` | Open an output file. `ADDR` is the memory address that file offset 0 stands for. It must be a plain number (a label will not work here). |
+| `.org ADDR` | Move the output position to `ADDR`: what follows is assembled for that address and written at file offset `ADDR` minus the `.create` address. |
 | `.ascii "text"`, `.word`, `.fill n, v` | Emit raw bytes. `.fill 8, 0` is eight zero bytes. |
 | `.align 0x800` | Pad with zeros to the next multiple of `0x800`. |
 | `.close` | Finish the file. |
 
-So the book's layout is: create at `LOAD - 0x800` (the header sits there), emit 2048 bytes, then `.org LOAD` for the code. File offset 0x800 and RAM address `LOAD` coincide. `common/psxexe.inc` is exactly this header; open it and match each line to the table above. Label references such as `.word main` work even though `main` comes later.
+So the book's layout is: `.create` at `LOAD - 0x800`, emit the 2048 header bytes, then `.org LOAD` for the code. File offset `0x800` then corresponds to RAM address `LOAD`. `common/psxexe.inc` is exactly this header; open it and match each line to the table in 5.2. A label reference such as `.word main` works even though `main` is defined later.
 
 ### 5.4 Side-loading versus booting from disc
 
 | Path | What happens |
 |---|---|
 | **Side-load** (emulator `-exe`, the book's `make run`) | The emulator (or a cartridge/serial loader) parses the header itself, copies the payload to the load address, sets PC, GP and SP, and starts. No disc, no region check. |
-| **CD boot** | The BIOS reads `SYSTEM.CNF`, finds `BOOT = cdrom:\FILE.EXE;1`, loads that file's header and payload the same way, and runs it. Part VI builds a disc. |
+| **CD boot** | The BIOS reads `SYSTEM.CNF`, finds `BOOT = cdrom:\FILE.EXE;1`, reads that file's header, copies the payload the same way and runs it. Part VI builds a disc. |
 
-Either way the header is the contract. In this chapter's reference run, PCSX-Redux put the header's GP and SP base in the registers exactly as written: you will prove that with your own program. One difference: the BIOS sets `$sp` to base + offset, while PCSX-Redux's side-loader uses the base alone. With offset 0, as the usual tools write it, both agree.
+Either way the header is the contract, and the project proves it: your program records the `$gp` and `$sp` it was started with. The stack fields have two quirks:
+
+- The BIOS sets `$sp` to base + offset, while PCSX-Redux's side-loader uses the base alone. With offset 0, as the usual tools write it, both agree.
+- On a CD boot the BIOS replaces the header's stack fields with the `STACK` value from `SYSTEM.CNF` ([Chapter 29](../../part-06-assets-cdrom-textures-and-compression/ch29-the-cd-rom-and-loading-files/README.md)). Keep the two equal.
 
 ### 5.5 Reading instruction words
 
@@ -119,9 +112,9 @@ I: |  op    |  rs   |  rt   |       imm16            |   immediate, offset or br
 J: |  op    |            target26                    |   jump
 ```
 
-`rs`, `rt`, `rd` are register numbers 0-31 (`$t0` is 8, `$s0` is 16, `$sp` is 29, `$ra` is 31). `sa` is a shift amount.
+`rs`, `rt` and `rd` are register numbers 0-31 (`$t0` is 8, `$s0` is 16, `$sp` is 29, `$ra` is 31; [Appendix A](../../../appendices/A-mips-cheat-sheet.md) lists all of them). `sa` is a shift amount.
 
-Worked decode. The first word of the reference payload, bytes `04 80 10 3C` in the file, is `0x3C108004`:
+For example, the first word of the reference payload, bytes `04 80 10 3C` in the file, is `0x3C108004`:
 
 ```
  0x3C108004 = 0011 11|00 000|1 0000| 1000 0000 0000 0100
@@ -132,13 +125,13 @@ Worked decode. The first word of the reference payload, bytes `04 80 10 3C` in t
 
 Rules you need for the project:
 
-- **Branches:** the target is `address_of_next_instruction + 4 * signed imm16` (Chapter 4). A disassembler prints the absolute address.
-- **`j`/`jal`:** target = (upper 4 bits of next instruction's address) `|` (`target26` shifted left 2).
+- **Branches:** the target is the address of the next instruction `+ 4 *` signed `imm16` (Chapter 4). A disassembler prints the absolute address.
+- **`j`/`jal`:** the target is the upper 4 bits of the next instruction's address, followed by `target26` shifted left 2.
 - **Loads/stores** print as `lw rt, imm(rs)` with a signed `imm`.
-- **`lui`, `andi`, `ori`, `xori`** treat `imm` as unsigned; **`addiu`, `slti`, `sltiu`** and memory offsets as signed.
+- **`lui`, `andi`, `ori`, `xori`** take `imm16` as unsigned; **`addiu`, `slti`, `sltiu`** and memory offsets sign-extend it.
 - The word `0` is `sll $zero, $zero, 0`, which everyone writes as `nop`.
 
-The instruction set for your disassembler (Chapters 3-4 plus a few friends):
+The instruction set for your disassembler, with each `funct` or `op` code in hex:
 
 | Format | Instructions | Operand order |
 |---|---|---|
@@ -157,21 +150,21 @@ Everything else prints as `.word 0x........`.
 
 ## 6. Worked example
 
-Take the solution's header and ask the three questions a loader asks:
+Take the reference header from 5.2 and ask the three questions a loader asks:
 
 1. *Is it an EXE?* Bytes 0-7 are `PS-X EXE`. Yes.
 2. *Where does the payload go, and how big is it?* Load `0x80040000`, size `0x800`. The file is `0x800 + 0x800 = 4096` bytes (check with `ls -l`).
 3. *Where do I start and what are the registers?* PC `0x80040000` (the `main` label, the first payload instruction), GP `0x80048000`, SP `0x801FFF00 + 0`.
 
-The reference program then does what you can now predict: right after `la $s0, results`, the instructions `sw $gp, 0($s0)` and `sw $sp, 4($s0)` copy the loader's `$gp` and `$sp` into `results`. If your header is right, `results[0]` is the GP word of your header and `results[1]` its SP.
+The program then checks the loader's work: right after `la $s0, results`, `sw $gp, 0($s0)` and `sw $sp, 4($s0)` store the registers as the loader left them. If the header is right, `results[0]` equals its GP word and `results[1]` its SP base.
 
 ## 7. Project: "Anatomy Lab"
 
-Two parts in this chapter's `starter/` directory.
+Both parts live in this chapter's `starter/` directory.
 
 ### Part (a): `exeinfo.py`
 
-A host tool, run as `python3 exeinfo.py FILE`. It must validate the file and report on it. Only the standard library is needed.
+A host tool, run as `python3 exeinfo.py FILE`, that validates a PSX-EXE and reports on it. The standard library is enough.
 
 **Validation** (check in this order; the first failure decides the category):
 
@@ -203,13 +196,14 @@ region: Sony Computer Entertainment Inc. for North America area
 ```
 
 - Numbers are hex with `0x`. `sp` is the SP base plus the SP offset.
-- Then **16 instruction lines** `ADDR: WORD  text` for the first 16 words of the payload (file offset `0x800`, addresses starting at the load address). `WORD` is the 32-bit word in 8 hex digits (mind the byte order). Use ABI register names without `$` (`t0`, `sp`, `ra`). Branch and jump targets are absolute addresses. Hex or decimal immediates are both accepted, but the value must follow the signedness rules in 5.5: `addiu sp, sp, -24` (or `-0x18`), never `0xFFE8`; `ori t0, t0, 0xFFFF`, never `-1`.
+- Then **16 instruction lines** `ADDR: WORD  text` for the first 16 words of the payload (file offset `0x800`, addresses starting at the load address). `ADDR` and `WORD` are 8 hex digits each (mind the byte order of the word).
+- In the text, use the mnemonics and operand order of the table in 5.5, register names without `$` (`t0`, `sp`, `ra`) and absolute branch and jump targets. Immediates may be hex or decimal, but must follow the signedness rules in 5.5: `addiu sp, sp, -24` (or `-0x18`), never `0xFFE8`; `ori t0, t0, 0xFFFF`, never `-1`.
 
 Test it on your own build (`build/main.ps-exe`) and on any EXE from earlier chapters. To make bad files, copy one and damage it, for example `printf 'X' | dd of=copy.ps-exe bs=1 seek=0 conv=notrunc`, or `truncate -s 1000 copy.ps-exe`.
 
 ### Part (b): a hand-written header
 
-`starter/main.s` has a complete, working program. The header is missing. Write it with `.ascii`, `.word` and `.fill` (no `.include`, no `.incbin`).
+`starter/main.s` holds a complete program with no header. Write the header with `.ascii`, `.word` and `.fill` (no `.include`, no `.incbin`).
 
 Requirements:
 
@@ -224,7 +218,7 @@ When it works, the program stores `$gp`, `$sp`, the address of `main` and the su
 
 **Hints**
 
-- `xxd build/main.ps-exe | head -8` is your friend. Compare with section 5.2.
+- Compare `xxd build/main.ps-exe | head -8` with the table in 5.2.
 - Count the region string: the filler after it is `0x800 - 0x4C - length`.
 - If the program hangs, check that `.org LOAD`, the load word and `.create` agree.
 
@@ -254,12 +248,12 @@ Checks `starter/` by default; pass a path for a copy, `-v` for build output and 
 | `header starts with the magic...` | `PS-X EXE` plus 8 zeros. | Missing space in the magic, or the header is empty. |
 | `file is a 2048-byte header plus a payload...` | Exact size, multiple of `0x800`. | Size computed from the wrong label; missing `.align 0x800`. |
 | `load address is non-default...` | Aligned, in the allowed range, fits in RAM. | Still `0x80010000`, or unaligned. |
-| `initial PC is the address of main` | Word at `0x10`. | `.word main` missing or wrong place. |
-| `initial GP is load + 0x8000; SP base is 0x801FFF00 with offset 0` | Words at `0x14`, `0x30`, `0x34`. | Fields swapped or offset by 4. |
+| `initial PC is the address of main...` | Word at `0x10`. | `.word main` missing or wrong place. |
+| `initial GP is load address + 0x8000; SP base...` | Words at `0x14`, `0x30`, `0x34`. | Fields swapped or offset by 4. |
 | `region marker...` | Standard string at `0x4C`, zeros elsewhere. | Typo in the string, wrong `.fill` count. |
-| `program starts at the header's entry point and reaches done` | The emulator loaded and ran it. | Header, `.org` and `.create` disagree. |
+| `program starts at the header's entry point and reaches done` | The emulator loaded and ran it. | Load word, `.org` and `.create` disagree. |
 | `GP, SP and the program's own address...` | The registers the program saw equal the header. | Header word at the wrong offset. |
-| `the code and data landed at the load address` | A checksum over `table`, recomputed with new data. | Code assembled for one address, loaded at another. |
+| `the code and data landed at the load address...` | The sum of `table` is right, also after the verifier replaces the data. | Code assembled for one address, loaded at another. |
 
 A pass ends with `CHAPTER 05: PASSED (16/16 checks)` and exit status 0.
 
@@ -267,10 +261,10 @@ A pass ends with `CHAPTER 05: PASSED (16/16 checks)` and exit status 0.
 
 - **Endianness when reading a dump.** `0000 0480` is `0x80040000`. Reverse bytes within each word.
 - **Header size in the size field.** The field counts the payload only; the file is `0x800` larger.
-- **Header and `.org` disagree.** Changing the load word but not `.org LOAD` (or the `.create` literal) gives a file that looks right and crashes.
-- **`.create` takes a number.** `.create "x", LOAD - 0x800` fails; write the literal and keep a comment.
+- **Header and `.org` disagree.** Changing the load word but not `.org LOAD` (or the `.create` literal) gives a file that never reaches `done`. Your `exeinfo.py` reports it as `pc`, because `main` is no longer inside the loaded image.
+- **`.create` takes a number.** `.create "x", LOAD - 0x800` fails with "Undefined label"; write the literal and note in a comment what it must equal.
 - **Missing `.align 0x800`.** The size is no longer a multiple of 2 KB and the file ends mid-sector.
-- **Wrong sign extension in the disassembler.** `addiu t0, t0, 0xFFFF` is `-1`. `ori` with `0xFFFF` is not.
+- **Wrong sign extension in the disassembler.** An `addiu` with `imm16 = 0xFFFF` adds -1; an `ori` with the same bits ORs in `0xFFFF`.
 - **Branch targets from the wrong base.** The offset is relative to the instruction *after* the branch.
 - **Region string off by one.** Count it: 55 characters for North America.
 
@@ -280,7 +274,8 @@ A pass ends with `CHAPTER 05: PASSED (16/16 checks)` and exit status 0.
 
 ## 11. Further reading
 
-- psx-spx, "CPU Specifications" and "BIOS: PSX Executables" (the EXE header table): <https://psx-spx.consoledev.net/>
-- psx-spx, "CDROM File Formats" for how `SYSTEM.CNF` points at the EXE.
+- psx-spx, "CDROM File Formats", section "CDROM File Playstation EXE and SYSTEM.CNF": the header table and how `SYSTEM.CNF` points at the EXE. <https://psx-spx.consoledev.net/>
+- psx-spx, "CPU Specifications": the opcode encodings.
 - armips documentation: `.create`, `.org`, `.fill`, `.align`: <https://github.com/Kingcom/armips>
-- `common/psxexe.inc` in this repository: the same header as a macro file.
+- `common/psxexe.inc` in this repository: the same header as an include file.
+- [Appendix A](../../../appendices/A-mips-cheat-sheet.md): register numbers, instruction formats and the full opcode tables.

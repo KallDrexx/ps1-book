@@ -26,12 +26,12 @@ After this chapter you can:
 
 ### 5.1 The 32 registers
 
-A register is a 32-bit slot inside the CPU, far faster than RAM. MIPS has 32 general-purpose ones, numbered `$0` to `$31`. Only two have hardware behaviour:
+A register is a 32-bit slot inside the CPU, far faster than RAM. MIPS has 32 general-purpose ones, numbered `$0` to `$31`. Only two have hardware behavior:
 
 - `$zero` (`$0`) always reads 0; writes are ignored.
 - `$ra` (`$31`) receives the return address from `jal` (Chapter 8).
 
-Everything else is **convention**: the assembler and compilers agree on roles so that code can be mixed. Nothing stops you breaking them in your own assembly, but you will meet them again in Chapters 8 and 10.
+Every other role is **convention**: compilers and programmers agree on it so that separately written code can be mixed. Nothing enforces it in your own assembly; Chapters 8 and 10 put it to work.
 
 | Names | Numbers | Convention |
 |---|---|---|
@@ -48,13 +48,13 @@ Everything else is **convention**: the assembler and compilers agree on roles so
 | `$fp` / `$s8` | 30 | frame pointer or ninth saved register |
 | `$ra` | 31 | return address |
 
-Besides these, the CPU has a program counter (`PC`) and the multiply/divide pair `HI`/`LO` (Chapter 12). In armips you can write `$t0` or `t0`; this book uses the `$` form.
+Besides these, the CPU has a program counter (`PC`) and the multiply/divide pair `HI`/`LO` (Chapter 12). armips accepts `$t0` or `t0`; this book uses the `$` form.
 
-For now: use `$t0`-`$t9` and `$s0`-`$s7`, and `$zero` freely.
+For now, use `$t0`-`$t9`, `$s0`-`$s7` and `$zero` freely.
 
 ### 5.2 Loads: how much, and what happens to the upper bits
 
-A register is 32 bits wide, but you can load 8 or 16 bits. The rest of the register must be filled with something. That is the whole difference between the signed and unsigned loads:
+A register is 32 bits wide, but a load can read 8 or 16 bits. The rest of the register must be filled with something, and that is the whole difference between the signed and unsigned loads:
 
 | Instruction | Reads | Upper bits |
 |---|---|---|
@@ -64,20 +64,20 @@ A register is 32 bits wide, but you can load 8 or 16 bits. The rest of the regis
 | `lbu` | 1 byte  | zeros |
 | `lb`  | 1 byte  | copies of bit 7 |
 
-Example, memory holds the byte `0xFB`:
+Example: memory holds the byte `0xFB`.
 
 ```
  lbu  ->  0x000000FB   (251)
  lb   ->  0xFFFFFFFB   (-5)
 ```
 
-Sign extension keeps a small negative number negative when it is widened. This uses **two's complement**, where `0xFFFFFFFF` is -1 and a leading 1 bit means negative (Chapter 9 explains it fully). Choose by meaning: a colour channel or a count is `lbu`; a signed delta is `lb`.
+Sign extension keeps a negative number negative when it is widened. Negative numbers are stored in **two's complement**: the top bit set means negative, and `0xFFFFFFFF` is -1 (Chapter 9 explains it fully). Choose by meaning: a color channel or a count is `lbu`; a signed delta is `lb`.
 
 Stores need no such choice: `sb` and `sh` simply write the low 8 or 16 bits.
 
-Alignment as in Chapter 2: `lw`/`sw` at multiples of 4, `lh`/`lhu`/`sh` at even addresses. Bytes have no restriction.
+Alignment is as in Chapter 2: `lw`/`sw` need an address that is a multiple of 4, and `lh`/`lhu`/`sh` an even one. Byte accesses have no restriction.
 
-**Load delay (reminder).** The value a load fetches is not usable by the *next* instruction; that instruction still sees the old register. Put something unrelated, or a `nop`, in between. Chapter 7 explains why. armips warns about this and the verifier fails on the warning.
+**Load delay (reminder).** The instruction right after a load still sees the register's *old* value. Put an unrelated instruction, or a `nop`, in between. armips warns when you forget, and the verifier fails on the warning. Chapter 7 explains the cause.
 
 ### 5.3 Arithmetic
 
@@ -86,13 +86,13 @@ Alignment as in Chapter 2: `lw`/`sw` at multiples of 4, `lh`/`lhu`/`sh` at even 
 | `addu rd, rs, rt` | `rd = rs + rt` | no |
 | `subu rd, rs, rt` | `rd = rs - rt` | no |
 | `addiu rt, rs, imm` | `rt = rs + imm` | no |
-| `add`, `sub`, `addi` | same | **yes** |
+| `add`, `sub`, `addi` | the same three operations | **yes** |
 
 Operand order matters: `subu $t0, $t1, $t2` is `t1 - t2`.
 
-**Immediates are 16 bits and sign-extended.** `addiu` takes -32768 to 32767. To subtract a constant, add its negative (`addiu $t0, $t0, -100`); the CPU has no subtract-immediate instruction. Anything bigger than 16 bits needs `lui`/`ori` as in Chapter 2.
+**Immediates are 16 bits and sign-extended.** `addiu` and `addi` take -32768 to 32767. To subtract a constant, add its negative (`addiu $t0, $t0, -100`); the CPU has no subtract-immediate instruction. A constant outside that range must first be built in a register (`lui`/`ori` as in Chapter 2) and then added with `addu`.
 
-**Overflow.** Registers wrap: `0x7FFFFFFF + 1` is `0x80000000`. The "u" in `addu` does not mean unsigned-only. The same bits come out for signed and unsigned operands. It only means "never raise an exception". The non-`u` forms raise an **Overflow exception** when the result does not fit in a *signed* 32-bit number. On the PS1 that means your program is thrown into the BIOS exception handler and, in this book's tests, never reaches `done`. Compilers emit `addu`/`addiu` essentially always, and so should you.
+**Overflow.** Registers wrap: `0x7FFFFFFF + 1` is `0x80000000`. The "u" in `addu` does not mean "unsigned operands": two's complement gives the same result bits whether you read them as signed or unsigned. It means "never raise an exception". The non-`u` forms raise an **Overflow exception** when the result does not fit in a *signed* 32-bit number. On the PS1 that throws your program into the BIOS exception handler, and it never reaches `done`. Compilers emit `addu`/`addiu`/`subu` almost exclusively, and so should you.
 
 **Pseudo-instructions.** armips accepts a few conveniences that expand to real instructions:
 
@@ -104,9 +104,9 @@ Operand order matters: `subu $t0, $t1, $t2` is `t1 - t2`.
 | `subiu $t0, $t1, n` | `addiu $t0, $t1, -n` |
 | `negu $t0, $t1` | `subu $t0, $zero, $t1` |
 
-Chapter 2 asked you to write the `lui`/`ori` pair by hand to see the real encoding. From here on these pseudo-instructions are fine, and the verifier accepts them. The caution from Chapter 2 still holds: the two-instruction `li` is `lui` + `addiu`, not `lui` + `ori`, so its `lui` is one higher than the value's top half whenever bit 15 is set (`li $t0, 0xDEADBEEF` is `lui 0xDEAE` + `addiu 0xBEEF`).
+Chapter 2 had you write the `lui`/`ori` pair by hand to see the real encoding. From here on the pseudo-instructions are fine, and the verifier accepts them. Remember Chapter 2's caution when you read a disassembly: the two-instruction `li` is `lui` + `addiu`, not `lui` + `ori`, so its `lui` operand is one higher than the value's top half whenever bit 15 is set (`li $t0, 0xDEADBEEF` is `lui 0xDEAE` + `addiu 0xBEEF`).
 
-### 5.4 armips syntax in one page
+### 5.4 armips syntax in one table
 
 | Element | Form |
 |---|---|
@@ -117,14 +117,14 @@ Chapter 2 asked you to write the `lui`/`ori` pair by hand to see the real encodi
 | `.halfword v` | Emit a 16-bit value. |
 | `.byte v` | Emit an 8-bit value. |
 | `.fill n, v` | Emit `n` bytes of value `v`. |
-| `.align n` | Pad with zeros to a multiple of `n`. |
+| `.align n` | Pad with zeros until the address is a multiple of `n`. |
 | Expressions | `label >> 16`, `label & 0xFFFF`, `1+2`; usable wherever a number is. |
 
-Data is not special: it is bytes in the file. A label before `.word` names a table, and the CPU reads it with a load. Put `.align 4` before word tables so `lw` works. A table placed after `done:` is never executed because the program loops at `done`. Never put data inside the code you run.
+Data is not special: it is bytes in the file, and the CPU would execute them as instructions if it reached them. So keep data out of the code path: a table placed after `done:` is never executed, because the program loops at `done`. A label before `.word` names a table, which the code reads with a load. Put `.align 4` before a word table so that `lw` works.
 
 ## 6. Worked example
 
-Compute `x - y` for two words in a table and store the result:
+Compute `x - y` for two words in a table and store the result in the table's third word:
 
 ```
     la    $t0, pair        ; t0 = &pair
@@ -141,13 +141,13 @@ done:
 pair:  .word 50, 8, 0
 ```
 
-Whenever you write a load, ask: what is the first instruction that reads this register? If it is the next line, add a `nop` or reorder.
+`$t1` needs no `nop`: the instruction after its load does not read it. Whenever you write a load, ask which instruction first reads the register. If it is the next one, add a `nop` or reorder.
 
 ## 7. Project: "Register Calculator"
 
-Load operands from the `inputs` table in `starter/main.s`, compute the values below, and store them in `results`. The starter is Chapter 2's program with its body removed and one piece of scaffolding added, the `inputs` table.
+Load operands from the `inputs` table in `starter/main.s`, compute the values below, and store them in `results`. The starter is Chapter 2's skeleton plus one piece of scaffolding, the `inputs` table.
 
-**The table** (read-only data; do not edit it, the verifier replaces it with other values):
+**The table** (do not edit it; the verifier replaces it with other values):
 
 | Offset | Size | Name | Starter value |
 |---|---|---|---|
@@ -188,14 +188,14 @@ Load operands from the `inputs` table in `starter/main.s`, compute the values be
 
 - Load every operand once into its own register at the top, then compute from registers.
 - Indexes 7-10 are two loads from the same address with different instructions.
-- Registers are cheap: you have more than 20 free ones.
+- Registers are plentiful: section 5.1 gives you 18, more than the project needs.
 - The swap needs both values in registers before either store.
 
 **Stretch goals** (in a copy)
 
-- Put an `add` where the starter's `c` overflows and watch what the emulator does. Look at the CPU registers in Redux; `Cause` and `EPC` show the exception.
+- Compute index 6 with a trapping add (`addi`, or `add`) and watch what the emulator does. Look at the CPU registers in Redux; `Cause` and `EPC` show the exception.
 - Write `h + s` using `lhu` and `lbu` instead and compare with index 11.
-- Remove all `nop`s and read what armips warns.
+- Remove every `nop` and read armips' warnings.
 
 ## 8. Verification
 
@@ -203,33 +203,33 @@ Load operands from the `inputs` table in `starter/main.s`, compute the values be
 parts/part-01-machine-and-language/ch03-registers-loads-stores-arithmetic/verify/verify.sh
 ```
 
-Checks `starter/` by default. Pass a path for a copy, `-v` for build output and the emulator log, `--solution` for the reference. The verifier assembles your program, scans its machine code, then runs it **four times**: with the starter's table, with two other input tables, and with `results` pre-filled with `0xAA`. The results must follow the inputs each time, so a program that stores precomputed numbers cannot pass.
+This checks `starter/` by default. Pass a path to check a copy, `-v` for build output and the emulator log, `--solution` for the reference. The verifier assembles your program, scans its machine code, then runs it **four times**: with the starter's table, with two other input tables, and with `results` pre-filled with `0xAA`. The results must follow the inputs each time, so a program that stores precomputed numbers cannot pass.
 
 | Check | What it means | If it fails |
 |---|---|---|
-| `program defines main, done, inputs and results` | Labels exist and tables are word-aligned. | A label was deleted or renamed. |
+| `program defines main, done, inputs and results` | The labels exist and both tables are word-aligned. | A label was deleted or renamed. |
 | `results block starts out all zero in the executable` | `results` is not pre-filled. | Remove data from `results`. |
 | `main..done uses only Chapter 2-3 instructions` | No other opcode appears. The message names the offender. | A shift, branch, `and` or `mul` slipped in. Chapter 4 and later cover them. |
-| `instruction mix: ...` | Each load width, `sw`, adds, subtracts, an immediate add twice, and `lui` appear at least the needed number of times. The message lists the shortfall. | You replaced a load flavour with another, or computed something with a constant. |
+| `instruction mix: ...` | Every load flavour, `sw`, register adds and subtracts, two immediate adds and `lui` appear at least as often as the project needs. The message lists the shortfall. | You replaced a load flavour with another, or computed something with a constant. |
 | `armips reports no warnings` | The build log has no warning. | Usually a load-delay warning: insert a `nop` or an unrelated instruction after the load it names. |
 | `program reaches done` | No hang or crash. | An overflowing `add`/`addi`/`sub` (use the `u` forms), a misaligned access or a wild address. A 20-second timeout usually means an exception. |
 | `results hold the right values for the starter's inputs` | Each expression is compared. The message names the first wrong index. | Wrong operand order, signed/unsigned load mixed up, or a load used too early (you see the previous register contents). |
 | `results follow the inputs (ordinary values)` | The table is replaced; every result must change accordingly. | Results are hard-coded or read from the wrong offset. |
-| `results follow the inputs (extreme values)` | Wraparound and sign-bit cases. | Typically `lh` vs `lhu`, or a trapping add. |
+| `results follow the inputs (extreme values)` | The same with wraparound and sign-bit cases. | Typically `lh`/`lhu` or `lb`/`lbu` mixed up, or a trapping add. |
 | `results stay inside the 13 words` | The verifier fills `results` with `0xAA`; all 13 words must be written and the tail untouched. | A result is not stored, or a store used the wrong offset. |
-| `a and b are swapped in the inputs table` | `inputs` ends with a and b exchanged and `c`, `h`, `s` unchanged. | Storing `a` to both slots (stored after overwriting), or the wrong offsets. |
+| `a and b are swapped in the inputs table` | `inputs` ends with a and b exchanged and `c`, `h`, `s` unchanged. | The same value in both slots (one was reloaded after it had been overwritten), or wrong offsets. |
 
 A pass ends with `CHAPTER 03: PASSED (11/11 checks)` and exit status 0.
 
 ## 9. Common pitfalls
 
-- **Using a loaded register too soon.** The result is the old value, not an error. Only armips' warning tells you.
+- **Using a loaded register too soon.** You get the old value, not an error. Only armips' warning tells you.
 - **Operand order in `subu`.** `subu rd, rs, rt` is `rs - rt`.
-- **`lb` where you meant `lbu`** (or the reverse). Values below 0x80 hide it; test with big ones.
-- **`add` instead of `addu`.** Works for months, then traps on one big input.
+- **`lb` where you meant `lbu`** (or the reverse). Values below `0x80` hide it; test with `0x80` and above.
+- **`add` instead of `addu`.** It works until one large input overflows, then traps.
 - **Immediates beyond 16 bits.** armips rejects `addiu $t0, $t0, 0x12345`, but it silently truncates a negative one: `addiu $t0, $t0, -40000` assembles as `+25536`. Build such constants with `lui`/`ori` (or `li`) and use `addu`.
 - **Hex immediates in `addiu`.** armips accepts `0x8000` to `0xFFFF` as bit patterns, and the CPU sign-extends them: `addiu $t0, $t0, 0xFFFF` adds -1, not 65535.
-- **Data inside code.** A `.word` placed before `done:` would be executed as an instruction.
+- **Data inside code.** A `.word` placed before `done:` is executed as an instruction.
 - **Swap overwrite.** Storing `a` over `b` before `b` is in a register loses `b`.
 
 ## 10. Quiz
@@ -239,5 +239,6 @@ A pass ends with `CHAPTER 03: PASSED (11/11 checks)` and exit status 0.
 ## 11. Further reading
 
 - psx-spx, "CPU Specifications" (register table, exceptions, and the full opcode list): <https://psx-spx.consoledev.net/>
-- MIPS I instruction reference (any "MIPS Run" or MIPS32 manual): `addu`, `lb`, `lh`.
+- [Appendix A](../../../appendices/A-mips-cheat-sheet.md): registers, instruction tables, pseudo-instruction expansions and armips directives.
+- Dominic Sweetman, *See MIPS Run*: the instruction set and the register conventions in depth.
 - armips documentation, directives and pseudo-instructions: <https://github.com/Kingcom/armips>

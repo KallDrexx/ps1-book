@@ -90,7 +90,7 @@ static void transform_vertices(void)
 }
 
 /* TODO (README 7.5): for every face: NCLIP on corners 0, 1, 2 (area <= 0: skip); AVSZ3 (triangle) or AVSZ4 (quad)
-   for the depth; allocate a POLY_F3 or POLY_F4 with ot_alloc (stop if it returns NULL), set the colour from the
+   for the depth; allocate a POLY_F3 or POLY_F4 with ot_alloc (stop if it returns NULL), set the color from the
    face record and the corners from screen_xy[], link it with ot_add(prim, otz >> OTZ_SHIFT); count it in
    prims_submitted (reset to 0 at the start). */
 static void draw_faces(void)

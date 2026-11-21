@@ -23,7 +23,7 @@ int main(void)
 	table[0].b = (int32_t)(((int64_t)one_hundred * one_hundred) >> 12);
 	table[0].c = 10000 * ONE;
 
-	/* 1: -1 LSB * 0.5.  {>> 12 (floors), / 4096 (truncates toward zero)}  and the exact value -0.5 LSB */
+	/* 1: -1 LSB * 0.5 (exactly -0.5 LSB).  {>> 12 (floors), / 4096 (truncates toward zero), unused} */
 	table[1].a = (int32_t)(((int64_t)minus_lsb * half) >> 12);
 	table[1].b = (int32_t)(((int64_t)minus_lsb * half) / 4096);
 	table[1].c = 0;

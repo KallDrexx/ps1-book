@@ -10,7 +10,7 @@ An original anti-gravity time trial for the PlayStation. Boot `hoverline.cue` (d
 
 Status: tested
 
-PCSX-Redux build dd3497b5 (rolling dev build 582), interpreter core, OpenBIOS, headless. NTSC, and PAL (OpenBIOS does not set the GPU's PAL bit, so the verifier sets it with GP1(08h) just before `main`, as a PAL BIOS would) both boot to the title, run the countdown and reach the race; the PAL run counts 150 ticks of countdown, the NTSC run 180. Timings: this is an interpreter, so cycle counts are exact for the emulated CPU, not for hardware. Not compared with a retail BIOS.
+PCSX-Redux build dd3497b5 (rolling dev build 582), interpreter core, OpenBIOS, headless. NTSC, and PAL (OpenBIOS does not set the GPU's PAL bit, so the verifier sets it with GP1(08h) just before `main`, as a PAL BIOS would) both boot to the title, run the countdown and reach the race; the PAL run counts 150 ticks of countdown, the NTSC run 180. Cycle counts are the emulator's, not a console's. Not compared with a retail BIOS.
 
 ## DuckStation
 
@@ -28,7 +28,7 @@ Mednafen was not installed in the authoring environment. Its accuracy-first core
 
 Status: not tested
 
-No console, modchip or optical drive emulator was available. Before calling the game working on hardware, check: the disc boots (license data aside), both video standards, the music (CD-DA through the CD mixer), and that the frame rate holds on the slow part of the track with a real CD drive.
+No console, modchip or optical drive emulator was available. Before calling the game working on hardware, check: that the disc boots (by one of the routes above), both video standards, the music (CD-DA through the CD mixer), and that the frame rate holds on the slow part of the track with a real CD drive.
 
 ## Known issues
 

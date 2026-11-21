@@ -42,7 +42,7 @@ The load's result is not available to the next instruction (the load delay), so 
 
 **9. Why can't you reach the scratchpad at `0xBF800000`?**
 <details><summary>Answer</summary>
-The scratchpad is not accessible through the uncached KSEG1 segment. Use `0x1F800000` or the KSEG0 address `0x9F800000`.
+On real hardware the scratchpad is not mapped in the uncached KSEG1 segment (PCSX-Redux does not enforce this). Use `0x1F800000` or the KSEG0 address `0x9F800000`.
 </details>
 
 **10. What happens on `sw` to an address that is not a multiple of 4?**

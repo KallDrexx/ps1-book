@@ -27,7 +27,7 @@ After this chapter you can:
 
 ### 5.1 The drive and its sectors
 
-A CD is read as a numbered series of **sectors**. The drive delivers each one as 2352 raw bytes; for a data disc (Mode 2 Form 1, the PS1 format) the part you want is 2048 of them.
+A CD is read as a numbered series of **sectors**. Each one is 2352 raw bytes on the disc; on a data disc (Mode 2 Form 1, the PS1 format) 2048 of them are your data.
 
 ```
 one raw sector: 2352 bytes
@@ -53,7 +53,7 @@ Reading is slow compared with RAM, and **seeking** is slower still: moving the l
 ```
 sector  what
 ------  ------------------------------------------------------------
-0-15    system area (licence data on retail discs; zeros in our image)
+0-15    system area (license data on retail discs; zeros in our image)
 16      ISO9660 primary volume descriptor: "CD001", volume name HOVERLINE
 17      volume descriptor terminator
 18-21   path tables (a little-endian and a big-endian copy, each twice)
@@ -91,7 +91,7 @@ When the console starts a disc, the BIOS does this:
    +- jumps to its start address with $sp = STACK   ->  _start  ->  main
 ```
 
-The executable on the disc is **the same file format** you have built since Chapter 5; only its name and place changed. An unmodified real console also refuses a burned disc: its drive checks a region marking that a CD burner cannot write (Chapter 42). Emulators do not check it.
+The executable on the disc is **the same file format** you have built since Chapter 5; only its name and place changed. An unmodified console still refuses a burned disc: its drive checks a region marking that a CD burner cannot write (Chapter 42). Emulators do not check it.
 
 `SYSTEM.CNF` is a plain text file ([Appendix E.2](../../../appendices/E-file-formats.md)). If it is missing, the BIOS looks for an executable called `PSX.EXE` instead.
 
@@ -117,7 +117,7 @@ The executable on the disc is **the same file format** you have built since Chap
 
 | Rule | Why |
 |---|---|
-| `system` and `application` are `PLAYSTATION` | otherwise the disc is not recognised |
+| `system` and `application` are `PLAYSTATION` | otherwise the disc is not recognized |
 | Names are 8.3, upper case, directories have no extension | ISO9660 level 1 |
 | `source` paths are relative to the **build** directory | CMake runs mkpsxiso there; a file in the source tree needs `${PROJECT_SOURCE_DIR}` |
 | At most 30 entries in the root, 45 directories on the disc | limits of the BIOS's file functions (PSn00bSDK template); stay inside them |
@@ -126,7 +126,7 @@ CMake wires it up in two lines: `psn00bsdk_add_executable(game ...)` makes `game
 
 ### 5.5 Reading a file
 
-Reading a file from the SDK is five calls. Each one has a reason:
+Reading a file takes five SDK calls and one `malloc`:
 
 ```
  CdInit()                      once, after ResetGraph(): hook the CD interrupt, reset the drive
@@ -154,7 +154,7 @@ Reading a file from the SDK is five calls. Each one has a reason:
 
 The path is the disc path with a version suffix, `\DATA\MODEL.BIN;1`; in C each backslash is written twice (`"\\DATA\\MODEL.BIN;1"`). Write it exactly that way. `psxcd.h` says names are case-insensitive and the leading backslash optional, but 0.24 is stricter: in tests `\data\model.bin;1`, `/DATA/MODEL.BIN;1` and `DATA\MODEL.BIN;1` all return `NULL`, and so does `\system.cnf;1` (only a root-directory name may drop the leading backslash or use `/`). The `;1` is optional. Search results use the BCD position that `CdlSetloc` wants, so no conversion is needed.
 
-**Sector rounding.** The drive writes whole sectors. Reading a 220-byte file means reading one sector: 2048 bytes arrive in your buffer. A buffer of `file.size` bytes is overrun by up to 2047 bytes, which silently corrupts whatever the allocator placed next. So allocate `ceil(size / 2048) * 2048`, and remember that `size` (from the directory entry) is the file's real length, not the buffer's.
+**Sector rounding.** `CdRead` stores whole sectors. Reading a 220-byte file means reading one sector: 2048 bytes arrive in your buffer. A buffer of `file.size` bytes is overrun by up to 2047 bytes, which silently corrupts whatever the allocator placed next. So allocate `ceil(size / 2048) * 2048`, and remember that `size` (from the directory entry) is the file's real length, not the buffer's.
 
 ```
 file.size = 5000      sectors = ceil(5000 / 2048) = 3      buffer = 6144 bytes
@@ -167,7 +167,7 @@ The BIOS has its own file API (`open("cdrom:\\DATA\\MODEL.BIN;1", ...)`, `read`,
 
 ### 5.6 The heap and `malloc`
 
-A file's size is only known at run time, so its buffer comes from the **heap**, the pool of memory `malloc` hands out and `free` takes back. You saw in Chapter 18 that `_start` calls `InitHeap` before `main`; in PSn00bSDK 0.24 it gives the heap everything from the end of `.bss` to `0x801FFFF8`. You need no `InitHeap` call of your own (it exists to place a heap elsewhere).
+A file's size is only known at run time, so its buffer comes from the **heap**, the pool of memory `malloc` hands out and `free` takes back. You saw in Chapter 18 that `_start` calls `InitHeap` before `main`; in PSn00bSDK 0.24 it gives the heap everything from the end of `.bss` to the top of RAM. You need no `InitHeap` call of your own (it exists to place a heap elsewhere).
 
 ```
 0x80000000 +--------------------+
@@ -187,7 +187,7 @@ What this means for a loader:
 
 - **2 MB is all there is.** Program, heap, stack, and the ordering tables and primitive buffers of `psxe` share it. `malloc` returns `NULL` when it cannot satisfy a request: always check.
 - **`malloc` returns 8-byte-aligned blocks**, so a file buffer can be read with word loads (5.7) and given to `CdRead`.
-- **The CD library uses the heap too.** `CdSearchFile` keeps its path table and a 2048-byte directory in `malloc`ed memory.
+- **The CD library uses the heap too.** `CdSearchFile`'s cached path table and directory (5.5) take 2048 bytes each.
 - **Fragmentation.** Freeing blocks in a different order than they were taken leaves holes that a big request cannot use. Load big, long-lived assets first; free in reverse order.
 - **No guard.** The heap's limit is the top of RAM, not the stack pointer. A runaway heap can run into the stack, and nothing says so.
 
@@ -208,7 +208,7 @@ The *little-endian* fields of `MODEL.BIN` (the `s16` vertex coordinates) are the
 
 ### 5.8 `MODEL.BIN`
 
-The first model format: a mesh of flat-coloured triangles and quads ([Appendix E.7](../../../appendices/E-file-formats.md) is the specification).
+The first model format: a mesh of flat-colored triangles and quads ([Appendix E.7](../../../appendices/E-file-formats.md) is the specification).
 
 ```
 0x00  "MDL1"                        magic
@@ -226,12 +226,12 @@ The generated ship has 13 vertices, 4 triangles and 9 quads: 220 bytes, with the
 | address is 4-aligned; size is at least 12 | the header must be readable |
 | magic is `MDL1` | it is the right kind of file |
 | `1 <= V <= 255`, and size is at least `12 + 8V` | indices are bytes, and `0xFF` means "triangle"; the vertex table and `face_count` must be inside the image |
-| `face_count` fits in the bytes left, and size is exactly `12 + 8V + 8F` | do the test as `F > (size - 12 - 8V) / 8`: `8 * F` overflows for a corrupt `F` |
+| `face_count` fits in the bytes left, and size is exactly `12 + 8V + 8F` | reject when `F > (size - 12 - 8V) / 8`: computing `8 * F` first can overflow for a corrupt `F` |
 | every face index is below `V` | an index is an array subscript |
 
 ### 5.9 Drawing it
 
-This is Chapter 25's pipeline with a model in place of the cube: transform every vertex once with `RTPS` into `screen_xy[]` and `screen_z[]` (up to 255 of them), then for every face run `NCLIP` on corners 0, 1, 2 (positive means front-facing), average the depths with `AVSZ3` or `AVSZ4`, build a `POLY_F3` or `POLY_F4` in the colour the file stores, and link it into the ordering table at slot `OTZ >> 3`. (Chapter 25 used a shift of 7; the ship is only 800 units from the camera, so its depths are small and a smaller shift keeps its faces in distinct slots. The model is convex, so wrong sorting would not show, but the habit is worth keeping.) Rotation about Y at a few units per frame turns the ship slowly.
+This is Chapter 25's pipeline with a model in place of the cube: transform every vertex once with `RTPS` into `screen_xy[]` and `screen_z[]` (up to 255 of them), then for every face run `NCLIP` on corners 0, 1, 2 (positive means front-facing), average the depths with `AVSZ3` or `AVSZ4`, build a `POLY_F3` or `POLY_F4` in the color the file stores, and link it into the ordering table at slot `OTZ >> 3`. (Chapter 25 used a shift of 7; the ship is only 800 units from the camera, so its depths are small and a smaller shift keeps its faces in distinct slots. The model is convex, so wrong sorting would not show, but the habit is worth keeping.) Rotation about Y at a few units per frame turns the ship slowly.
 
 ## 6. Worked example
 
@@ -239,7 +239,7 @@ This is Chapter 25's pipeline with a model in place of the cube: transform every
 
 ## 7. Project: "Ship from Disc"
 
-### 7.1 Behaviour
+### 7.1 Behavior
 
 The program boots from `hoverline.cue`, loads `\DATA\MODEL.BIN;1` from the disc, parses it, and draws the ship flat-shaded, turning slowly about its vertical axis, on a dark background. If anything fails, the screen is red.
 
@@ -263,7 +263,7 @@ The program boots from `hoverline.cue`, loads `\DATA\MODEL.BIN;1` from the disc,
 
 **`int model_parse(Model *m, const void *data, uint32_t size)`** (declared in `model.h`): the checks of 5.8, in that order. On success it fills `*m` (`verts = data + 8`, `faces = data + 12 + 8 * V`; both point into `data`, nothing is copied) and returns 1. On any failure it returns 0 **and leaves `*m` untouched** (there are no separate error codes).
 
-**`draw_faces`** links exactly one polygon per front face (`NCLIP > 0`): a `POLY_F3` for a triangle, a `POLY_F4` for a quad, in the face's file colour, unlit. Keep the given camera (`rot`, `cam_z`, `proj_h`, the screen centre): the verifier projects the vertices itself and compares the picture.
+**`draw_faces`** links exactly one polygon per front face (`NCLIP > 0`): a `POLY_F3` for a triangle, a `POLY_F4` for a quad, in the face's file color, unlit. Keep the given camera (`rot`, `cam_z`, `proj_h`, the screen center): the verifier projects the vertices itself and compares the picture.
 
 **State the verifier reads** (do not change names, types or order; `main()` keeps them linked):
 
@@ -283,7 +283,7 @@ The program boots from `hoverline.cue`, loads `\DATA\MODEL.BIN;1` from the disc,
 2. Write `cd_load_file` following 5.5: `*size = 0`, search, round, allocate, set location, read, wait with a timeout, free on every failure.
 3. Write `read_be32`, then `model_parse`. Test it on paper with the bytes in 5.7 and Appendix E.7's dump before you run it.
 4. Fill `model_info` after a successful parse: the counts, vertex 0 and the **last** vertex.
-5. Transform the vertices and draw the faces (5.9). Start with `vertex_count` points on screen, then add culling, then colours.
+5. Transform the vertices and draw the faces (5.9). Start with `vertex_count` points on screen, then add culling, then colors.
 
 ### 7.4 Rules
 
@@ -329,7 +329,7 @@ The emulator **boots `hoverline.cue`**: no EXE is side-loaded, so a wrong `SYSTE
 | `the file is read through the CD library` | `CdSearchFile`, `CdRead` (or `CdReadRetry`), `CdReadSync` entered; the controller's registers written; `model_size` is the directory's; the bytes at `model_buf` are the disc file's | Another buffer; a partial read; a rounded size |
 | `model_info matches the generator's manifest` | Counts, first and last vertex equal `MODEL.BIN.json` | Byte order of the counts; last vertex index off by one |
 | `the model spins slowly about its origin` | `rot` advances by `rot_step` (non-zero, at most 64); the matrix is a rotation, translation `(0, 0, cam_z)`, and changes | `rot_step` ignored; matrix not rebuilt |
-| `picture: the ship's silhouette, front faces and flat colours` | At frames 12 and 70 the outline is the hull of the projected vertices (+-5 px); each large front face shows its file colour at its centre; the polygons in the table are exactly the front faces, triangles as `POLY_F3` and quads as `POLY_F4` | Culling missing or reversed; wrong corners; colours from the wrong face |
+| `picture: the ship's silhouette, front faces and flat colors` | At frames 12 and 70 the outline is the hull of the projected vertices (+-5 px); each large front face shows its file color at its center; the polygons in the table are exactly the front faces, triangles as `POLY_F3` and quads as `POLY_F4` | Culling missing or reversed; wrong corners; colors from the wrong face |
 | `a different MODEL.BIN on the disc (a pyramid)...` | The same checks on a rebuilt disc with another model | Anything about the ship built into the program |
 | `cd_load_file: finds files, returns whole-sector buffers...` | Called directly on `SYSTEM.CNF`, `HOVER.EXE`, `MODEL.BIN` (also with a NULL size) and on missing names: size, bytes, last bytes, aligned buffer, a request of at least the rounded size, `NULL`/0/no read for missing | Buffer of `size` bytes; wrong size; a read after a failed search |
 | `model_parse: big-endian counts, limits, ...` | 14 crafted images: valid ones (3 vertices, 255 vertices, no faces) give the right `Model`; bad magic, little-endian counts, 0 or 256 vertices, short or long images, an enormous `face_count`, a bad index, a misaligned pointer are rejected with `*m` untouched | A missing validation step; `8 * F` overflow |
@@ -339,7 +339,7 @@ A pass ends with `CHAPTER 29: PASSED (12/12 checks)`. Booting the disc takes abo
 ## 9. Common pitfalls
 
 - **Little-endian counts.** `*(uint32_t *)(p + 4)` gives 218,103,808 vertices. Read the four bytes.
-- **Buffer of `size` bytes.** The drive writes whole sectors; allocate `ceil(size / 2048) * 2048`. It "works" until the neighbouring block is something you care about.
+- **Buffer of `size` bytes.** `CdRead` stores whole sectors; allocate `ceil(size / 2048) * 2048`. It "works" until the neighboring block is something you care about.
 - **Rounded size reported.** `*size` is the directory's byte count, not the sector count times 2048.
 - **Waiting without a limit.** A blocking `CdReadSync(0, 0)` freezes the game for as long as the drive struggles, and the library's own watchdog is a detail of one SDK version. Poll, count frames, give up.
 - **`CdInit` before `ResetGraph`.** The CD library needs the interrupt system `ResetGraph` sets up.

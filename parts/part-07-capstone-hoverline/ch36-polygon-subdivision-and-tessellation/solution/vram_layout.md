@@ -57,8 +57,8 @@ and CLUT room in rows 480..511 left of x 320 wherever the table above leaves it 
 
 - One page for all the track tiles: one tpage word, no page switches, easy to check.
 - Page 9 sits beside PROPS (512..527) and LOGO (768..799) without touching them; the tile page is not the TIMs' own place (384..447), so the program really relocates.
-- Tiles are packed in a 4 x 2 grid with no margin: the face UVs are 0..63, the last texel of a 64-texel tile, so a polygon never samples the neighbour.
-  Vertical neighbours are the rows y 256..319 and 320..383; there is no horizontal gap either.
+- Tiles are packed in a 4 x 2 grid with no margin: the face UVs are 0..63, the last texel of a 64-texel tile, so a polygon never samples the neighbor.
+  Vertical neighbors are the rows y 256..319 and 320..383; there is no horizontal gap either.
 - The CLUTs share one row at y = 488, 16 units apart (CLUT x must be a multiple of 16), under the framebuffers where nothing else but the other CLUTs lives.
 - The framebuffers are never overlapped: everything the GPU draws there is overwritten every frame.
 

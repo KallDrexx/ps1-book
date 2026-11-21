@@ -253,7 +253,7 @@ def _(ctx):
 
 
 @static_check(f"host: the pack is within {int(RATIO_MIN * 100)}% of the reference packer's compression ratio (LZSS references are really produced)",
-              hint="An all-literal stream is valid but 12% larger than the raw data. Search the previous 4095 bytes for the longest match (3..18) at each position.")
+              hint="An all-literal stream is valid but 12.5% larger than the raw data. Search the previous 4095 bytes for the longest match (3..18) at each position.")
 def _(ctx):
     tims, _ = reference(ctx)
     d = decode_with_reference(disc(ctx).read("\\DATA\\TEXTURES.TPK"), tims, "TEXTURES.TPK")
@@ -297,7 +297,7 @@ def _(ctx):
 
 
 @static_check("host: texture ids: files in plain string order of their names; .TIM and .tim both count; other files and subfolders are ignored",
-              hint="sorted(names) of the files whose suffix.lower() == '.tim'; the size table follows that order.")
+              hint="Plain string order of the file names (Python's sorted), .tim in either case; the size table follows that order.")
 def _(ctx):
     names = ["b.tim", "a.tim", "C.TIM", "10.tim", "9.tim"]
     tims = {n: tim16(bytes(4 * (k + 1))) for k, n in enumerate(names)}       # sizes 24, 28, 32, 36, 40: they identify the order
@@ -532,9 +532,9 @@ def check_picture(r, tims, name):
         expect_true(ok + bad >= 100, f"{name}: cell {i} has enough sample points", f"{ok + bad}")
         expect_true(ok >= 0.9 * (ok + bad), f"{name}: cell {i} shows texture {i} ({ok} of {ok + bad} sample points match)",
                     f"{ok} of {ok + bad}; e.g. pixel ({x0 + first_bad[0]}, {y0 + first_bad[1]}) is {first_bad[2]}, the texel there is {first_bad[3]}" if first_bad else "",
-                    hint="Right shapes, wrong colours: the CLUT. Noise: the page or the image upload. A texture that is not the one in the pack: ids or order.")
+                    hint="Right shapes, wrong colors: the CLUT. Noise: the page or the image upload. A texture that is not the one in the pack: ids or order.")
         need = min(3, len({q[:3] for q in px}))
-        expect_true(len(seen) >= need, f"{name}: cell {i} is textured ({len(seen)} distinct colours)", f"{len(seen)}", hint="A flat quad: not textured.")
+        expect_true(len(seen) >= need, f"{name}: cell {i} is textured ({len(seen)} distinct colors)", f"{len(seen)}", hint="A flat quad: not textured.")
 
 
 @check("polygons: one POLY_FT4 per texture in its grid cell, with that texture's tpage, clut and corner UVs",
@@ -839,7 +839,7 @@ def _(ctx):
     c, rec = by["load_missing"]
     expect_eq(s32(rec["v0"]), -1, "tpk_load of a missing file: return code", hint="TPK_ERR_READ (-1).")
     head = struct.unpack("<iII", bytes.fromhex(rec["reads"][0]))
-    expect_eq((head[0], head[1], head[2]), (0, 0, 0), "after the failure: count 0, raw NULL, raw_size 0", hint="Initialise *out before anything can fail.")
+    expect_eq((head[0], head[1], head[2]), (0, 0, 0), "after the failure: count 0, raw NULL, raw_size 0", hint="Initialize *out before anything can fail.")
     c, rec = by["load_again"]
     expect_eq(s32(rec["v0"]), 0, "tpk_load of \\DATA\\TEXTURES.TPK;1 a second time", hint="A second load must work (no static state left over, nothing leaked).")
     data = bytes.fromhex(rec["reads"][0])

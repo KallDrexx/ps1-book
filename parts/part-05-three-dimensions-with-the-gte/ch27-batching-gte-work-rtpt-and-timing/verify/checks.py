@@ -221,7 +221,7 @@ COP2_NAMES = {0x01: "RTPS", 0x06: "NCLIP", 0x2D: "AVSZ3", 0x2E: "AVSZ4", 0x30: "
 
 
 @static_check("the program uses RTPT: the command appears in its own objects",
-              hint="Scanned: every .obj of your project and of psxe/ (never the SDK's libraries). Write gte_ldv3c(...); gte_rtpt(); ... in transform_field_rtpt() (README 5.5, 7.3).")
+              hint="Scanned: every .obj of your project and of psxe/ (never the SDK's libraries). Write gte_ldv3c(...); gte_rtpt(); ... in transform_field_rtpt() (README 5.3, 7.3).")
 def _(ctx):
     objdump = _tool("mipsel-none-elf-objdump")
     seen = set()
@@ -305,7 +305,7 @@ def check_reference(name, rows, t, d):
                 gx, gy = x.xy[c][k]
                 gz = x.sz[c][k]
                 if (gx, gy, gz) != (rx, ry, rz):
-                    hint = ("A store that runs past the end of a row overwrites a neighbour (screen_xy[i][8] is cube i + 1's corner 0; the last cube's goes beyond the arrays): "
+                    hint = ("A store that runs past the end of a row overwrites a neighbor (screen_xy[i][8] is cube i + 1's corner 0; the last cube's goes beyond the arrays): "
                             "if the first entries are wrong and later ones are right, look for that. Each corner of each cube: gte_ldv0 / gte_rtps (path 0) or gte_ldv3c / gte_rtpt (path 1), then store SXY and SZ in "
                             "screen_xy[cube][corner] and screen_z[cube][corner].")
                     if k >= 6:
@@ -439,7 +439,7 @@ def _(ctx):
         expect_true(0 < w <= FRAME_BUDGET, f"path {p}: cycles per frame <= {FRAME_BUDGET}", f"worst {w}", "Do not add work to the frame loop.")
 
 
-@check("picture: a coloured tile at the middle of each of the 64 cubes, in both paths",
+@check("picture: a colored tile at the middle of each of the 64 cubes, in both paths",
        hint="The tiles are drawn by the given code from screen_xy: the picture is right when your results are.")
 def _(ctx):
     for p in (0, 1):
@@ -452,7 +452,7 @@ def _(ctx):
             expect_true(colors_close(img.pixel(*pt), BG, 12), f"path {p}: corner {pt} is the background {BG}", str(img.pixel(*pt)),
                         "display_clear(16, 16, 32) every frame (given).")
         # the screenshot shows the frame whose results the probe saw as the last row before it; tiles are 8 x 8, cubes move at most
-        # a pixel or two per frame, so compare with the nearest recorded frame's centres
+        # a pixel or two per frame, so compare with the nearest recorded frame's centers
         x, best = None, None
         for cand in rows:
             miss = 0
@@ -463,6 +463,6 @@ def _(ctx):
                     miss += 1
             if best is None or miss < best:
                 best, x = miss, cand
-        expect_true(best == 0, f"path {p}: all 64 tiles are at the centres of their cubes, in their colours",
-                    f"{best} of 64 tile centres do not show the tile colour (nearest frame {x.n})",
+        expect_true(best == 0, f"path {p}: all 64 tiles are at the centers of their cubes, in their colors",
+                    f"{best} of 64 tile centers do not show the tile color (nearest frame {x.n})",
                     "Path 0 draws them correctly from the given code, so wrong or missing screen_xy words of corners 0 and 7 are the usual cause.")

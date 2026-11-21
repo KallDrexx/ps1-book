@@ -3,7 +3,7 @@ Three emulator runs of 150 frames (OpenBIOS takes ~31 before `main`): the shippe
 (a hard-coded trajectory cannot pass). The probe records gem_state at the top of every frame-loop iteration (label `frame`),
 at every emulated VBlank, and every GP0 E3h / GP1 05h write. Checks: exact motion and bounce rules, one iteration and one
 display-start write per VBlank, alternating buffers (draw into the hidden one, then show it), and screenshots that agree
-with gem_state (gem pixels at the reported centre, shading, bar-graph length)."""
+with gem_state (gem pixels at the reported center, shading, bar-graph length)."""
 from harness import *
 
 R, XMIN, XMAX, YMIN, YMAX = 24, 24, 295, 24, 215

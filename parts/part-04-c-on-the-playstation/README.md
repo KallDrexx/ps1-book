@@ -6,13 +6,13 @@
 
 ## Chapters
 
-| # | Chapter | You build | Status |
-|---|---|---|---|
-| 18 | [From Assembly to C](ch18-from-assembly-to-c/README.md) | A C program that clears the screen to a colour computed by your Chapter 9 assembly routine, plus an annotated read of the compiler's output | available |
-| 19 | [Double Buffering with Display and Draw Environments](ch19-double-buffering/README.md) | `display_init()`/`display_clear()`/`display_swap()`, a colour-cycling background and a moving rectangle | available |
-| 20 | [Primitives and Ordering Tables](ch20-primitives-and-ordering-tables/README.md) | `ot.c`/`ot.h`: 16 overlapping quads sorted by depth | available |
-| 21 | [Working with Multiple Files](ch21-working-with-multiple-files/README.md) | The `psxe` engine library (`display`, `ot`, `gfx`) | available |
-| 22 | [Controller Input and the BIOS](ch22-controller-input-and-the-bios/README.md) | `input.c`/`input.h` and "Cursor": a square moved by the D-pad, with press/release edge detection | available |
+| # | Chapter | You build |
+|---|---|---|
+| 18 | [From Assembly to C](ch18-from-assembly-to-c/README.md) | A C program that clears the screen to a color computed by your Chapter 9 assembly routine, plus an annotated read of the compiler's output |
+| 19 | [Double Buffering with Display and Draw Environments](ch19-double-buffering/README.md) | `display_init()`/`display_clear()`/`display_swap()`, a color-cycling background and a moving rectangle |
+| 20 | [Primitives and Ordering Tables](ch20-primitives-and-ordering-tables/README.md) | `ot.c`/`ot.h`: 16 overlapping quads sorted by depth |
+| 21 | [Working with Multiple Files](ch21-working-with-multiple-files/README.md) | The `psxe` engine library (`display`, `ot`, `gfx`) |
+| 22 | [Controller Input and the BIOS](ch22-controller-input-and-the-bios/README.md) | `input.c`/`input.h` and "Cursor": a square moved by the D-pad, with press/release edge detection |
 
 ## How the part flows
 
@@ -35,7 +35,7 @@ The workflow changes slightly: `source tools/env.sh`, `make` in `starter/` (it r
 
 ## The `psxe` library
 
-From Chapter 21 the engine lives in `common/psxe/` (headers in `include/psxe/`, sources in `src/`, a `CMakeLists.txt` defining the `psxe` target). It grows by one module per chapter that needs it, and `common/psxe/` always holds the latest reference:
+From Chapter 21 the engine lives in `common/psxe/` (headers in `include/psxe/`, sources in `src/`, a `CMakeLists.txt` defining the `psxe` target). It grows by one module per chapter that needs it; `common/psxe/` holds the reference with all five modules:
 
 | Module | Added in | Exports |
 |---|---|---|
@@ -45,8 +45,8 @@ From Chapter 21 the engine lives in `common/psxe/` (headers in `include/psxe/`, 
 | `input` | Ch 22 | `input_init`, `input_update`, `input_held`, `input_pressed`, `input_released` |
 | `fixed` | Ch 24 (written in Ch 23, Part V) | `fx_from_int`, `fx_mul`, `fx_div`, `fx_lerp`, `fx_sqrt`, `fx_rotate` (and the `fx`, `fx_vec2` types) |
 
-Open the reference only after you pass the chapter that writes the module. Chapter folders stay self-contained: each chapter that uses the library ships its own copy in `starter/psxe/` and `solution/psxe/`, taken from `common/psxe/` as it stands at that chapter (Chapter 21's copy has three modules, Chapter 22's four, Chapter 24's five).
+Open the reference only after you pass the chapter that writes the module. Chapter folders stay self-contained: each chapter that uses the library ships its own copy in `starter/psxe/` and `solution/psxe/`, taken from `common/psxe/` as it stands at that chapter (Chapter 21's copy has three modules, Chapter 22's four, Chapter 24's five). The Part VII chapters ship slightly enlarged copies (a bigger primitive buffer and a few extra functions, each introduced where it is first needed).
 
 ## Capstone for the part
 
-Chapter 22 ("Cursor") joins the pieces: the engine library, double buffering, an ordering table, and the pad. It is the part's capstone: a square that moves, changes colour and resets under your control, checked by a verifier that plays scripted button presses.
+Chapter 22 ("Cursor") joins the pieces: the engine library, double buffering, an ordering table, and the pad. It is the part's capstone: a square that moves, changes color and resets under your control, checked by a verifier that plays scripted button presses.

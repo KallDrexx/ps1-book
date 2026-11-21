@@ -11,7 +11,7 @@ main:
     ; YOUR CODE HERE
 
 done:
-    j    done                       ; the verifier stops here and reads `results`
+    j    done                       ; the verifier stops here and reads the tables
     nop
 
 .align 4

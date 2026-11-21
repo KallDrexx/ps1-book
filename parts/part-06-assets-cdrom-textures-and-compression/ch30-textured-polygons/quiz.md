@@ -5,7 +5,7 @@ Answers are hidden under each question.
 **1.** A texture page is 256 x 256 texels. How many 16-bit VRAM units wide is a page for 4-bpp, 8-bpp and 16-bpp textures, and why do they differ?
 
 <details><summary>Answer</summary>
-64, 128 and 256 units. A unit is 16 bits: it holds 4 four-bit palette indices, 2 eight-bit indices or 1 colour, so 256 texels need 64, 128 or 256 units. Pages *start* every 64 units in x (and 256 lines in y), which is what `x/64` and `y/256` in the tpage word count.
+64, 128 and 256 units. A unit is 16 bits: it holds 4 four-bit palette indices, 2 eight-bit indices or 1 color, so 256 texels need 64, 128 or 256 units. Pages *start* every 64 units in x (and 256 lines in y), which is what `x/64` and `y/256` in the tpage word count.
 </details>
 
 **2.** An 8-bpp texture is at VRAM (704, 0) with its CLUT at (0, 496). Give the tpage word, the CLUT word and the UV origin.
@@ -35,29 +35,29 @@ Page column 964/64 = 15 (the page starts at 960), page row 320/256 = 1. Origin `
 **6.** Your cube face uses the Z-order corners 0 (top-left), 1 (top-right), 2 (bottom-left), 3 (bottom-right). Write the UVs of a 128 x 64 texture whose origin in the page is (16, 64). Why is the right edge 143, not 144?
 
 <details><summary>Answer</summary>
-Corner 0: (16, 64); 1: (143, 64); 2: (16, 127); 3: (143, 127). The last texel column is `u0 + w - 1` = 143; 144 is the first texel of whatever lies to the right of the texture in the page (and 256 would overflow the byte). Using perimeter order `(0,0) (w,0) (w,h) (0,h)` for a Z-order quad swaps corners 2 and 3.
+Corner 0: (16, 64); 1: (143, 64); 2: (16, 127); 3: (143, 127). The last texel column is `u0 + w - 1` = 143; 144 is the first texel of whatever lies to the right of the texture in the page (and 256 would overflow the byte). Perimeter order `(0,0) (w,0) (w,h) (0,h)` on a Z-order quad would swap the texels of corners 2 and 3.
 </details>
 
-**7.** The polygon's colour is (128, 128, 128) in one program and (255, 255, 255) in another. What changes on screen? What does command `0x2D` do?
+**7.** The polygon's color is (128, 128, 128) in one program and (255, 255, 255) in another. What changes on screen? What does command `0x2D` do?
 
 <details><summary>Answer</summary>
-Each texel channel is multiplied by `colour / 128`: 128 leaves the texture as it is, 255 brightens it by almost 2x (saturating at 255). Command `0x2D` is "raw texture": the polygon colour is ignored and the texel is drawn as it is.
+Each texel channel is multiplied by `color / 128`: 128 leaves the texture as it is, 255 brightens it by almost 2x (clamped at the maximum). Command `0x2D` is "raw texture": the polygon color is ignored and the texel is drawn as it is.
 </details>
 
-**8.** Why does the X on a textured quad that is seen at an angle bend, and why does the texture of a spinning cube swim?
+**8.** Why does the X on a textured quad that is seen at an angle bend, and why do the edges and textures of a slowly turning cube wobble?
 
 <details><summary>Answer</summary>
-The GPU splits the quad into two triangles and interpolates `u, v` linearly in screen space (affine). A perspective view needs `u/z` and `v/z` interpolated and divided per pixel, so straight lines in the texture bend where the triangles meet. The swimming comes from integer vertex coordinates: the corners jump between pixels as the cube turns, and with them the whole mapping. Remedies: smaller or subdivided polygons, keeping polygons away from the camera, textures that tolerate warping.
+The GPU splits the quad into two triangles and interpolates `u, v` linearly in screen space (affine). A perspective view needs `u/z` and `v/z` interpolated and divided per pixel, so straight lines in the texture bend where the triangles meet. The bend changes as the quad turns, so the texture swims. The wobble is vertex jitter: screen coordinates are integers, so the corners jump from pixel to pixel as the cube turns, and the whole mapping jumps with them. Remedies for the affine error: smaller or subdivided polygons, keeping polygons away from the camera, textures that tolerate warping.
 </details>
 
 **9.** Why does `tim_parse` check that the CLUT's x is a multiple of 16 and that the image lies in one page, when `LoadImage` would happily upload it anyway?
 
 <details><summary>Answer</summary>
-Because the polygon's words cannot express otherwise: the CLUT word stores `x/16` (the low bits would be lost, selecting another palette) and the UVs are bytes inside one 256 x 256 page. The upload would succeed and the texture would still be drawn wrong, so a loader should reject the file where the cause is visible.
+Because the polygon's words cannot express anything else: the CLUT word stores `x/16` (the low bits would be lost, and the palette would start at the wrong entry) and the UVs are bytes inside one 256 x 256 page. The upload would succeed and the texture would still be drawn wrong, so a loader should reject the file where the cause is visible.
 </details>
 
 **10.** A texture with an opaque black outline disappears at the outline. What is wrong, and what is the fix?
 
 <details><summary>Answer</summary>
-The palette entry is `0x0000`, which the GPU treats as transparent. Store opaque black as `0x0421` (the book's `img2tim.py` does) or any non-zero colour.
+The palette entry is `0x0000`, which the GPU treats as transparent. Store opaque black as `0x0421` (the book's `img2tim.py` does) or any non-zero color.
 </details>

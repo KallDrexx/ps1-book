@@ -11,7 +11,7 @@ Input (read the pad once; it must not change the world), update (change the came
 **2.** The scene loader builds the list with `obj_insert` instead of `obj_append`. The probe finds every position right but still fails. Why?
 
 <details><summary>Answer</summary>
-`obj_insert` puts each new node first, so the list ends up in the *reverse* of the file's order: node 0 is the last object. Positions and shapes are all there, but node *i* is no longer file entry *i*, which is the documented contract (and what later chapters index by). `obj_append` keeps the file's order.
+`obj_insert` puts each new node first, so the list ends up in the *reverse* of the file's order: node 0 is the last object. Positions and shapes are all there, but node *i* is no longer file entry *i*, which is the documented contract. `obj_append` keeps the file's order.
 </details>
 
 **3.** Why does `obj_remove(Object **head, Object *o)` take a pointer to the head pointer, and what must it do to `o` afterwards?
@@ -43,7 +43,7 @@ The distance is measured to the object's *origin*, but the model extends up to i
 **7.** Why does `draw_object` use the translation `d = pos - eye` and the view *rotation*, instead of `view_mtx` with its translation?
 
 <details><summary>Answer</summary>
-`view_mtx.t` is `-R * eye`, as large as the eye's coordinates, and the SDK's `CompMatrixLV` passes translations through 16-bit registers; the track is wider than 16 bits. Subtracting the eye in 32-bit C first leaves `d` within 32000 (the cull guarantees it), and `R * d` is exactly the object's position in view space.
+With the full `view_mtx` the object's translation would be its world position, and the SDK's `CompMatrixLV` passes that translation through 16-bit registers; the file allows coordinates up to +-1,000,000. Subtracting the eye in 32-bit C first leaves `d` within 32000 on every axis (the cull guarantees it), and `R * d` is exactly the object's position in view space.
 </details>
 
 **8.** Start is tested with `input_held`. What do you see when you press it once?

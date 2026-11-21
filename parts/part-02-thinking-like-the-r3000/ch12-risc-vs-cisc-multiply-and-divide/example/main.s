@@ -4,7 +4,7 @@
 ;   row 2: div  -7 / 0         row 3: div   0x80000000 / -1
 ;   row 4: div  -7 / 2         row 5: multu 0xFFFFFFFF * 0xFFFFFFFF
 ;   row 6: mult -1 * -1        row 7: multu 0x10000 * 0x10000
-; Predict every row before you look (the zero-divide rows are psx-spx material, not obvious).
+; Predict every row before you look (section 5.5 covers the divide-by-zero rows).
 .psx
 .create "main.ps-exe", 0x8000F800
 .include "common/psxexe.inc"

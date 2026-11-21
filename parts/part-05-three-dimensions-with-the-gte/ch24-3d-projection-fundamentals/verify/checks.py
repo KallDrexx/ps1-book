@@ -99,9 +99,9 @@ def corner(i, size):
 MODES = {
     "reverse": "the rotation direction is reversed (check the sign in fx_rotate's use: README 5.3)",
     "yx": "you rotate about Y first, then X (the contract is X first, then Y)",
-    "ortho": "there is no perspective divide by z (the farther corners must come closer to the centre)",
-    "flip": "y is flipped (on the PS1 screen y grows downwards, so do not negate it)",
-    "nocentre": "the screen centre (160, 120) is not added",
+    "ortho": "there is no perspective divide by z (the farther corners must come closer to the center)",
+    "flip": "y is flipped (on the PS1 screen y grows downward, so do not negate it)",
+    "nocentre": "the screen center (160, 120) is not added",
 }
 
 
@@ -167,7 +167,7 @@ def _program_sources(ctx):
 
 
 @static_check("no GTE in the sources (the CPU does the 3D this chapter)",
-              hint="Chapter 24 rotates and projects with integer maths on the CPU. The GTE arrives in Chapter 25. (isin and icos from <psxgte.h> are plain integer maths and are allowed.)")
+              hint="Chapter 24 rotates and projects with integer math on the CPU. The GTE arrives in Chapter 25. (isin and icos from <psxgte.h> are plain integer math and are allowed.)")
 def _(ctx):
     for p in _program_sources(ctx):
         txt = _strip(p.read_text(errors="replace"))
@@ -296,7 +296,7 @@ def _(ctx):
 
 
 @check("projected[] matches the reference on 120 frames of the spin (shipped numbers)",
-       hint="rotate about X then Y with fx_rotate, z += cam_z, x*proj_h/z with fx_div, plus the screen centre.")
+       hint="rotate about X then Y with fx_rotate, z += cam_z, x*proj_h/z with fx_div, plus the screen center.")
 def _(ctx):
     check_projection(ctx, "base")
 

@@ -21,7 +21,7 @@ After this chapter you can:
 
 ## 4. Prerequisites
 
-[Chapter 1](../../part-01-machine-and-language/ch01-workbench/README.md) (your first GP0 fill), [Chapter 9](../../part-02-thinking-like-the-r3000/ch09-signed-numbers-logic-and-shifts/README.md) (packing colours with shifts), [Chapter 10](../../part-02-thinking-like-the-r3000/ch10-the-stack-and-the-mips-abi/README.md) (stack arguments).
+[Chapter 1](../../part-01-machine-and-language/ch01-workbench/README.md) (your first GP0 fill), [Chapter 9](../../part-02-thinking-like-the-r3000/ch09-signed-numbers-logic-and-shifts/README.md) (packing colors with shifts), [Chapter 7](../../part-02-thinking-like-the-r3000/ch07-the-pipeline-and-delay-slots/README.md) (the load delay), [Chapter 10](../../part-02-thinking-like-the-r3000/ch10-the-stack-and-the-mips-abi/README.md) (stack arguments).
 
 ## 5. Explanation
 
@@ -32,11 +32,11 @@ After this chapter you can:
 | `0x1F801810` | **GP0**: drawing commands and VRAM data | **GPUREAD**: data back from the GPU (Chapter 16) |
 | `0x1F801814` | **GP1**: display control commands | **GPUSTAT**: the status word |
 
-Both take a **word**: use `sw`. A GP1 word is `cc pppppp`: command number in the top byte, parameter in the low 24 bits. A GP0 word is the first word of a packet (command byte on top, usually a colour below) followed by parameter words.
+Both take a **word**: use `sw`. A GP1 word is `cc pppppp`: command number in the top byte, parameter in the low 24 bits. A GP0 word is the first word of a packet (command byte on top, usually a color below) followed by parameter words.
 
 ### 5.2 VRAM
 
-VRAM is a 1024 x 512 grid of 16-bit pixels (1 MB). The CPU cannot address it: it is **not** in the memory map. The only way in or out is GP0/GPUREAD. A pixel is `0bMBBBBBGGGGGRRRRR`: 5 bits per colour and a mask bit (Chapter 1 explained the rounding).
+VRAM is a 1024 x 512 grid of 16-bit pixels (1 MB). The CPU cannot address it: it is **not** in the memory map. The only way in or out is GP0/GPUREAD. A pixel is `0bMBBBBBGGGGGRRRRR`: 5 bits per color and a mask bit (Chapter 1 explained the rounding).
 
 ```
       x=0                 320                       1024
@@ -51,11 +51,11 @@ VRAM is a 1024 x 512 grid of 16-bit pixels (1 MB). The CPU cannot address it: it
  512  +----------------------------------------------+
 ```
 
-VRAM does not care what is "the screen". Three rectangles give it meaning:
+VRAM does not care what is "the screen". Two rectangles and an offset give it meaning:
 
-| Rectangle | Set by | Meaning |
+| Setting | Set by | Meaning |
 |---|---|---|
-| **Display area** | GP1(05h) start, GP1(08h) size | What goes to the TV |
+| **Display area** | GP1(05h) start; GP1(06h) to (08h) size | What goes to the TV |
 | **Drawing area** | GP0(E3h) top-left, GP0(E4h) bottom-right | The only region drawing commands may change |
 | **Drawing offset** | GP0(E5h) | Added to every vertex of a drawing command |
 
@@ -81,14 +81,14 @@ GP1(00h) is the right first word: the BIOS or an earlier program may have left a
 | 0-1 | Horizontal resolution: 0 = 256, 1 = 320, 2 = 512, 3 = 640 | 1 |
 | 2 | Vertical resolution: 0 = 240, 1 = 480 (480 needs interlace) | 0 |
 | 3 | Video mode: 0 = **NTSC**, 1 = **PAL** | 0 |
-| 4 | Colour depth: 0 = 15-bit, 1 = 24-bit | 0 |
+| 4 | Color depth: 0 = 15-bit, 1 = 24-bit | 0 |
 | 5 | Interlace: 0 = off, 1 = on | 0 |
 | 6 | Horizontal resolution 368 (overrides bits 0-1) | 0 |
 | 7 | Reverse flag (unused here) | 0 |
 
 So 320x240 NTSC, 15-bit, progressive is `0x08000001`.
 
-**The ranges.** The TV timing is counted in GPU clocks horizontally and scanlines vertically. The display *area* (what VRAM rectangle) and the display *range* (where on the TV it lands) are separate. Each pixel of a 320-wide picture takes 8 GPU clocks, so a 320-wide picture needs `x2 - x1 = 320 x 8 = 2560`. The usual values are `0x260` to `0xC60`. A 240-line picture needs `y2 - y1 = 240`; psx-spx centres NTSC pictures on line `0x88` (136), so lines 16 to 256. If the range is smaller than the picture, you see a cropped picture; larger, black borders.
+**The ranges.** TV timing is counted in GPU clocks horizontally and scanlines vertically. The ranges say where on the TV the picture lands, and their lengths set how much of VRAM is shown, starting at the GP1(05h) corner. In 320-wide mode each pixel takes 8 GPU clocks, so 320 columns need `x2 - x1 = 320 x 8 = 2560`; the usual values are `0x260` to `0xC60`. 240 rows need `y2 - y1 = 240`; psx-spx centers NTSC pictures on line `0x88` (136), so lines 16 to 256. A shorter range shows fewer columns or rows; a longer one shows VRAM beyond your picture.
 
 ### 5.4 NTSC and PAL
 
@@ -98,7 +98,7 @@ So 320x240 NTSC, 15-bit, progressive is `0x08000001`.
 | Scanlines per frame (non-interlaced) | 263 | 314 |
 | GPU clocks per scanline | 3413 | 3406 |
 | Visible lines | up to 240 (about 224 on most TVs) | up to 288 |
-| Vertical centre line (psx-spx) | `0x88` = 136 | `0xA3` = 163 |
+| Vertical center line (psx-spx) | `0x88` = 136 | `0xA3` = 163 |
 | 240-line vertical range | 16 to 256 | about 43 to 283 |
 
 Packets and VRAM are identical; only the timing, the video-mode bit and the vertical range change. A PAL console runs at 50 Hz, so PAL releases were often slower or letterboxed: a 240-line picture on a 288-line PAL screen leaves black bars. (Figures from psx-spx "GPU Video Timings" and GP1(07h); the PAL range is not tested in this book.) The verifier checks that you chose **NTSC**.
@@ -112,14 +112,14 @@ Reading `0x1F801814` returns a 32-bit status word. The bits you need now:
 | 16, 17-18 | Horizontal resolution (368 flag, then the 2-bit code from GP1(08h)) |
 | 19 | Vertical resolution (0 = 240, 1 = 480) |
 | 20 | Video mode (0 = NTSC, 1 = PAL) |
-| 21 | Colour depth (0 = 15-bit, 1 = 24-bit) |
+| 21 | Color depth (0 = 15-bit, 1 = 24-bit) |
 | 22 | Vertical interlace |
 | 23 | Display disabled (1 = off) |
 | **26** | **Ready to receive command word** |
 | 27 | Ready to send VRAM to CPU (Chapter 16) |
-| **28** | Ready to receive DMA block (Chapter 17 and Part IV) |
+| 28 | Ready to receive DMA block (Part IV) |
 
-Bits 16 to 22 echo the GP1(08h) mode you programmed (bit 23 echoes GP1(03h)), which makes GPUSTAT a good way to check a GP1(08h) word. The GPU keeps a small FIFO (16 words) of pending commands and draws while the CPU continues, so a program that sends large fills back to back can outrun it. **Before each packet, wait until bit 26 is 1.** Emulators such as PCSX-Redux report ready almost all the time, so a missing wait rarely shows there: it appears on hardware. The wait loop is `lw`, a delay-slot `nop`, mask, `beqz` back.
+Bits 16 to 22 echo the GP1(08h) mode you programmed (bit 23 echoes GP1(03h)), which makes GPUSTAT a good way to check a GP1(08h) word. The GPU keeps a small FIFO (16 words) of pending commands and draws while the CPU continues, so a program that sends large fills back to back can outrun it. **Before each packet, wait until bit 26 is 1.** Wait once, before the first word: the bit is clear while the GPU expects the rest of a packet, so a wait between words never ends. Emulators such as PCSX-Redux report ready almost all the time, so a missing wait rarely shows there: it appears on hardware. The wait loop is `lw`, a load-delay `nop`, mask, `beqz` back.
 
 ### 5.6 GP0: drawing state
 
@@ -140,7 +140,7 @@ Before drawing, tell the GPU where it may draw. Each is a single word:
 
 | Word | Meaning |
 |---|---|
-| 1 | `0x02BBGGRR`: command, then colour |
+| 1 | `0x02BBGGRR`: command, then color |
 | 2 | `y << 16 \| x`: top-left, in **VRAM** coordinates |
 | 3 | `h << 16 \| w`: size |
 
@@ -158,11 +158,11 @@ This is an ordinary drawing command: pixel exact, **clipped to the drawing area*
 
 **Which to use?** `320 / 8 = 40`, and 40 is not a multiple of 16, so a fill cannot make 8 equal bars: a fill at x = 40, w = 40 paints columns 32 to 79. You could use unequal bars that fit the granularity (for example four of 48 and four of 32), but the project uses the right tool for each job: one fill clears the screen (320 x 240 is exact), and eight `60h` rectangles draw the bars. Chapter 14 uses the same drawing path for polygons.
 
-**Colour order.** In both packets the colour sits as `BBGGRR`: blue in the higher byte, red in the lowest. That is the reverse of the usual `0xRRGGBB`. The routines you write take `0x00RRGGBB`, so you must swap.
+**Color order.** In both packets the color is `BBGGRR`: blue in bits 16-23, red in bits 0-7. That is the reverse of the usual `0xRRGGBB`. The routines you write take `0x00RRGGBB`, so you must swap.
 
 ### 5.8 Looking packets up
 
-You will not memorise the packets. psx-spx (the community hardware reference, "GPU Rendering Commands" and "GPU Display Control Commands") lists each one as a table of words and bit fields. The routine: find the command byte, list the words, then for each word note the bit fields and what is *rounded or clipped*. Write the packet as a comment above your code first.
+You will not memorize the packets. psx-spx (the community hardware reference, "GPU Rendering Commands" and "GPU Display Control Commands") lists each one as a table of words and bit fields. The routine: find the command byte, list the words, then for each word note the bit fields and what is *rounded or clipped*. Write the packet as a comment above your code first.
 
 ## 6. Worked example
 
@@ -175,7 +175,7 @@ make run
 
 Predict which columns each box covers before you run it. The answers: the first fill covers x = 0 to 31 (rounded out), the first `60h` exactly 8 to 27, the second `60h` 290 to 299 (clipped at the drawing area), and the second fill 288 to 319 (rounded out, and not clipped, because the fill ignores the drawing area). It is not checked by `verify.sh`.
 
-## 7. Project: Colour Bars
+## 7. Project: Color Bars
 
 Work in `starter/main.s`. You write three routines and `main`.
 
@@ -192,8 +192,8 @@ Work in `starter/main.s`. You write three routines and `main`.
 ### 7.2 `main`
 
 1. `gpu_init`.
-2. `gpu_clear` the whole display (0, 0, 320, 240) with the colour in `bg_color`.
-3. Eight `gpu_rect` calls, one per bar: bar *i* is at x = 40 *i*, y = 24, 40 wide, 192 high, coloured by word *i* of `bar_colors`. The border (24 rows above and below) keeps the background colour.
+2. `gpu_clear` the whole display (0, 0, 320, 240) with the color in `bg_color`.
+3. Eight `gpu_rect` calls, one per bar: bar *i* is at x = 40 *i*, y = 24, 40 wide, 192 high, colored by word *i* of `bar_colors`. The border (24 rows above and below) keeps the background color.
 4. Fall into `done`.
 
 ### 7.3 Your steps
@@ -205,7 +205,7 @@ Work in `starter/main.s`. You write three routines and `main`.
 
 ### 7.4 Rules
 
-- Keep the starter's labels. Read the colours **from `bar_colors` and `bg_color` in memory**: the verifier patches both tables.
+- Keep the starter's labels. Read the colors **from `bar_colors` and `bg_color` in memory**: the verifier patches both tables.
 - Do not round `x` or `w` yourself in `gpu_clear`; the hardware does that.
 - Only `$t`, `$a`, `$v` in the routines; do not touch `$sp`.
 
@@ -214,7 +214,7 @@ Work in `starter/main.s`. You write three routines and `main`.
 - Keep the port base in a register: `lui $t0, 0x1F80`, then `0x1810($t0)` is GP0 and `0x1814($t0)` is GP1.
 - A load has a delay slot (Chapter 7): a `nop` after reading GPUSTAT.
 - Bit 26 is `0x04000000`; `lui` builds that mask in one instruction.
-- Colour: three `andi`/shift pairs and two `or`s turn `0x00RRGGBB` into `0x00BBGGRR`.
+- Color: three `andi`/shift pairs and two `or`s turn `0x00RRGGBB` into `0x00BBGGRR`.
 - The two packets differ only in the command byte: a shared tail saves code.
 
 ### 7.6 Stretch goals
@@ -232,7 +232,7 @@ Do these in a copy of your project (`cp -r starter stretch`): the verifier check
 parts/part-03-bare-metal-graphics-in-assembly/ch13-the-gpu-vram-and-command-packets/verify/verify.sh
 ```
 
-The verifier **calls `gpu_init`, `gpu_clear` and `gpu_rect` directly** with random arguments and the fifth on the stack (the seed is printed on failure), recording every word that reaches GP0 or GP1 and every VRAM pixel that changes. It then runs the real program on three different colour tables and samples the screenshot.
+The verifier **calls `gpu_init`, `gpu_clear` and `gpu_rect` directly** with random arguments and the fifth on the stack (the seed is printed on failure), recording every word that reaches GP0 or GP1 and every VRAM pixel that changes. It then runs the real program on three different color tables and samples the screenshot.
 
 | Check | What it means | If it fails |
 |---|---|---|
@@ -244,20 +244,20 @@ The verifier **calls `gpu_init`, `gpu_clear` and `gpu_rect` directly** with rand
 | `the display is 320x240, 15 bits per pixel` | The real picture has the right size. | The GP1 range or mode words. |
 | `gpu_clear sends one GP0(02h) ...`, `gpu_rect sends ... GP0(60h)` | Exactly three GP0 words (each stored with one `sw`) and nothing else, for random arguments. | Red and blue not swapped; `h` read from the wrong place. |
 | `... wait for GPUSTAT bit 26 ...` | At least one read of `0x1F801814` before the first GP0 word. The emulator is always ready, so it cannot tell whether you test the right bit: that part is on you. | No wait loop. |
-| `gpu_clear paints the 16-pixel-granular rectangle ...` | VRAM pixels changed = the rounded rectangle, with the right 15-bit colour, even outside the drawing area. | The colour, or the size. |
+| `gpu_clear paints the 16-pixel-granular rectangle ...` | VRAM pixels changed = the rounded rectangle, with the right 15-bit color, even outside the drawing area. | The color, or the size. |
 | `gpu_rect paints exactly its rectangle, clipped ...` | Exact rectangle, clipped at the drawing area (partly or fully outside). | `gpu_init`'s E3h/E4h. |
-| `the program calls gpu_init once, gpu_clear, and gpu_rect exactly 8 times` | The driver does what 7.2 says. | |
-| `shipped colours ...`, `patched colour table 1/2` | 8 bars of 40x192 in table order, the border, in each table. | Bars drawn from constants, wrong order, wrong geometry. |
-| `the real run sends rectangles through GP0 only` | At least 8 `60h` packets in the real run. | |
+| `the program calls gpu_init once, gpu_clear, and gpu_rect exactly 8 times` | `main` does what 7.2 says. | A missing or repeated call in `main`. |
+| `shipped colors ...`, `patched color table 1/2` | 8 bars of 40x192 in table order, the border, in each table. | Bars drawn from constants, wrong order, wrong geometry. |
+| `the real run sends rectangles through GP0 only` | At least 8 `60h` packets in the real run. | Bars drawn without `gpu_rect`. |
 
-Colours are compared with a tolerance of 10, because VRAM keeps 5 bits per channel. A pass ends with `CHAPTER 13: PASSED (17/17 checks)`.
+Colors are compared with a tolerance of 10, because VRAM keeps 5 bits per channel. A pass ends with `CHAPTER 13: PASSED (17/17 checks)`.
 
 ## 9. Common pitfalls
 
 - **Red and blue swapped.** The GPU word is `BBGGRR`.
 - **`h` in the wrong place.** Fifth argument: `16($sp)` at entry, not `$t0`.
 - **Forgetting the delay slot** after `lw` of GPUSTAT: you test the old register.
-- **Rounding yourself.** A fill of width 40 paints 48 pixels. That is the hardware, not a bug in your code.
+- **A fill wider than you asked.** A fill of width 40 paints 48 pixels. That is the hardware, not a bug in your code: do not round in `gpu_clear`.
 - **E4h with 320, 240.** The corner is inclusive: 319, 239.
 - **Drawing area unset.** After a reset the area is the single pixel (0,0); `60h` clips to it and draws almost nothing.
 - **Display on bit.** GP1(03h) bit 0 = 1 turns the display *off*.
@@ -271,5 +271,5 @@ Colours are compared with a tolerance of 10, because VRAM keeps 5 bits per chann
 ## 11. Further reading
 
 - psx-spx, "GPU" chapters: Rendering Commands, Display Control Commands, GPUSTAT, VRAM Overview, Video Timings.
-- [Chapter 1](../../part-01-machine-and-language/ch01-workbench/README.md), section 5, for your first fill.
+- [Chapter 1](../../part-01-machine-and-language/ch01-workbench/README.md), section 5.6, for your first fill.
 - Chapter 14 next: the same GP0 port, with vertex packets.

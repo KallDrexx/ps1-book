@@ -1,9 +1,9 @@
 """Chapter 14 checks: rendering polygons (the "Polygon Gallery").
 Phase 1 (probe.lua + directcall.lua): pack_color and pack_vertex are called DIRECTLY with random arguments.
 Phase 2: the real program runs on three galleries: the shipped one and two that the verifier patches into the data
-tables (new origin, colours and vertices; one with reversed triangle winding). The probe logs every GP0/GP1 word, so
+tables (new origin, colors and vertices; one with reversed triangle winding). The probe logs every GP0/GP1 word, so
 the polygon packets (command byte, word count, exact words) are checked; the screenshot is sampled at flat centroids,
-at Gouraud sample points whose colour is interpolated from the vertex colours, and on background points.
+at Gouraud sample points whose color is interpolated from the vertex colors, and on background points.
 Hard-coded pictures or constants cannot pass: VRAM is reachable only through GP0 and everything comes from the tables.
 Packets are compared by what the GPU draws (11-bit coordinates, equivalent vertex orders accepted; see canonical()).
 Dither is OFF in the book's draw mode; the tolerances (flat 10, Gouraud 20) also cover dithered output."""
@@ -17,8 +17,8 @@ TOL_FLAT, TOL_GOURAUD, TOL_BG = 10, 20, 10
 LABELS = ["main", "done", "gpu_init", "gpu_clear", "pack_color", "pack_vertex",
           "origin", "bg_color", "flat_tri", "flat_quad", "gouraud_tri", "gouraud_quad"]
 
-# Each set: origin, background, flat_tri (colour, [v1,v2,v3]), flat_quad (colour, [v1..v4]),
-#           gouraud_tri [(colour, v)] x3, gouraud_quad [(colour, v)] x4. Vertices are (x, y) relative to the origin.
+# Each set: origin, background, flat_tri (color, [v1,v2,v3]), flat_quad (color, [v1..v4]),
+#           gouraud_tri [(color, v)] x3, gouraud_quad [(color, v)] x4. Vertices are (x, y) relative to the origin.
 SETS = {
     "shipped": dict(
         origin=(160, 120), bg=0x181830,
@@ -26,7 +26,7 @@ SETS = {
         fq=(0x20C0A0, [(30, -100), (140, -90), (20, -20), (130, -15)]),
         gt=[(0xFF0000, (-90, 10)), (0x00FF00, (-30, 95)), (0x0000FF, (-150, 95))],
         gq=[(0xFF0000, (30, 10)), (0xFFFF00, (140, 10)), (0x0000FF, (30, 95)), (0xFFFFFF, (140, 95))]),
-    "alt1": dict(      # same places, other colours, the triangles' vertex order reversed
+    "alt1": dict(      # same places, other colors, the triangles' vertex order reversed
         origin=(160, 120), bg=0x602010,
         ft=(0x40FF40, [(-90, -100), (-150, -20), (-30, -20)]),
         fq=(0xE02080, [(30, -100), (140, -90), (20, -20), (130, -15)]),
@@ -76,7 +76,7 @@ def run_set(ctx, s):
 
 
 def expected_packets(g):
-    """cmd -> expected GP0 words (colours as BBGGRR in the command word)."""
+    """cmd -> expected GP0 words (colors as BBGGRR in the command word)."""
     ft_c, ft_v = g["ft"]
     fq_c, fq_v = g["fq"]
     out = {
@@ -140,7 +140,7 @@ def tri_dist(p, t):
 
 
 def triangles(g):
-    """Screen triangles with their vertex colours (None for flat ones)."""
+    """Screen triangles with their vertex colors (None for flat ones)."""
     S = lambda v: to_screen(g, v)
     ft = [S(v) for v in g["ft"][1]]
     fq = [S(v) for v in g["fq"][1]]
@@ -226,7 +226,7 @@ def abi_ok(c, txt):
                 hint="Both routines are leaf routines: use only $t, $a and $v registers.")
 
 
-@check("pack_color(color, cmd) returns (cmd << 24) | 0x00BBGGRR, ignoring the colour's top byte",
+@check("pack_color(color, cmd) returns (cmd << 24) | 0x00BBGGRR, ignoring the color's top byte",
        hint="Swap red and blue of 0x00RRGGBB, then OR in the command byte shifted left by 24. Result in $v0.")
 def _(ctx):
     for c in calls_of(ctx, "pack_color"):
@@ -234,7 +234,7 @@ def _(ctx):
         txt = f"pack_color(0x{a0:08X}, 0x{a1:02X})"
         abi_ok(c, txt)
         want = ((a1 & 0xFF) << 24) | bgr(a0 & 0xFFFFFF)
-        expect_eq(c["v0"] & M, want, f"{txt} in $v0", fmt="hex", hint="Bits 31-24 of the colour must not leak into the result." + seed(ctx))
+        expect_eq(c["v0"] & M, want, f"{txt} in $v0", fmt="hex", hint="Bits 31-24 of the color must not leak into the result." + seed(ctx))
 
 
 @check("pack_vertex(x, y) returns (y << 16) | (x & 0xFFFF), also for negative x and y",
@@ -272,7 +272,7 @@ def s11(v):
 def canonical(cmd, words):
     """What the GPU actually draws from a packet, independent of equivalent choices: vertex coordinates are the
     sign-extended low 11 bits of each half (so x & 0x7FF and x & 0xFFFF are both fine), a triangle's vertices may come
-    in any order, and a quad's in any order that keeps the same diagonal (v2-v3). Gouraud colour words after the
+    in any order, and a quad's in any order that keeps the same diagonal (v2-v3). Gouraud color words after the
     first must have 00 on top. Returns None for a malformed packet."""
     if len(words) != LEN[cmd]:
         return None
@@ -303,24 +303,24 @@ def packet_check(ctx, cmd, label, nwords, hint):
                     " | ".join(", ".join(f"0x{w:08X}" for w in f) for f in found), hint=hint)
 
 
-@check("flat triangle: GP0 20h, 4 words (colour, v1, v2, v3)",
+@check("flat triangle: GP0 20h, 4 words (color, v1, v2, v3)",
        hint="Words: 0x20BBGGRR, then one (y<<16)|(x&0xFFFF) word per vertex, in table order.")
 def _(ctx): packet_check(ctx, 0x20, "flat triangle", 4, "Words: 0x20BBGGRR, v1, v2, v3.")
 
 
-@check("flat quad: GP0 28h, 5 words (colour, v1, v2, v3, v4)",
+@check("flat quad: GP0 28h, 5 words (color, v1, v2, v3, v4)",
        hint="Words: 0x28BBGGRR, v1, v2, v3, v4 (Z order).")
 def _(ctx): packet_check(ctx, 0x28, "flat quad", 5, "Words: 0x28BBGGRR, v1, v2, v3, v4 (Z order).")
 
 
 @check("Gouraud triangle: GP0 30h, 6 words (c1, v1, c2, v2, c3, v3)",
-       hint="Only the FIRST colour word carries the command byte: 0x30BBGGRR, v1, 0x00BBGGRR, v2, 0x00BBGGRR, v3.")
-def _(ctx): packet_check(ctx, 0x30, "Gouraud triangle", 6, "Only the first colour word carries the command: 0x30BBGGRR, v1, 0x00BBGGRR, v2, 0x00BBGGRR, v3.")
+       hint="Only the FIRST color word carries the command byte: 0x30BBGGRR, v1, 0x00BBGGRR, v2, 0x00BBGGRR, v3.")
+def _(ctx): packet_check(ctx, 0x30, "Gouraud triangle", 6, "Only the first color word carries the command: 0x30BBGGRR, v1, 0x00BBGGRR, v2, 0x00BBGGRR, v3.")
 
 
 @check("Gouraud quad: GP0 38h, 8 words (c1, v1, c2, v2, c3, v3, c4, v4)",
-       hint="Only the FIRST colour word carries the command byte: 0x38BBGGRR, v1, c2, v2, c3, v3, c4, v4.")
-def _(ctx): packet_check(ctx, 0x38, "Gouraud quad", 8, "Only the first colour word carries the command: 0x38BBGGRR, v1, c2, v2, c3, v3, c4, v4.")
+       hint="Only the FIRST color word carries the command byte: 0x38BBGGRR, v1, c2, v2, c3, v3, c4, v4.")
+def _(ctx): packet_check(ctx, 0x38, "Gouraud quad", 8, "Only the first color word carries the command: 0x38BBGGRR, v1, c2, v2, c3, v3, c4, v4.")
 
 
 @check("each polygon packet is preceded by a read of GPUSTAT (wait for bit 26)",
@@ -335,21 +335,21 @@ def _(ctx):
 
 
 # ---- the picture -----------------------------------------------------------------------------------------
-@check("flat triangle and flat quad: the centroid of each (triangle) is the polygon's colour, whatever the winding",
-       hint="One colour in the whole polygon. Gallery 'alt1' reverses the triangle's vertex order: the GPU draws both windings.")
+@check("flat triangle and flat quad: the centroid of each (triangle) is the polygon's color, whatever the winding",
+       hint="One color in the whole polygon. Gallery 'alt1' reverses the triangle's vertex order: the GPU draws both windings.")
 def _(ctx):
-    pixel_check(ctx, "ft", TOL_FLAT, "Flat triangle missing or wrong colour here.")
-    pixel_check(ctx, "fq", TOL_FLAT, "Flat quad missing or wrong colour here; vertices in Z order v1 v2 / v3 v4.")
+    pixel_check(ctx, "ft", TOL_FLAT, "Flat triangle missing or wrong color here.")
+    pixel_check(ctx, "fq", TOL_FLAT, "Flat quad missing or wrong color here; vertices in Z order v1 v2 / v3 v4.")
 
 
-@check("Gouraud triangle: near each vertex, at the centre and between vertices, the colour is the interpolated one",
-       hint="Three colour words, one per vertex. A flat colour or the wrong vertex/colour pairing fails here.")
-def _(ctx): pixel_check(ctx, "gt", TOL_GOURAUD, "Gouraud triangle: colour does not match the interpolation of the vertex colours.")
+@check("Gouraud triangle: near each vertex, at the center and between vertices, the color is the interpolated one",
+       hint="Three color words, one per vertex. A flat color or the wrong vertex/color pairing fails here.")
+def _(ctx): pixel_check(ctx, "gt", TOL_GOURAUD, "Gouraud triangle: color does not match the interpolation of the vertex colors.")
 
 
-@check("Gouraud quad: interpolated colours inside both of its triangles (v1 v2 v3 and v2 v3 v4)",
-       hint="Four colour/vertex pairs in Z order: v1 v2 / v3 v4. Swapping v3 and v4 draws a different shape.")
-def _(ctx): pixel_check(ctx, "gq", TOL_GOURAUD, "Gouraud quad: wrong colour; check the vertex order and the colour words.")
+@check("Gouraud quad: interpolated colors inside both of its triangles (v1 v2 v3 and v2 v3 v4)",
+       hint="Four color/vertex pairs in Z order: v1 v2 / v3 v4. Swapping v3 and v4 draws a different shape.")
+def _(ctx): pixel_check(ctx, "gq", TOL_GOURAUD, "Gouraud quad: wrong color; check the vertex order and the color words.")
 
 
 @check("background untouched: every pixel away from the polygons is bg_color, in every gallery",

@@ -2,7 +2,7 @@
 
 ## 1. Concept
 
-A **subroutine** is code you jump to, run, and return from. `jal` jumps and records where to come back to (in `$ra`); `jr $ra` comes back. A shared agreement about which registers carry arguments, results, and survive the call turns that into a function.
+A **subroutine** is code you jump to, run, and return from. `jal` jumps and records where to come back to (in `$ra`); `jr $ra` comes back. A shared agreement about which registers carry arguments and results, and which survive a call, turns that into a function.
 
 ## 2. Why it matters
 
@@ -31,7 +31,7 @@ After this chapter you can:
 | `jal target` | `$ra = address of the jal + 8`, then jump to `target` |
 | `jr rs` | jump to the address in `rs` |
 | `jalr rs` | `$ra = address of the jalr + 8`, jump to the address in `rs` (indirect call) |
-| `jalr rs, rd` | same, but the return address goes into `rd` (armips order; GNU `as` writes `jalr rd, rs`) |
+| `jalr rs, rd` | same, but the return address goes into `rd` (armips order, target first; GNU `as` and objdump write `jalr rd, rs`) |
 
 `jal` is "jump and link": the **link** is the return address. It is `+ 8`, not `+ 4`, because the delay slot belongs to the call (Chapter 7). The slot runs first, then the callee, and on return execution resumes after the slot.
 
@@ -49,8 +49,8 @@ caller                          callee
 
 `jr $ra` is the standard return. Two more facts:
 
-- `jal` encodes a 26-bit word target, so it reaches only within the same 256 MB region. Everything in this book is in one region.
-- `jalr` calls a function whose address is in a register: a function pointer, a table of handlers, a BIOS entry. `jalr $t2` is shorthand for `jalr $t2, $ra` (armips puts the target register first; GNU `as` and objdump write it `jalr $ra, $t2`).
+- `jal` encodes a 26-bit word target, so it reaches only within the 256 MB region it sits in. All the code you write in this book is in one region; a target outside it needs `jr` or `jalr`.
+- `jalr` calls a function whose address is in a register: a function pointer, a table of handlers, a BIOS entry. `jalr $t2` is shorthand for `jalr $t2, $ra`.
 
 ### 5.2 The calling convention
 
@@ -65,11 +65,11 @@ The convention is the O32 ABI (the one the PS1 compilers use). Chapter 10 covers
 | `$28` | `$gp` | global pointer | **yes** |
 | `$29` | `$sp` | stack pointer | **yes** |
 | `$30` | `$fp` (`$s8`) | frame pointer / ninth saved register | **yes** |
-| `$31` | `$ra` | return address | the callee may change it; see 5.4 |
+| `$31` | `$ra` | return address | no: every call overwrites it (5.4) |
 | `$1` | `$at` | assembler temporary (pseudo-instructions use it) | no |
 | `$26-$27` | `$k0-$k1` | reserved for the kernel and exception handlers | never touch |
 
-Two roles for "preserved":
+The last column splits the registers into two groups:
 
 - **Caller-saved** (`$v`, `$a`, `$t`, `$at`): the callee may overwrite them. If the caller needs a value after the call, the caller must keep it somewhere safe first.
 - **Callee-saved** (`$s0-$s7`, `$gp`, `$sp`, `$fp`): the callee must hand them back unchanged. If it wants to use one, it saves the old value and restores it before returning.
@@ -106,7 +106,7 @@ Neither is how real code does it. They exist to show the mechanics; Chapter 10 r
 
 ## 6. Worked example
 
-[`example/main.s`](example/main.s) (`make` in `example/`) shows four things:
+[`example/main.s`](example/main.s) (`make` in `example/`) shows three things:
 
 | `results[i]` | Case | Value |
 |---|---|---|
@@ -174,7 +174,7 @@ The driver goes between `main` and `done`. It must call the routines with `jal`,
 parts/part-02-thinking-like-the-r3000/ch08-subroutines/verify/verify.sh
 ```
 
-Checks `starter/` by default; pass a path for a copy, `-v` for the log, `--solution` for the reference. The verifier does not trust the driver alone. It **calls your routines directly**: for each call it loads `$a0/$a1`, fills the saved registers with sentinel values and the temporaries with garbage, points `$ra` at a trampoline in unused memory, and jumps to the routine's label. The arguments are random and different each run (the seed is printed on failures). Then it runs the whole program on several patched data sets.
+Checks `starter/` by default; pass a path for a copy, `-v` for the log, `--solution` for the reference. The verifier does not trust the driver alone. It **calls your routines directly**: for each call it loads `$a0/$a1`, fills the saved registers with sentinel values and the temporaries with garbage, points `$ra` at a trampoline in unused memory, and jumps to the routine's label. The arguments are fixed edge cases plus random values that differ each run (the seed is printed on failures). Then it runs the whole program on several patched data sets.
 
 | Check | What it means | If it fails |
 |---|---|---|
@@ -200,7 +200,7 @@ A pass ends with `CHAPTER 08: PASSED (14/14 checks)`.
 - **Using `$s` registers without saving them.** Nothing stops you, and the caller breaks later. The verifier catches it.
 - **Forgetting the `nop` after `jr $ra`.** The instruction after it executes before the return, on purpose or not.
 - **A non-leaf routine without saving `$ra`.** It returns to itself forever (section 5.4).
-- **Assuming `$v0` starts at 0.** Initialise it. The verifier fills it with garbage.
+- **Assuming `$v0` starts at 0.** Initialize it. The verifier fills it with garbage.
 - **Falling into the routines.** If the driver has no `done` loop before them, execution runs straight into `factorial`.
 - **`sltu` for `max`.** It treats negative numbers as huge.
 

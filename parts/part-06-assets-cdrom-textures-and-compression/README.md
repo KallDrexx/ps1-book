@@ -6,12 +6,12 @@
 
 ## Chapters
 
-| # | Chapter | You build | Status |
-|---|---|---|---|
-| 29 | [The CD-ROM and Loading Files](ch29-the-cd-rom-and-loading-files/README.md) | "Ship from Disc": `cd_load_file`, a `MODEL.BIN` parser, and a flat-shaded ship read from a bootable `.cue/.bin` | available |
-| 30 | [Textured Polygons](ch30-textured-polygons/README.md) | "Crates and Logos": the rotating cube with a different TIM texture on each face, loaded from disc | available |
-| 31 | [Compression: LZSS Texture Packs](ch31-compression-lzss-texture-packs/README.md) | "Eight Textures, One File": `tpkpack.py` (host) and `tpk.c` (PS1): a pack of 8 textures shown as a grid of quads | available |
-| 32 | [A Real Model Format: `.SHP`](ch32-a-real-model-format-shp/README.md) | "The Ship, Textured": a validating `.SHP` parser with eight primitive types, the ship loaded from disc with its `.TPK` and drawn flat-shaded, then textured | available |
+| # | Chapter | You build |
+|---|---|---|
+| 29 | [The CD-ROM and Loading Files](ch29-the-cd-rom-and-loading-files/README.md) | "Ship from Disc": `cd_load_file`, a `MODEL.BIN` parser, and a flat-shaded ship read from a bootable `.cue/.bin` |
+| 30 | [Textured Polygons](ch30-textured-polygons/README.md) | "Crates and Logos": the rotating cube with a different TIM texture on each face, loaded from disc |
+| 31 | [Compression: LZSS Texture Packs](ch31-compression-lzss-texture-packs/README.md) | "Eight Textures, One File": `tpkpack.py` (host) and `tpk.c` (PS1): a pack of 8 textures shown as a grid of quads |
+| 32 | [A Real Model Format: `.SHP`](ch32-a-real-model-format-shp/README.md) | "The Ship, Textured": a validating `.SHP` parser with eight primitive types, the ship loaded from disc with its `.TPK` and drawn flat-shaded, then textured |
 
 ## How the part flows
 
@@ -28,7 +28,7 @@ Finish Part V. You will use:
 
 - the GTE pipeline of Chapters 25 and 26 (`gte_*`, `NCLIP`, `AVSZ`, ordering-table slots);
 - the C project structure and the `psxe` library from Part IV;
-- endianness, alignment and the memory map from Chapters 2, 10 and 11.
+- endianness and the memory map (Chapter 2), the PSX-EXE header (Chapter 5) and alignment (Chapter 11).
 
 The generated assets are **not committed**. Each chapter's `CMakeLists.txt` runs the generators in `tools/assets/` into `build/assets/` before it builds the disc image; the file formats are specified in [Appendix E](../../appendices/E-file-formats.md). The workflow is the Part V one: `source tools/env.sh`, `make` in `starter/` (now producing `hoverline.bin` and `hoverline.cue`), `verify.sh`.
 

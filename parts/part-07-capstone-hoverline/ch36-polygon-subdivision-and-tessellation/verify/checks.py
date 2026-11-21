@@ -6,9 +6,9 @@ top and bottom midpoints, children in Z order, five new vertices projected per s
 MAIN RUN (probe.lua): driven by frame_no. Start leaves the title; TRIANGLE is pressed, pressed again and held (the debug toggle is edge-triggered); then harness-chosen poses (cam_eye, cam_yaw,
 wire_mode, subdiv_debug, subdiv_reserve written at the end of a frame) are recorded one frame later: view_mtx, track_stats, subdiv_stats, the packets of the ordering table, the CPU cycles
 of track_draw, a screenshot. Checks:
-  - every pose's counters and packets equal the model's (levels, leaves, backing quads, budget cuts, positions, UVs, tpage / CLUT words, outlines in the colour of their depth);
+  - every pose's counters and packets equal the model's (levels, leaves, backing quads, budget cuts, positions, UVs, tpage / CLUT words, outlines in the color of their depth);
   - the UV words alone (a multiset) equal the model's exact midpoints, so a rounding error or dropped UVs is named as such;
-  - the gap detector: with debug off, every pixel along every seam between two drawn faces (and its neighbours across the seam) is not the background colour;
+  - the gap detector: with debug off, every pixel along every seam between two drawn faces (and its neighbors across the seam) is not the background color;
   - the budget rule with a patched reserve; no prims_dropped in the normal poses; the guard bytes; the toggle.
 ALT RUN: a second disc, as in Chapter 35 (track 2 translated far from the origin, texture ids permuted, two untextured sections, hostile TIM positions)."""
 
@@ -165,7 +165,7 @@ def unpack_xy(w):
     return (s16(w & 0xFFFF), s16(w >> 16))
 
 
-def flag_colour(flags):
+def flag_color(flags):
     if flags & 8:
         return COL["start"]
     if flags & 4:
@@ -312,7 +312,7 @@ class Ref:
                      w[2], uvs[4] | (uvs[5] << 8), w[3], uvs[6] | (uvs[7] << 8))
             self.packets.append((slot, words, fi, "FT4", depth))
         else:
-            self.packets.append((slot, tuple([(0x28 << 24) | gpu_word(flag_colour(f["flags"]))] + w), fi, "F4", depth))
+            self.packets.append((slot, tuple([(0x28 << 24) | gpu_word(flag_color(f["flags"]))] + w), fi, "F4", depth))
         return True
 
     def face(self, fi, f, level):
@@ -723,7 +723,7 @@ def level_of(face_info_level):
 
 # ---- the toggle ----------------------------------------------------------------------------------------------------------------------------------
 @check("the debug toggle: TRIANGLE flips subdiv_debug once per press (a held button toggles once)",
-       hint="game_update: `if (input_pressed(INPUT_TRIANGLE)) subdiv_debug ^= 1;` in the game state, next to Select's wire_mode (input_held would flip it every frame).")
+       hint="README 7.3 step 1: the toggle is edge-triggered, like Select's wire_mode in game_update (a held button must flip it once, not every frame).")
 def _(ctx):
     r, info, layout = observe(ctx, "main")
     t = as_list(r.record("toggles"))
@@ -739,8 +739,8 @@ def check_levels(ctx, name):
         recovered += ref.recovered
         lab = f"{name}: [{p['label']}]"
         expect_eq(as_list(s["sd"]), ref.sd_list(), f"{lab}: subdiv_stats (faces by level 0/1/2, quads drawn by depth 0/1/2, leaves near/back/big/dropped, budget cuts, outlines, backing quads)", fmt="dec",
-                  hint="README 5.4: the level of a section comes from the smallest depth `sz` among its four road-edge vertices (edges[0..3]) that are VS_OK and not nearer than TRK_NEAR_Z: "
-                       f"2 below {Z2}, 1 below {Z1}, else 0; every face of the section gets it. Then the budget rule (5.7), then the leaf rules (5.6).")
+                  hint="README 5.4: which vertices of the section give the depth, which threshold gives which level, and that every face of the section gets it. "
+                       "Then the budget rule (5.7), then the leaf rules (5.6).")
         expect_eq(as_list(s["stats"]), ref.stat_list(), f"{lab}: track_stats (seen, far, near, back, big, dropped, drawn, wire)", fmt="dec",
                   hint="A subdivided face is counted once: drawn if any leaf was linked, else dropped, near, big, back (the first that applies).")
         expect_eq(s["dropped"], ref.prims_dropped, f"{lab}: prims_dropped", fmt="dec")
@@ -788,8 +788,8 @@ def check_packets(ctx, name):
             more = f" (face {fi}, depth {dp}, level {ref.face_info[fi]['level']}: flags 0x{face['flags']:02X}, tex {face['tex']}, uv {face['uv']})" if face else ""
             raise CheckFailure(expected=f"{lab}: {len(want)} packets; e.g. slot {ex[0]}: {[hex(x) for x in ex[1]]}{more}",
                                actual=f"{len(have)} packets; {kind} {len(missing) if missing else len(extra)} (first: slot {ex[0]}, words {[hex(x) for x in ex[1]]})",
-                               hint="A leaf: corners in Z order (children keep the parent's order: [q0 m01 m02 c], [m01 q1 c m13], [m02 c q2 m23], [c m13 m23 q3]), positions = the RTPT of the integer "
-                                    "midpoints, the backing quad: the whole face once, in the slot of its farthest leaf, linked after them (README 5.8), UVs = exact integer midpoints, tpage / CLUT words of the face's tile.")
+                               hint="README 5.3: the children's corner order and the integer midpoints (positions and UVs); 5.5: the RTPT inputs; 5.6: the leaf's slot; "
+                                    "5.8: the backing quad (the whole face once, its slot, linked after the leaves); tpage / CLUT words are the face's tile's.")
         # the backing quad must be DRAWN before (under) its face's leaves of the same slot: the table is walked in drawing order, so its
         # position in the slot must come first (the multiset comparison above cannot see the order; a backing quad on top hides no crack and the leaves)
         owner = {}
@@ -825,7 +825,7 @@ def _(ctx):
 
 
 @check("alt disc: the same packets (track translated, texture ids permuted, two untextured sections)",
-       hint="Flat faces are subdivided too: leaves are POLY_F4 in the flag colour, nothing to interpolate.")
+       hint="Flat faces are subdivided too: leaves are POLY_F4 in the flag color, nothing to interpolate.")
 def _(ctx):
     check_packets(ctx, "alt")
 
@@ -854,13 +854,13 @@ def check_uvs(ctx, name):
             raise CheckFailure(expected=f"{lab}: every quad's four (u, v) are exact midpoints of its parent's; e.g. a quad of face {fi_dp[0]} at depth {fi_dp[1]} with texels {miss[0] if miss else '?'}"
                                         + (f" (the face's own UVs after FLIP_H and the tile origin: {[ (fa['uv'][k]) for k in range(4)]})" if fa else ""),
                                actual=f"{len(have)} textured quads in the table, {len(want)} expected; {len(miss)} expected UV sets missing",
-                               hint="(a + b) >> 1 on the ABSOLUTE texels (after FLIP_H, with the tile origin): exact, so no rounding up, no dropped UVs (a quad with the parent's UVs is a texture squeezed "
-                                    "into every quarter), the centre is the midpoint of the top and bottom midpoints.")
+                               hint="README 5.3: the midpoint rule on the face's FINAL texels (after FLIP_H, with the tile origin), its rounding, and which two midpoints give the center. "
+                                    "A quad with its parent's UVs is the whole texture squeezed into every quarter.")
         nchk += len(want)
     expect_true(nchk > 300, f"{name}: enough subdivided and plain quads' UVs compared", str(nchk))
 
 
-@check("main disc: the UVs of every quad are exact: each child's corners are the parent's corner / edge-midpoint / centre texels, (a + b) >> 1, children in Z order",
+@check("main disc: the UVs of every quad are exact: each child's corners are the parent's corner / edge-midpoint / center texels, (a + b) >> 1, children in Z order",
        hint="Subdivide the texture coordinates exactly like the positions, from the face's FINAL UVs (mirrored for FLIP_H, tile origin added). Compare with the model's expected texels in the failure.")
 def _(ctx):
     check_uvs(ctx, "main")
@@ -916,7 +916,7 @@ def sweep_seams(ref, img):
     return n, nm, bad
 
 
-def tile_colours_clear_of_bg():
+def tile_colors_clear_of_bg():
     near = 0
     for b in MAIN_TIMS:
         w, h, px = T.decode_rgba(T.parse(b))
@@ -924,11 +924,11 @@ def tile_colours_clear_of_bg():
     return near
 
 
-@check("the gap detector: with debug off, every pixel along every seam between two drawn faces, and its neighbours across the seam, is not the background colour (no cracks), including seams between levels",
-       hint="A T-junction: the finer face's edge midpoints are not on the coarser neighbour's straight edge after rounding, so pixels between them are covered by neither. "
-            "README 5.8: draw the whole face once behind its quads (the backing quad): it tiles exactly with the neighbour, so a slit shows the face's own texture, never the background.")
+@check("the gap detector: with debug off, every pixel along every seam between two drawn faces, and its neighbors across the seam, is not the background color (no cracks), including seams between levels",
+       hint="A T-junction: the finer face's edge midpoints are not on the coarser neighbor's straight edge after rounding, so pixels between them are covered by neither. "
+            "README 5.8: draw the whole face once behind its quads (the backing quad): it tiles exactly with the neighbor, so a slit shows the face's own texture, never the background.")
 def _(ctx):
-    expect_eq(tile_colours_clear_of_bg(), 0, "no tile pixel looks like the background colour (the detector cannot be fooled by a texel)", fmt="dec")
+    expect_eq(tile_colors_clear_of_bg(), 0, "no tile pixel looks like the background color (the detector cannot be fooled by a texel)", fmt="dec")
     for name in ("main", "alt"):
         r, recs, layout = pose_records(ctx, name)
         total = mixed = 0
@@ -941,7 +941,7 @@ def _(ctx):
             mixed += nm
             if bad:
                 px, py, f1, f2, l1, l2 = bad[0]
-                raise CheckFailure(expected=f"{name}: [{p['label']}] no background-coloured pixel along any seam",
+                raise CheckFailure(expected=f"{name}: [{p['label']}] no background-colored pixel along any seam",
                                    actual=f"{len(bad)} background pixels along seams; first at ({px}, {py}) on the edge between face {f1} (drawn at level {l1}) and face {f2} (level {l2})",
                                    hint="A crack. Seams inside one section can't crack (same level, shared vertices); the cracks are between sections of different levels (a T-junction).")
         expect_true(total > 2000, f"{name}: enough seam pixels were sampled ({total})", str(total))
@@ -950,7 +950,7 @@ def _(ctx):
 
 # ---- the budget -----------------------------------------------------------------------------------------------------------------------------------
 @check("the primitive budget: no quad is dropped in the normal poses; with a patched subdiv_reserve the budget rule cuts the level (counted in budget_cuts) and still nothing overflows",
-       hint="README 5.7: while level > 0 and ot_bytes_left() < subdiv_reserve + (4^level + 1) * leaf_bytes: level--.")
+       hint="README 5.7: the budget rule (the reserve, the leaves and the backing quad, the outline bytes).")
 def _(ctx):
     for name in ("main", "alt"):
         r, recs, layout = pose_records(ctx, name)
@@ -970,8 +970,8 @@ def _(ctx):
 
 
 # ---- the debug outlines ---------------------------------------------------------------------------------------------------------------------------
-@check("debug outlines: with subdiv_debug every quad drawn has an outline in the colour of its depth (yellow 0, cyan 1, magenta 2); counts per colour equal the model's; the picture shows them",
-       hint="track_emit picks the colour by `depth` when subdiv_debug is on (COL_LEVEL0..2); depth 0 is the wireframe yellow.")
+@check("debug outlines: with subdiv_debug every quad drawn has an outline in the color of its depth (yellow 0, cyan 1, magenta 2); counts per color equal the model's; the picture shows them",
+       hint="track_emit picks the color by `depth` when subdiv_debug is on (COL_LEVEL0..2); depth 0 is the wireframe yellow.")
 def _(ctx):
     r, recs, layout = pose_records(ctx, "main")
     seen = [0, 0, 0]
@@ -984,7 +984,7 @@ def _(ctx):
         for sl, w in decode_pk(s["pk"]):
             if w[0] >> 24 == 0x48:
                 col = w[0] & 0xFFFFFF
-                expect_true(col in cols, f"{lab}: an outline has one of the three level colours", f"0x{col:06X}")
+                expect_true(col in cols, f"{lab}: an outline has one of the three level colors", f"0x{col:06X}")
                 count[cols[col]] += 1
         want = [sum(1 for pk in ref.packets if pk[3] == "L5" and pk[4] == d) for d in range(3)]
         expect_eq(count, want, f"{lab}: outlines per depth (0, 1, 2)", fmt="dec")
@@ -993,9 +993,9 @@ def _(ctx):
         for d, col in enumerate(LEVEL_COL):
             if want[d] >= 4:
                 hits = sum(1 for y in range(0, H, 1) for x in range(0, W, 1) if all(abs(a - b) <= 16 for a, b in zip(img.pixel(x, y), col)))
-                expect_true(hits >= 20, f"{lab}: the picture contains the depth-{d} outline colour {col}", str(hits))
+                expect_true(hits >= 20, f"{lab}: the picture contains the depth-{d} outline color {col}", str(hits))
                 seen[d] += 1
-    expect_true(all(seen), "all three depth colours were seen in pictures", str(seen))
+    expect_true(all(seen), "all three depth colors were seen in pictures", str(seen))
 
 
 # ---- cost -----------------------------------------------------------------------------------------------------------------------------------------

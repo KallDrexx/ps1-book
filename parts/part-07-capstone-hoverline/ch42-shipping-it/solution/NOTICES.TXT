@@ -21,16 +21,16 @@ sampled, traced or copied material from any commercial game is used.
   DATA/TRACK.TPK                              track textures (generated: texgen.py, tpkpack_ref.py)
   DATA/SHIP.SHP, SHIP.TPK                     the ship and its textures (generated: shpgen.py, texgen.py)
   DATA/ENGINE.VAG, BOOST.VAG, THUD.VAG,
-       BEEP.VAG, GO.VAG                       sound effects (synthesised: sfxgen.py, wav2vag.py)
-  Audio track 2                               music loop (synthesised: musicgen.py)
+       BEEP.VAG, GO.VAG                       sound effects (synthesized: sfxgen.py, wav2vag.py)
+  Audio track 2                               music loop (synthesized: musicgen.py)
   HOVER.EXE                                   the program (C, built with PSn00bSDK)
 
 Software
 --------
 Built with PSn00bSDK 0.24 (https://github.com/Lameguy64/PSn00bSDK), whose runtime libraries are
 distributed under the Mozilla Public License 2.0 and are used unmodified; their source is available
-at that address. The
-disc image is made with mkpsxiso 2.30 (a build tool: nothing of it is on the disc).
+at that address. The disc image is made with mkpsxiso 2.30 (a build tool: none of its code is on
+the disc).
 
 Copyright and terms
 -------------------

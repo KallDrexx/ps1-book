@@ -3,7 +3,7 @@
 
   python levels.py build/assets/TRACK.TRK --section 0 --back 1300 --height 450        # from starter/, after make
 
-The camera stands `back` units behind the centre of --section along its forward vector and `height` units above the road, looking along the section's
+The camera stands `back` units behind the center of --section along its forward vector and `height` units above the road, looking along the section's
 heading (the harness' poses; pitch 0 as in the fly camera). Depth is the view-space z of a vertex: for a camera at yaw `a` it is dx * sin(a) + dz * cos(a)
 with d = vertex - eye (floating point here; the verifier's model is the GTE's integer arithmetic, so a section within a unit or two of a threshold can
 differ). The rule is README 5.4: the smallest depth among the section's four road-edge vertices that are in front of the near limit; 2 below Z2, 1 below Z1.

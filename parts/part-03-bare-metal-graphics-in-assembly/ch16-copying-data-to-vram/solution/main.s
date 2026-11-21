@@ -87,7 +87,7 @@ part1:                              ; 15-bit display: background, then the image
 
 part2:                              ; 24-bit display: switch mode, then the whole screen
     lui   $t0, 0x1F80
-    li    $t1, 0x08000011           ; GP1(08h): 320 wide, 240 high, NTSC, bit 4 = 24-bit colour
+    li    $t1, 0x08000011           ; GP1(08h): 320 wide, 240 high, NTSC, bit 4 = 24-bit color
     sw    $t1, 0x1814($t0)
     lw    $a0, img24_w
     jal   bpp24_halfwords
@@ -137,7 +137,7 @@ gi_wait:
     jr    $ra
     nop
 
-gpu_clear:                      ; fill rectangle: GP0(02h), the colour is 0x00RRGGBB; h is the 5th argument, 16($sp)
+gpu_clear:                      ; fill rectangle: GP0(02h), the color is 0x00RRGGBB; h is the 5th argument, 16($sp)
     lui   $t0, 0x1F80
     lw    $t3, 16($sp)          ; h
 gc_wait:
@@ -183,7 +183,7 @@ routines_end:
 ; ---- data -----------------------------------------------------------------------------------------------------
 .align 4
 mode:       .word 0                 ; 0 = part 1 (16-bit), 1 = part 2 (24-bit); the verifier patches this
-img16_x:    .word 112               ; where the 96x64 image goes in VRAM (centred on the 320x240 screen)
+img16_x:    .word 112               ; where the 96x64 image goes in VRAM (centered on the 320x240 screen)
 img16_y:    .word 88
 img16_w:    .word 96                ; in pixels = 16-bit units
 img16_h:    .word 64

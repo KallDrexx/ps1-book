@@ -43,8 +43,8 @@ are not there. Include `<inline_c.h>` after `<psxgte.h>` and use macro sequences
 | `AverageZ3(sz0, sz1, sz2)` | absent | `gte_ldsz3(sz0, sz1, sz2); gte_avsz3(); gte_stotz(&otz);` |
 | `AverageZ4(sz0, sz1, sz2, sz3)` | absent | `gte_ldsz4(sz0, sz1, sz2, sz3); gte_avsz4(); gte_stotz(&otz);` |
 
-The book's Chapter 25 project does the first, third and `NormalClip` rows and averages with `gte_ldsz4`/`gte_avsz4`;
-Chapter 27 does the batched forms. I believe Sony's `libgte` spells them `AverageSZ3`/`AverageSZ4` (from memory); neither spelling exists here.
+Chapter 25's project uses the setters, the `RotTransPers` and `NormalClip` sequences and `gte_ldsz4`/`gte_avsz4`;
+Chapter 27 uses the batched forms.
 
 **Other PsyQ `libgte` names checked and absent** (no header, no symbol): `ApplyRotMatrix`, `ApplyTransposeMatrixLV`,
 `TransposeMatrix`, `MulRotMatrix`, `MulMatrix2`, `SetMulMatrix`, `SetMulRotMatrix`, `RotMatrixX/Y/Z`, `RotMatrixYXZ`,
@@ -79,7 +79,7 @@ code says `SetRotMatrix(&m); SetTransMatrix(&m);`, write `load_matrix(&m);`.
 * `gte_ld*` loads do not declare `"memory"`; put a compiler barrier before them if you just wrote the data.
 * `gte_stflg` reads `FLAG` with `cfc2` and a `nop`.
 * The `gte_nop` macro is commented out in the header.
-* The names `gte_ldv0`, `gte_rtps`, `gte_stsxy`, ... are exactly the PsyQ ones; the Setters above are the exception
+* The names `gte_ldv0`, `gte_rtps`, `gte_stsxy`, ... are exactly the PsyQ ones; the setters above are the exception
   because of the defect.
 
 ## G.4 GPU (`libgpu`)
@@ -96,7 +96,7 @@ code says `SetRotMatrix(&m); SetTransMatrix(&m);`, write `load_matrix(&m);`.
 | `LoadTPage`, `LoadClut` | absent | `LoadImage` of the TIM's rectangles, then compute the words (Chapters 30, 35). `GetTimInfo` (0.24, fills a `TIM_IMAGE`) and `GsGetTimInfo` exist |
 | `LoadImage`, `StoreImage`, `MoveImage` | same | `LoadImage2`/`StoreImage2`/`MoveImage2` are non-blocking variants. `LoadImage` is asynchronous: `DrawSync(0)` before freeing the data |
 | `ClearImage`, `FillImage` | absent | a `FILL` primitive (`setFill` + `DrawPrim`), or `DRAWENV.isbg` |
-| `FntLoad`, `FntOpen`, `FntPrint`, `FntFlush`, `FntSort` | same | `FntSort(ot, pri, x, y, text)` draws through the ordering table (Chapter 38); I am not sure PsyQ has a function of that name |
+| `FntLoad`, `FntOpen`, `FntPrint`, `FntFlush`, `FntSort` | same | `FntSort(ot, pri, x, y, text)` draws through the ordering table (Chapter 38); from memory, PsyQ has no `FntSort` |
 | `GetVideoMode`, `SetVideoMode` | present (0.24: `MODE_NTSC` / `MODE_PAL`) | |
 | `GetODE`, `IsIdleGPU` | `GetODE` same; `IsIdleGPU` new | |
 | `SetDrawMode`, `SetDrawArea`, `SetDrawOffset` (functions) | absent | the packet macros `setDrawTPage`, `setDrawArea`, `setDrawOffset`, `setTexWindow`, `setDrawStp` build the corresponding primitives |
@@ -107,7 +107,7 @@ code says `SetRotMatrix(&m); SetTransMatrix(&m);`, write `load_matrix(&m);`.
 | PsyQ | PSn00bSDK 0.24 | Note |
 |---|---|---|
 | `CdInit`, `CdControl`, `CdControlB`, `CdControlF`, `CdSync`, `CdIntToPos`, `CdPosToInt`, `CdGetSector`, `CdRead`, `CdReadSync`, `CdReadCallback`, `CdSyncCallback`, `CdReadyCallback`, `CdMix`, `CdSearchFile`, `CdLoadSession`, `CdStatus`, `CdMode`, `CdLastCom`, `CdLastPos` | same | `CdSearchFile` is stricter in 0.24 (upper case, leading backslash, Chapter 29). `CdMix(const CdlATV *)` |
-| `CdReady`, `CdFlush`, `CdGetSession`, `CdSetDebug`, `CdReadFile`, `CdInitSnd`, `Ds*` (`libds`), `St*` (`libpress` streaming) | absent | |
+| `CdReady`, `CdFlush`, `CdGetSession`, `CdSetDebug`, `CdReadFile`, `CdInitSnd`, `Ds*` (`libds`), `St*` (movie streaming) | absent | |
 | | `CdReadRetry`, `CdReadBreak`, `CdCommand`, `CdAutoPauseCallback`, `CdGetToc`, `CdOpenDir`/`CdReadDir`, `CdGetVolumeLabel`, `CdIsoError`, `CdGetRegion`, `CdUnlock` | 0.24 additions |
 | `InitHeap(addr, size)`, `malloc`, `free` | `InitHeap` in `<stdlib.h>`, same | |
 | `EnterCriticalSection`, `ExitCriticalSection`, `OpenEvent`, `CloseEvent`, `EnableEvent`, `TestEvent`, `WaitEvent`, `DeliverEvent`, `FlushCache` | same (BIOS wrappers in `psxapi.h`) | |

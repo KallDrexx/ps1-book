@@ -55,7 +55,7 @@ static __attribute__((unused)) int vertex_prepare(const Track *t, int i)
    TODO (step 5): faces_seen++; classify ALL FOUR vertices with vertex_prepare; then, in this order:
    any VS_FAR -> faces_far; any trk_sz < TRK_NEAR_Z -> faces_near; NCLIP of v0 v1 v2 <= 0 -> faces_back;
    screen box wider than TRK_MAX_W or taller than TRK_MAX_H -> faces_big; ot_alloc fails -> faces_dropped (and prims_dropped,
-   and no more allocations in this track_draw); else link a POLY_F4 in the legend colour (and, with wire_mode, a LINE_P5)
+   and no more allocations in this track_draw); else link a POLY_F4 in the legend color (and, with wire_mode, a LINE_P5)
    at slot (AVSZ4 of the four trk_sz) >> OTZ_SHIFT, faces_drawn++ (wire_prims++), prims_submitted += packets. */
 static __attribute__((unused)) void draw_face(const Track *t, const TrkFace *f)
 {

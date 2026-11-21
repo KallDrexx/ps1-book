@@ -14,7 +14,7 @@ Tex     track_tex[LAYOUT_TILE_COUNT];
 
 int track_tex_load(const char *path)
 {
-	/* TODO (README 7.3, step 4). The contract is in track_tex.h. Chapter 31 gave you cd_load_file, tpk_parse and tpk_unpack;
+	/* TODO (README 7.3, step 4). The contract is in track_tex.h. Chapter 29 gave you cd_load_file, Chapter 31 tpk_parse and tpk_unpack;
 	   tim_parse describes each tile; tim_upload_at copies it to a place of your choosing. Until you write it, no tile is loaded
 	   and every face is drawn flat, as in Chapter 34. */
 	(void) path;

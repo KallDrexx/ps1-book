@@ -38,7 +38,7 @@ uint8_t face_colors[6][3] = {
 
 SVECTOR rot      = { 128, 256, 0, 0 };    /* angles about X, Y, Z: 4096 = one turn, kept in 0..4095 */
 SVECTOR rot_step = {  24,  40, 0, 0 };    /* added to rot every frame */
-int32_t cam_z    = 6 * 4096;              /* z of the cube's centre, in the units of cube[] */
+int32_t cam_z    = 6 * 4096;              /* z of the cube's center, in the units of cube[] */
 int32_t proj_h   = 256;                   /* projection distance h, in pixels */
 
 MATRIX  mtx;                              /* the matrix uploaded to the GTE this frame */
@@ -66,7 +66,7 @@ static __attribute__((noipa, unused)) void load_matrix(const MATRIX *m)
 
 static void init_gte(void)
 {
-	/* TODO (README 7.3, step 1): InitGeom(); set the screen offset to the centre (CX, CY); set the projection distance to proj_h. */
+	/* TODO (README 7.3, step 1): InitGeom(); set the screen offset to the center (CX, CY); set the projection distance to proj_h. */
 }
 
 static void update_angles(void)

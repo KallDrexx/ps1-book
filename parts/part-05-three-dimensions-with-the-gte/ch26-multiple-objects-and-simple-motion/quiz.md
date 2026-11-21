@@ -14,11 +14,11 @@ Exactly where the first one is, with its orientation. `RTPS` multiplies by whate
 B, not A. The library has a single stack slot, and `RotMatrix` itself calls `PushMatrix` on entry (saving B, the matrix loaded at that moment, over your A) and `PopMatrix` on exit. Your `PopMatrix` then restores B. Keep your own `MATRIX` in a C variable and re-upload it instead.
 </details>
 
-**3.** `CompMatrixLV(&cam, &obj, &out)` with `cam` = identity rotation and translation `(0, 0, 14336)`, and `obj.t = (1000, -500, 0)`. What is `out.t`? What is `out.R`?
+**3.** `CompMatrixLV(&cam, &obj, &out)` with `cam` = identity rotation and translation `(0, 0, 14336)`, and `obj.t = (1000, -500, 0)`. What is `out.t`? What is the rotation part, `out.m`?
 
 <details><summary>Answer</summary>
 
-`out.t = cam.R * obj.t + cam.t = (1000, -500, 14336)`. `out.R = cam.R * obj.R = obj.R` (the identity changes nothing). `out` must still be uploaded with `gte_SetRotMatrix`/`gte_SetTransMatrix`.
+`out.t = cam.m * obj.t + cam.t = (1000, -500, 14336)`. `out.m = cam.m * obj.m = obj.m` (the identity changes nothing). `out` must still be uploaded (`load_matrix`): the call leaves `cam` in the GTE.
 </details>
 
 **4.** A cube falls from rest with `gravity = 4` units per frame squared, using `vy += g; y += vy`. How far has it fallen after 10 frames? Compare with `g * t^2 / 2`.

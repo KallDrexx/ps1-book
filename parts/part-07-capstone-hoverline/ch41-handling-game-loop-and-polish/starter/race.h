@@ -5,7 +5,7 @@
 #include "track.h"
 
 /* ---- the race (README 5.5 - 5.9) ---------------------------------------------------------------------------------------------
-   A 3-lap time trial. Time is counted in TICKS (one per video frame: 1/60 s NTSC, 1/50 s PAL, README 5.1 of Chapter 37) and shown in
+   A 3-lap time trial. Time is counted in TICKS (one per video frame: 1/60 s NTSC, 1/50 s PAL, Chapter 37) and shown in
    minutes, seconds and hundredths with `hz` = 60 or 50 (race_hz). Laps are counted from the sections the ship passes, not from where it is. */
 
 #define RACE_MAX_LAPS  8
@@ -64,7 +64,7 @@ int32_t race_hz(void);
    When both links name `cur` (a two-section ring) the answer is +1. */
 int race_section_step(const Track *t, int prev, int cur);
 
-/* One tick of racing (README 5.6), in this order. `section` is ship_section after collide_ship (it may be negative: no section).
+/* One tick of racing (README 5.5, 5.6, 5.9), in this order. `section` is ship_section after collide_ship (it may be negative: no section).
      1. r->ticks++
      2. step = 0; if section >= 0: if r->prev_section >= 0, step = race_section_step(t, prev_section, section); r->prev_section = section.
      3. r->progress += step; r->furthest = max(furthest, progress).

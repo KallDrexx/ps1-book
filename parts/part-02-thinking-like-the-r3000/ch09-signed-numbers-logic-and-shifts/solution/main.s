@@ -3,8 +3,8 @@
 ;   abs(a0)                    -> v0 = |a0| as a signed 32-bit value (abs(0x80000000) = 0x80000000)
 ;   sign_extend(a0=value, a1=bits 1..32) -> v0 = low `bits` bits of value, sign-extended to 32 bits
 ;   popcount(a0)               -> v0 = number of 1 bits in a0 (0..32)
-;   rgb888_to_bgr555(a0=0x??RRGGBB) -> v0 = 0x0000_0BBB_BBGG_GGGR_RRRR (low 3 bits of each channel dropped)
-;   bgr555_unpack(a0=0x????xBBBBBGGGGGRRRRR) -> v0 = 0x00RRGGBB (c8 = c5<<3 | c5>>2), v1 = bit 15 (0/1)
+;   rgb888_to_bgr555(a0=0x??RRGGBB) -> v0 = 0BBBBBGGGGGRRRRR in bits 15..0 (low 3 bits of each channel dropped)
+;   bgr555_unpack(a0 = MBBBBBGGGGGRRRRR in bits 15..0) -> v0 = 0x00RRGGBB (c8 = c5<<3 | c5>>2), v1 = M (0/1)
 ;   swap_endian32(a0)          -> v0 = the four bytes of a0 in reverse order
 
 .psx
@@ -49,7 +49,7 @@ main:
     nop
     sw    $v0, 24($s1)
 
-    lb    $t0, 0($s0)           ; results[7..10]: the four load flavours at drv_val
+    lb    $t0, 0($s0)           ; results[7..10]: the four load flavors at drv_val
     lbu   $t1, 0($s0)
     lh    $t2, 0($s0)
     lhu   $t3, 0($s0)

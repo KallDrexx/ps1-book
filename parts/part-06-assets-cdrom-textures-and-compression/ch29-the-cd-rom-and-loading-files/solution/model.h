@@ -7,7 +7,7 @@
 /* One face record of MODEL.BIN, exactly as it is in the file (Appendix E.7). */
 typedef struct {
 	uint8_t i[4];                    /* vertex indices; i[3] == 0xFF means a triangle */
-	uint8_t r, g, b, pad;            /* flat colour */
+	uint8_t r, g, b, pad;            /* flat color */
 } ModelFace;
 
 /* A parsed model. `verts` and `faces` point INTO the buffer that was parsed: free that, not these. */

@@ -54,7 +54,7 @@ _Static_assert(sizeof(ShipCfg) == 52, "the verifier patches 13 words at `ship_cf
 
 /* ---- state the verifier reads --------------------------------------------------------------------------------------------- */
 extern Ship        ship;          /* the player's ship */
-extern ShipCfg     ship_cfg;      /* the constants above (initialised data) */
+extern ShipCfg     ship_cfg;      /* the constants above (initialized data) */
 extern int32_t     video_mode;    /* 0 = NTSC, 1 = PAL. Read once at the start of main (README 5.7) */
 extern int32_t     dt_scale;      /* DT_NTSC or DT_PAL, from video_mode */
 extern int32_t     frame_ticks;   /* physics ticks run in the last game frame (README 5.7) */
@@ -70,11 +70,11 @@ extern TpkTextures ship_store;    /* SHIP.TPK's textures */
 int ship_place(Ship *s, const Track *t);
 
 /* The heading of the direction (x, z): the whole-unit angle a in 0..4095, 0 along +z and 1024 along +x, that points the same way
-   (isin(a) * x + icos(a) * z > 0) and minimises |isin(a) * z - icos(a) * x| (the first one on a tie). Minimising the CROSS product, not
-   maximising the dot product: the dot is flat at its peak, so table errors would move the maximum by a few units. (0, 0) gives 0. |x|, |z| <= 8192. */
+   (isin(a) * x + icos(a) * z > 0) and minimizes |isin(a) * z - icos(a) * x| (the first one on a tie). Minimizing the CROSS product, not
+   maximizing the dot product: the dot is flat at its peak, so table errors would move the maximum by up to 15 units. (0, 0) gives 0. |x|, |z| <= 8192. */
 int32_t heading_angle(int32_t x, int32_t z);
 
-/* The whole-unit angle p in -1024..1024 that minimises |isin(p) + y| (the first on a tie), y the 4.12 y component of a unit
+/* The whole-unit angle p in -1024..1024 that minimizes |isin(p) + y| (the first on a tie), y the 4.12 y component of a unit
    direction: nose up for y < 0 (+y is down). |y| <= 4096. */
 int32_t pitch_angle(int32_t y);
 

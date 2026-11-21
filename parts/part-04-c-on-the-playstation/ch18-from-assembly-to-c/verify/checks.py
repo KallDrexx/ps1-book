@@ -1,10 +1,10 @@
 """Chapter 18 checks: From Assembly to C.
 Build: CMake + PSn00bSDK (the harness's cmake path). Static: the ELF exports main/expand5/rgb888_to_bgr555/stop_here, the
 assembly lives in a .s file (not C), annotated.s is real annotated compiler output for expand5.
-Dynamic (probe.lua): expand5 and rgb888_to_bgr555 are called DIRECTLY with all 32 channel values / edge+random colours
-(callee-saved registers checked); then the real program runs on three patched colours of `clear_rgb888`, and the probe
+Dynamic (probe.lua): expand5 and rgb888_to_bgr555 are called DIRECTLY with all 32 channel values / edge+random colors
+(callee-saved registers checked); then the real program runs on three patched colors of `clear_rgb888`, and the probe
 records every call to rgb888_to_bgr555 (argument, return value) and, in a fourth run, FORCES a different return
-value: the screen must follow it (so the C code really uses the assembly's result). Screenshots are solid-colour checks."""
+value: the screen must follow it (so the C code really uses the assembly's result). Screenshots are solid-color checks."""
 import re
 
 from harness import *
@@ -12,7 +12,7 @@ from harness import *
 M = 0xFFFFFFFF
 FORCE_BGR555 = 0x03E0
 SHIPPED = 0x00FF8040
-COLOURS = {"shipped": None, "teal": 0x00104060, "gold": 0x00F0C818}   # patched values of clear_rgb888
+COLORS = {"shipped": None, "teal": 0x00104060, "gold": 0x00F0C818}   # patched values of clear_rgb888
 SENTINEL = 0x5A000000 | 0x000000FF                                     # asm would give blue; the probe forces green
 
 config(
@@ -71,7 +71,7 @@ def _(ctx):
 
 
 @static_check("clear_rgb888 is as shipped (0x00FF8040)",
-              hint="Do not edit the initial colour; the verifier patches its own.")
+              hint="Do not edit the initial color; the verifier patches its own.")
 def _(ctx):
     off = ctx.symbols["clear_rgb888"] - ctx.exe.load_addr
     expect_eq(int.from_bytes(ctx.exe.code[off:off + 4], "little"), SHIPPED, "clear_rgb888 in the executable", fmt="hex")
@@ -101,7 +101,7 @@ def direct(ctx):
     return cs, r.record("seed")
 
 
-def shot_colour(r):
+def shot_color(r):
     img = r.screenshot()
     return img, tuple(round(v) for v in img.region_mean(0, 0, img.width, img.height))
 
@@ -162,12 +162,12 @@ def used_asm(ctx, name, value):
     r.require_break()
     ents = r.record("asm_calls")
     expect_true(ents, "main() calls rgb888_to_bgr555 at least once", "never called",
-                hint="Compute the clear colour with rgb888_to_bgr555; do not hard-code it.")
+                hint="Compute the clear color with rgb888_to_bgr555; do not hard-code it.")
     return r, ents
 
 
-def colour_check(ctx, name):
-    value = SHIPPED if COLOURS[name] is None else COLOURS[name]
+def color_check(ctx, name):
+    value = SHIPPED if COLORS[name] is None else COLORS[name]
     r, ents = used_asm(ctx, name, value)
     args = [e["a0"] & 0xFFFFFF for e in ents]
     expect_true(value in args, f"the routine is called with clear_rgb888 = 0x{value:06X}",
@@ -177,26 +177,26 @@ def colour_check(ctx, name):
     solid(img, rgb_of_888(value))
 
 
-@check("shipped colour 0x00FF8040: asm called with it, screen is solid and the right colour",
-       hint="Clear colour = expand5 of each field of the routine's result, via setRGB0 and isbg = 1.")
+@check("shipped color 0x00FF8040: asm called with it, screen is solid and the right color",
+       hint="Clear color = expand5 of each field of the routine's result, via setRGB0 and isbg = 1.")
 def _(ctx):
-    colour_check(ctx, "shipped")
+    color_check(ctx, "shipped")
 
 
-@check("patched colour 1: screen follows clear_rgb888",
-       hint="A hard-coded colour fails this: the verifier changes clear_rgb888 in the executable.")
+@check("patched color 1: screen follows clear_rgb888",
+       hint="A hard-coded color fails this: the verifier changes clear_rgb888 in the executable.")
 def _(ctx):
-    colour_check(ctx, "teal")
+    color_check(ctx, "teal")
 
 
-@check("patched colour 2: screen follows clear_rgb888",
-       hint="A hard-coded colour fails this: the verifier changes clear_rgb888 in the executable.")
+@check("patched color 2: screen follows clear_rgb888",
+       hint="A hard-coded color fails this: the verifier changes clear_rgb888 in the executable.")
 def _(ctx):
-    colour_check(ctx, "gold")
+    color_check(ctx, "gold")
 
 
 @check("the screen uses the assembly routine's RESULT (verifier overwrites $v0 on return)",
-       hint="Do not recompute the colour in C and ignore the routine's return value. Use what it returns.")
+       hint="Do not recompute the color in C and ignore the routine's return value. Use what it returns.")
 def _(ctx):
     r = ctx.run("forced", patches=patch(SENTINEL))
     r.require_break()

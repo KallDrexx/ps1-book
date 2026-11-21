@@ -2,7 +2,7 @@
 #include <psxgpu.h>
 #include "display.h"
 
-#define HUE_RANGE 1536    /* six colour segments of 256 steps */
+#define HUE_RANGE 1536    /* six color segments of 256 steps */
 #define RECT_W    32
 #define RECT_H    32
 #define RECT_Y    104

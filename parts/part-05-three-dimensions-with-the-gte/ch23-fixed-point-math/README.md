@@ -6,7 +6,7 @@ The PS1 has no floating-point unit. Fractions are stored as **scaled integers**:
 
 ## 2. Why it matters
 
-All of Part V is arithmetic on fractions: rotation matrices, perspective division, camera vectors, gravity. Written with `float` on this CPU, each add or multiply becomes a library call of about 85 instructions. Written in fixed point, it is one or two. The benchmark in this chapter measures the gap.
+All of Part V is arithmetic on fractions: rotation matrices, perspective division, camera vectors, gravity. Written with `float` on this CPU, each add or multiply becomes a library call of about 85 instructions. Written in fixed point, an add is one instruction and a multiply about six. The benchmark in this chapter measures the gap.
 
 You also need to know where fixed point bites: products that overflow 32 bits, shifts that round the wrong way, and divisions that lose all their precision. Those bugs look like jittering vertices and exploding physics.
 
@@ -52,7 +52,7 @@ If you write `float c = a * b;` GCC still compiles it, using **soft-float**: eve
   1     8                23 bits
 ```
 
-To add two floats, software must unpack both, compare exponents, shift one mantissa to align, add, **normalise** (shift until the leading 1 is in place), round, check for overflow, NaN and infinity, and pack the result. A multiply is similar. That is what each `__addsf3`/`__mulsf3` call does, hundreds of times per frame if you use floats for vertices.
+To add two floats, software must unpack both, compare exponents, shift one mantissa to align, add, **normalize** (shift until the leading 1 is in place), round, check for overflow, NaN and infinity, and pack the result. A multiply is similar. That is what each `__addsf3`/`__mulsf3` call does, hundreds of times per frame if you use floats for vertices.
 
 Measured in this chapter's benchmark, one loop iteration with one float multiply and one float add executes **177 instructions**. The fixed-point iteration (one `fx_mul`, one add) executes **14**.
 
@@ -130,7 +130,7 @@ fx r = (int64_t)(a * b) >> 12;        // WRONG: the cast comes too late
 
 Test it with `100.0 * 100.0`: raw `409600 * 409600 = 1.7e11`, far above 2^31, but the answer (40,960,000) fits easily. The 32-bit version returns garbage. `example/` shows the wrong result.
 
-The compiler turns the right version into `mult`, `mflo`, `mfhi`, two shifts and an `or` that stitch bits 12 to 43 of the product together. That is seven instructions, no libgcc call (the benchmark's `fx_mul`). A 4.12 times 4.12 multiply of two 16-bit values needs no widening: `(a * b) >> 12` is exact in 32 bits.
+The compiler turns the right version into `mult`, `mflo`, `mfhi`, two shifts and an `or` that stitch bits 12 to 43 of the product together. With the return that is seven instructions and no libgcc call (the benchmark's `fx_mul`). A 4.12 times 4.12 multiply of two 16-bit values needs no widening: `(a * b) >> 12` is exact in 32 bits.
 
 **Rounding.** The shift discards the low 12 bits. `>>` on a signed value is an *arithmetic* shift (Chapter 9) and **rounds toward minus infinity**:
 
@@ -164,11 +164,11 @@ The shift is where it goes wrong. `a << 12` overflows 32 bits as soon as `|a| >=
 | `((int64_t)a << 12) / b` | libgcc's 64-bit divide: about 90 instructions measured | Always correct; slow |
 | 32-bit `(a << 12) / b` when `|a| < 2^19` | one `div`: 36 cycles (Chapter 12) | Needs the range test |
 | Pre-shift both: `(a << 6) / (b >> 6)` | one `div` | Throws away the low 6 bits of `b`; a small `b` ruins the precision |
-| Multiply by a reciprocal: `r = fx_div(ONE, b)` once, then `fx_mul(a, r)` per use | one `mult` per use | Costs one division up front; slightly less exact |
+| Multiply by a reciprocal: `r = fx_div(FX_ONE, b)` once, then `fx_mul(a, r)` per use | one `mult` per use | Costs one division up front; slightly less exact |
 
-The reference solution uses the second row with a fall-back to the first. The last row is how real engines divide: **avoid divides**, and when dividing many values by the same number, divide once.
+The reference solution uses the second row and falls back to the first. The last row is how real engines divide: **avoid divides**, and when dividing many values by the same number, divide once.
 
-Division by zero: the R3000 itself does not trap (Chapter 12), but GCC follows every integer `div` with a test of the divisor and a `break 7`, unless it can prove the divisor is non-zero. `break` raises exception 9 (breakpoint). A game that hits it stops dead. This chapter's contract **saturates** instead, so a degenerate case (a zero-length vector, a point on the camera plane) produces a huge value, not a crash.
+Division by zero: the R3000 itself does not trap (Chapter 12), but GCC guards every integer `div` with a test of the divisor and a `break 7`, unless it can prove the divisor is non-zero. `break` raises exception 9 (breakpoint). A game that hits it stops dead. This chapter's contract **saturates** instead, so a degenerate case (a zero-length vector, a point on the camera plane) produces a huge value, not a crash.
 
 ### 5.6 Overflow and precision
 
@@ -187,7 +187,7 @@ Both are budgets. You pay in range for precision and in precision for range.
   lerp(a, b, t) = a + (b - a) * t
 ```
 
-With `t` in 20.12 this is `a + fx_mul(b - a, t)`. Two properties come for free with this form: `t = 0` gives exactly `a`, and `t = 1.0` gives exactly `b`, because `fx_mul(d, 4096)` is exactly `d`. The other common form, `a*(1-t) + b*t`, costs two multiplies and rounds twice, but it never forms `b - a`, so it is safe when `a` and `b` are far apart (opposite extremes of the range). That is why the contract says `b - a` must fit in 32 bits. Values of `t` outside 0..1 extrapolate. Lerp is how you move a camera toward a target, fade colours, and animate between keyframes.
+With `t` in 20.12 this is `a + fx_mul(b - a, t)`. Two properties come for free with this form: `t = 0` gives exactly `a`, and `t = 1.0` gives exactly `b`, because `fx_mul(d, 4096)` is exactly `d`. The other common form, `a*(1-t) + b*t`, costs two multiplies and rounds twice, but it never forms `b - a`, so it is safe when `a` and `b` are far apart (opposite extremes of the range). That is why the contract says `b - a` must fit in 32 bits. Values of `t` outside 0..1 extrapolate. Lerp is how you move a camera toward a target, fade colors, and animate between keyframes.
 
 ### 5.8 Square root with Newton's method
 
@@ -249,22 +249,9 @@ With `c = icos(t)` and `s = isin(t)` in 4.12, each product is 20.12 times 4.12 (
 
 The direction: with `y` pointing up this turns counter-clockwise. On the PS1's screen `y` points down, so the picture turns clockwise.
 
-### 5.10 The contracts at a glance
-
-| Function | Result | Rounding |
-|---|---|---|
-| `fx_from_int(n)` | `n << 12` | exact |
-| `fx_mul(a, b)` | `(a * b) >> 12`, product in 64 bits | floor |
-| `fx_div(a, b)` | `(a << 12) / b`, numerator in 64 bits when needed | toward zero; `b == 0` saturates |
-| `fx_lerp(a, b, t)` | `a + fx_mul(b - a, t)` | as `fx_mul` |
-| `fx_sqrt(x)` | `floor(sqrt(x << 12))`; 0 for `x <= 0` | floor (+/- 1 accepted) |
-| `fx_rotate(x, y, angle, &out)` | as in 5.9, one shift per component | floor |
-
-Two different policies (floor for the shift, truncation for `/`) coexist because that is what the hardware and the C operators give for free.
-
 ## 6. Worked example
 
-`example/main.c` runs five experiments and leaves the answers in `table`. Predict each row, run it and look:
+`example/main.c` runs five experiments and leaves the answers in `table`. Predict each row, run it, and read `table` in the debugger's memory view (Chapter 6):
 
 ```sh
 cd parts/part-05-three-dimensions-with-the-gte/ch23-fixed-point-math/example
@@ -283,7 +270,7 @@ It is not checked by `verify.sh`.
 
 ## 7. Project: `fixed.h` and `fixed.c`
 
-Work in `starter/fixed.c`. The header `fixed.h` is given, and so are `main.c` (a **test-table driver**: it runs a table of cases through your functions and stores the answers in `results`) and `bench.c` (the benchmark). **Do not edit those three.** The stubs compile and return wrong answers.
+Work in `starter/fixed.c`; its stubs compile and return wrong answers. The header `fixed.h` is given, and so are `main.c` (a **test-table driver**: it runs a table of cases through your functions and stores the answers in `results`) and `bench.c`/`bench.h` (the benchmark).
 
 `fixed.h` and `fixed.c` are a standalone module in this chapter. In Chapter 24 they move into the `psxe` library, where the software cube uses them.
 
@@ -300,14 +287,14 @@ Work in `starter/fixed.c`. The header `fixed.h` is given, and so are `main.c` (a
 | `fx fx_sqrt(fx x)` | `floor(sqrt(x * 4096))`, accepted within 1; 0 for `x <= 0`; every positive `int32_t`. |
 | `void fx_rotate(fx x, fx y, int32_t angle, fx_vec2 *out)` | Rotates by `angle` (4096 = one turn; any value, taken modulo 4096). `out->x = x cos - y sin`, `out->y = x sin + y cos`. Range: `|x|, |y| <= 2000.0`. Accepted within `2 + (|x| + |y|) * 13/4096` LSB of the true rotation (the SDK's `isin` is that accurate), and within 1 LSB at quarter turns. |
 
-All six are plain functions: no globals, no allocation, no floating point.
+All six are plain functions: no globals, no allocation, no floating point. Two rounding policies coexist (floor in `fx_mul`, truncation in `fx_div`) because that is what `>>` and `/` give for free.
 
 ### 7.2 Your steps
 
 1. **`fx_from_int` and `fx_mul`.** Run `verify.sh`: the mul check names the first wrong case. Try the 32-bit version once on purpose.
 2. **`fx_lerp`** from `fx_mul`. It is one line.
 3. **`fx_div`**: the zero case first, then the widened division. Add the 32-bit fast path when `a` is small.
-4. **`fx_sqrt`** with Newton's method (5.8). Print or trace the guesses for a few inputs in the debugger.
+4. **`fx_sqrt`** with Newton's method (5.8). Trace the guesses for a few inputs in the debugger.
 5. **`fx_rotate`** with `isin`/`icos` from `<psxgte.h>`.
 6. Read the benchmark's ratio in the verifier's output and compare it with your own estimate.
 
@@ -363,7 +350,7 @@ A pass ends with `CHAPTER 23: PASSED (13/13 checks)`.
 - **`/ 4096` for `>> 12`.** Different rounding for negatives. Both are defensible; the contract says `>>`.
 - **`a << 12` overflow in division.** From 128.0 up. Widen before shifting.
 - **Dividing by zero.** GCC's `break` trap stops the program; guard `b == 0` and never divide by an unchecked guess.
-- **Multiplying two values and shifting twice.** Rotate with one shift on the sum.
+- **Shifting twice in `fx_rotate`.** Shifting each product and then the sum divides by 4096 twice. Shift the 64-bit sum once.
 - **Mixing formats.** Adding a 20.12 and an integer, or a 4.12 and a 20.12, without shifting. Keep a comment on every variable's format.
 - **Newton from a guess that is too small.** Start at or above the root, or the stop test lies.
 - **Angles in degrees or radians.** The SDK wants 4096 per turn.
@@ -379,4 +366,4 @@ A pass ends with `CHAPTER 23: PASSED (13/13 checks)`.
 - PSn00bSDK reference: `psxgte.h` (`isin`, `icos`, `hisin`, `SquareRoot12`).
 - Randy Yates, "Fixed-Point Arithmetic: An Introduction": Q notation and rounding in depth.
 - Hacker's Delight (Warren), chapter 11: integer square root, including Newton's method.
-- Pikuma, "PlayStation Programming", the fixed-point lesson (the reference course for the part).
+- Pikuma, the PS1 course's lecture on fixed-point math.

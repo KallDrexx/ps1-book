@@ -13,7 +13,7 @@
 
 /* One cube of the field: where it is, how it is turned, how fast it spins, how big it is. Ten int32 words, in this order. */
 typedef struct {
-	int32_t x, y, z;          /* centre, world units (the camera adds cam.vz to z) */
+	int32_t x, y, z;          /* center, world units (the camera adds cam.vz to z) */
 	int32_t ax, ay, az;       /* angles about X, Y, Z: 4096 = one turn, kept in 0..4095 */
 	int32_t sx, sy, sz;       /* added to the angles every frame (may be negative) */
 	int32_t size;             /* half the cube's edge, units */
@@ -174,7 +174,7 @@ static void transform_field_rtpt(void)
 
 /* ---- given: drawing ------------------------------------------------------------------------------------------------- */
 
-/* A coloured 8 x 8 tile at the middle of each cube (halfway between the projected corners 0 and 7). */
+/* A colored 8 x 8 tile at the middle of each cube (halfway between the projected corners 0 and 7). */
 static void draw_tiles(void)
 {
 	for (int i = 0; i < N_CUBES; i++) {

@@ -1,10 +1,10 @@
 ; Chapter 14 example -- polygon packets by hand (not checked by verify.sh)
 ;
 ; Predict the picture before you run it (make run).
-;   top row:    two flat triangles (20h) with the SAME vertices in opposite order. Does the GPU cull one?
+;   top row:    two flat triangles (20h) of the SAME shape, vertices in opposite order. Does the GPU cull one?
 ;   top right:  a Gouraud triangle (30h): red, green, blue corners.
-;   middle:     an opaque orange band (28h), then four semi-transparent quads (2Ah) with the SAME colour,
-;               one per semi-transparency mode (E1h bits 5-6 = 0, 1, 2, 3), each half over the band.
+;   middle:     an opaque orange band (28h), then four semi-transparent quads (2Ah) with the SAME color,
+;               one per semi-transparency mode (E1h bits 5-6 = 0, 1, 2, 3), each partly over the band.
 ; The packets are one long word stream; the loop at the bottom sends it to GP0.
 ; (No GPUSTAT wait, to keep it short. Fine in PCSX-Redux, which runs each command at once; on real hardware a
 ;  stream this long can overflow the GPU's 16-word FIFO, which is why the project waits before every packet.)
@@ -53,7 +53,7 @@ done:
 
 .align 4
 packets:
-    .word 0x02404040                ; fill: grey background
+    .word 0x02404040                ; fill: gray background
     vtx 0, 0
     .word (240 << 16) | 320
 

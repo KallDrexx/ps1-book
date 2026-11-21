@@ -69,10 +69,10 @@ fact_ret:
 ; non-leaf: a0 = n -> v0 = 2 * n!
 .if BROKEN
 double_fact:
-    jal   factorial             ; overwrites $ra with the address of the next line
+    jal   factorial             ; overwrites $ra with the address of the sll below
     nop
     sll   $v0, $v0, 1
-    jr    $ra                   ; returns to the line above: loops forever
+    jr    $ra                   ; returns to the sll: loops forever
     nop
 .else
 double_fact:

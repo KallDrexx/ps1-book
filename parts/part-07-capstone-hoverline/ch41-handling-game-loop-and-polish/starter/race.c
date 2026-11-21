@@ -30,7 +30,7 @@ int race_section_step(const Track *t, int prev, int cur)
 	return 0;
 }
 
-/* TODO (README 5.6): one racing tick: the clock, progress, the wrong-way flag, laps, the finish. The placeholder only counts ticks. */
+/* TODO (README 5.5, 5.6, 5.9): one racing tick: the clock, progress, the wrong-way flag, laps, the finish. The placeholder only counts ticks. */
 int race_tick(Race *r, const Track *t, int section)
 {
 	(void) t;

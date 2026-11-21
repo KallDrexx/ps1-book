@@ -26,13 +26,13 @@ outer:  jal  inner
 `jal inner` overwrites `$ra` with the address of the `jr`, so `outer` "returns" to its own `jr` forever. `outer` has to save its incoming `$ra` before the call and restore it after. A stack frame is the general solution; a static word works only for non-recursive code.
 </details>
 
-**5. What does the callee see in `$a0` here, if `$a0` held 111 and `0($t5)` holds 222?**
+**5. What does the first instruction of `f` see in `$a0` here, if `$a0` held 111 and `0($t5)` holds 222?**
 ```
 jal  f
 lw   $a0, 0($t5)
 ```
 <details><summary>Answer</summary>
-111. The `lw` is in the delay slot, so its result is not available to `f`'s first instruction (load delay). Load before the `jal`, or use a non-load instruction in the slot.
+111. The `lw` is in the delay slot, so `f`'s first instruction is the load's delay slot and still sees the old value; only from the second instruction on does `$a0` hold 222. Load before the `jal`, or use a non-load instruction in the slot.
 </details>
 
 **6. When is `jalr` used instead of `jal`?**

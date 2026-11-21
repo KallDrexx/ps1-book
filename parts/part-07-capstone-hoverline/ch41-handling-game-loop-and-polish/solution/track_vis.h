@@ -25,7 +25,7 @@ extern char    vis_text[32];      /* the readout line of the last frame, as it w
 
 /* The metric (README 5.3): d2(i) = dx^2 + dy^2 + dz^2 as an UNSIGNED 64-bit value, where each d is `pos - centre` computed in 64 bits
    (no overflow while every |d| is below 2^31, i.e. pos within about +-2,000,000,000 of the track: far beyond any world the format allows).
-   The nearest section minimises d2; a tie goes to the LOWEST section index. */
+   The nearest section minimizes d2; a tie goes to the LOWEST section index. */
 
 /* The nearest section by looking at every section: the one with the smallest d2 (lowest index on a tie).
    Returns -1 when the track has no sections. `pos` is the ship's position (world units). Increments vis_brute_runs. */

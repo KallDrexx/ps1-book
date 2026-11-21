@@ -5,7 +5,7 @@
 /* Implemented in rgb555.s (Chapter 9's routine, ported to gas). */
 extern uint32_t rgb888_to_bgr555(uint32_t rgb);
 
-/* Colour to clear to, 0x00RRGGBB. Writable data on purpose: the verifier patches it. */
+/* Color to clear to, 0x00RRGGBB. Writable data on purpose: the verifier patches it. */
 volatile uint32_t clear_rgb888 = 0x00FF8040;
 
 static DISPENV disp;

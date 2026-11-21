@@ -38,7 +38,7 @@ build; a starter that does not build is reported `NOBUILD`).
 
 | Message | Usually means |
 |---|---|
-| `program never reached done` / `emulator hit the 20 s timeout` | An infinite loop before the chapter's `done:` label, a hang waiting on hardware that never answers (GPU status bit, CD read), or a crash. Add `-v` and look at the exception line |
+| `never reached it in N frames` / `emulator did not finish within the 20s hard timeout` | An infinite loop before the chapter's `done:` label, a hang waiting on hardware that never answers (GPU status bit, CD read), or a crash. Add `-v` and look at the exception line |
 | `your program lacks symbol X` | The symbol was removed: a missing declaration, or the linker's `-gc-sections` dropped it because nothing references it (F.10) |
 | `CPU exception N (...)` with an EPC | See F.4 |
 | a probe error, exit `2` | A bug in the chapter's probe or a Lua mistake in a patch; not your program. Report it |
@@ -55,11 +55,11 @@ Work from the cheapest test: does the program reach `main`, does it draw, is the
 | Smeared, old frames show | No clear (`isbg` / `ClearOTagR`) each frame, or the back buffer holds the picture from two frames ago | 17, 19, 20 |
 | Draws nothing, `DrawOTag(ot)` | With a reverse table `ot[0]` is the terminator; pass `&ot[N-1]` | 20 |
 | Flicker or a frame late | `setRGB0`/edit after `PutDrawEnv` queued the packet; or flipping before the GPU is done (poll bit 26, `DrawSync(0)`) | 17, 19 |
-| Red and blue swapped | The GP0 colour word is `BBGGRR`; BGR555 has red in the low bits | 1, 9, 13 |
+| Red and blue swapped | The GP0 color word is `BBGGRR`; BGR555 has red in the low bits | 1, 9, 13 |
 | Half the faces missing, or the cube looks inside-out | Face table written by feel; quad in perimeter order instead of Z order; `NCLIP` sign taken from a Y-up tutorial (positive = front here) | 25 |
 | Garbage or wandering geometry | Rotated `cube[]` in place (error accumulates); matrix never uploaded; stale `SVECTOR` read by the GTE (F.8) | 24, 25, 34 |
-| Texture in the wrong colours or shows doubled texels | `w` of a TIM is in 16-bit units; wrong depth bits; `tpage` and `clut` swapped; CLUT x not a multiple of 16 | 30, 32, 35 |
-| Texture pixels missing | Colour 0 is transparent: use `0x0421` for black | 30 |
+| Texture in the wrong colors or shows doubled texels | `w` of a TIM is in 16-bit units; wrong depth bits; `tpage` and `clut` swapped; CLUT x not a multiple of 16 | 30, 32, 35 |
+| Texture pixels missing | Color 0 is transparent: use `0x0421` for black | 30 |
 | Polygon vanishes | Bigger than 1023 x 511; a vertex behind the camera; z <= 0 | 14, 24 |
 | One-pixel sparkling slit between two track sections | A T-junction from subdivision: not a texture bug | 36 |
 | Text hidden behind the track | `FntFlush` draws before the table; use `FntSort` so the text goes through the ordering table | 38 |
@@ -104,7 +104,7 @@ decoded cause. Reading `$ExcCode`:
   in a file, so check alignment first (Ch 34).
 * **A garbage pointer.** `badvaddr` looks like a sentinel (`0xC0DD....`, the verifier's callee-saved fill) when you used a
   register you did not save (Ch 8, 10, 15), or when an SDK macro destroyed `$t0`/`$t1` (F.7).
-* **Scratchpad through KSEG1.** `0xBF800000` is not the scratchpad; use `0x1F800000` or `0x9F800000` (Ch 2).
+* **Scratchpad through KSEG1.** On real hardware `0xBF800000` is not the scratchpad (PCSX-Redux lets it through, so a program can work there and fail on a console); use `0x1F800000` or `0x9F800000` (Ch 2).
 * **Reading a header word as a full pointer.** An OT/primitive header holds a 24-bit address; `nextPrim(p)` puts the
   `0x80000000` back (Ch 20).
 * **Unsigned where signed was meant.** `lhu` for coordinates turns -100 into 65436 (Ch 11).
@@ -168,7 +168,7 @@ The other setters are safe: `gte_SetGeomOffset` declares `$t0`/`$t1`, `gte_SetBa
 | Flags always zero | `FLAG` is cleared by **every** command: read it right after the command (`gte_stflg`), OR across commands yourself | 25 |
 | All objects use the first object's matrix | One upload for everything. Upload per object with `load_matrix` | 26 |
 | `RotMatrix` appears to ignore your `PopMatrix` | `RotMatrix` pushes and pops the library's single slot itself | 26 |
-| Garbage projections that change with optimisation level | `gte_ld*` has no `"memory"` clobber, so the compiler may not have finished the stores to the vertex (a local `SVECTOR`, or a global you just wrote). Put `__asm__ volatile("" ::: "memory");` before any `gte_ld*` that reads something you just wrote | 34, 35, 36 |
+| Garbage projections that change with optimization level | `gte_ld*` has no `"memory"` clobber, so the compiler may not have finished the stores to the vertex (a local `SVECTOR`, or a global you just wrote). Put `__asm__ volatile("" ::: "memory");` before any `gte_ld*` that reads something you just wrote | 34, 35, 36 |
 | Wrong results after `RTPT` | `SZ0` is the *old* depth; the new ones are `SZ1..SZ3`. `IR`/`MAC` hold the last vertex only | 27 |
 | Corrupts the next cube's slot | `gte_stsxy3c(&xy[6])` writes `[8]` too. Store two words in the last batch, or overlap the batches | 27 |
 | `gte_ldsxy3` loads garbage | It takes three values, not pointers; `gte_ldv0` takes a pointer | 25 |
@@ -194,7 +194,7 @@ The other setters are safe: `gte_SetGeomOffset` declares `$t0`/`$t1`, `gte_SetBa
 | Freeze or crash in a CD callback | Calling the CD library from the callback: set a flag and act in the main loop | 39 |
 | `CdlModeRept` does not loop | It only reports positions; restart from the auto-pause callback | 39 |
 | Booting a `.cue` is slow in a probe | About 310 emulated frames before `main`; allow `max_frames >= 600` | verify-lib |
-| Wrong region/disc behaviour | The disc region lock (SCEx string) is read by the drive controller and no CD-R carries it; emulators ignore it. Not a software bug | 42 |
+| Wrong region/disc behavior | The disc region lock (SCEx string) is read by the drive controller and no CD-R carries it; emulators ignore it. Not a software bug | 42 |
 
 ## F.10 Debugging, breakpoints and cycle counts
 
@@ -219,7 +219,7 @@ The other setters are safe: `gte_SetGeomOffset` declares `$t0`/`$t1`, `gte_SetBa
 * Each verify run makes a temp directory `ps1book-chNN-XXXXXXXX` under `$TMPDIR` (default `/tmp`), holding the build,
   the program, screenshots and logs. It is deleted on exit unless you pass `--keep` (or set `PS1BOOK_KEEP`), so
   repeated `--keep` runs fill the disk. If `/tmp` is small or under a quota, point `TMPDIR` at a larger directory.
-  *Unverified:* the exact message the harness prints when the disk is full.
+  (A full disk was not tested, so no message is quoted here.)
 * `tools/ci.sh` writes its logs to a `mktemp -d` that it removes on exit, and runs every chapter twice (solution, then
   starter), each run using the temp space described above.
 * Headless: the harness passes `-cli -testmode`. No X server or `xvfb-run` is needed, a 30-frame run takes about a

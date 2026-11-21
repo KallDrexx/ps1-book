@@ -15,7 +15,7 @@
 .definelabel I_STAT, 0x1F801070
 
 .definelabel R,      24             ; gem half-size: the diamond spans (x +- R, y +- R)
-.definelabel XMIN,   24             ; allowed range of the gem centre: [R, 319-R] x [R, 239-R]
+.definelabel XMIN,   24             ; allowed range of the gem center: [R, 319-R] x [R, 239-R]
 .definelabel XMAX,   295
 .definelabel YMIN,   24
 .definelabel YMAX,   215
@@ -263,7 +263,7 @@ draw_bar:
     nop
     lw    $t3, 0($sp)
     lui   $t0, 0x1F80
-    li    $t1, 0x6020D0F0       ; rectangle (60h), colour 0xF0D020
+    li    $t1, 0x6020D0F0       ; rectangle (60h), color 0xF0D020
     sw    $t1, 0x1810($t0)
     li    $t1, (4 << 16) | 10
     sw    $t1, 0x1810($t0)
@@ -307,7 +307,7 @@ gi_wait:
     jr    $ra
     nop
 
-gpu_clear:                      ; fill rectangle: GP0(02h), the colour is 0x00RRGGBB; h is the 5th argument, 16($sp)
+gpu_clear:                      ; fill rectangle: GP0(02h), the color is 0x00RRGGBB; h is the 5th argument, 16($sp)
     lui   $t0, 0x1F80
     lw    $t3, 16($sp)          ; h
 gc_wait:
@@ -370,7 +370,7 @@ routines_end:
 
 ; ---- data -------------------------------------------------------------------------------------------------
 .align 4
-gem_state:                      ; x, y (centre, pixels), vx, vy (pixels per frame), frame counter, back-buffer index
+gem_state:                      ; x, y (center, pixels), vx, vy (pixels per frame), frame counter, back-buffer index
     .word 60, 80, 3, 2, 0, 1
 
 .align 0x800

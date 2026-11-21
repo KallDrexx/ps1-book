@@ -12,7 +12,7 @@ Every game reads the pad every frame. The raw data answers only "which buttons a
 
 After this chapter you can:
 
-- say what the BIOS provides, and how a program calls it (`A0`/`B0`/`C0` tables);
+- state what the BIOS provides and how a program calls it (`A0`/`B0`/`C0` tables);
 - describe, at a high level, how the console and the pad talk;
 - start the BIOS pad driver (`InitPAD`, `StartPAD`) and read its buffer;
 - explain **active-low** logic and convert a raw button word into a usable mask;
@@ -31,11 +31,11 @@ The BIOS is a 512 KB program in ROM, mapped at `0xBFC00000`. The CPU starts exec
 
 | Job | What happens |
 |---|---|
-| Boot | Initialises the hardware and its own data structures (the *kernel*, which lives in the first 64 KB of RAM, below where programs load), then loads and starts your executable from the disc (or, in an emulator, the file you side-load) |
-| Services | Functions any program can call: memory and string helpers, file access to the disc and memory cards, the memory-card and pad drivers, events and threads |
+| Boot | Initializes the hardware and its own data structures (the *kernel*, which lives in the first 64 KB of RAM, below where programs load), then loads and starts your executable from the disc (or, in an emulator, the file you side-load) |
+| Services | Functions any program can call: memory and string helpers, file access to the disc and memory cards, the pad driver, events and threads |
 | Interrupts | Its exception handler at `0x80000080` receives every interrupt and every `syscall`; this is how `EnterCriticalSection` works |
 
-You call a BIOS function through one of three **kernel call tables**, `A0`, `B0` and `C0`. The convention: put the function number in `$t1` and jump to `0xA0`, `0xB0` or `0xC0`. The SDK hides that in tiny stubs. This is `InitPAD` in `libpsxapi`:
+You call a BIOS function through one of three **kernel call tables**, `A0`, `B0` and `C0`. The convention: put the function number in `$t1` and jump to address `0xA0`, `0xB0` or `0xC0`. The SDK hides that in three-instruction stubs. This is `InitPAD` in `libpsxapi`:
 
 ```
 li  t2, 0xB0        ; table B
@@ -51,7 +51,7 @@ The BIOS also keeps an **event and handler system**: a program or driver registe
 
 ### 5.2 How the console talks to the pad
 
-Pads and memory cards share one serial port, **SIO0**. The console is the master: it sends a byte and the pad answers with a byte at the same time. A select line picks the port (slot 1 or 2), the first byte picks the device (`01h` a controller, `81h` a memory card), and the device confirms every byte with an acknowledge line.
+Pads and memory cards share one serial port, **SIO0**. The console is the master: it sends a byte and the pad answers with a byte at the same time. A select line picks the port (slot 1 or 2), the first byte picks the device (`01h` a controller, `81h` a memory card), and the device confirms each byte except its last with an acknowledge line.
 
 A poll of a digital pad, at the level you need:
 
@@ -86,14 +86,14 @@ Three calls, as in the SDK's own examples:
 | `StartPAD()` | Start polling from the VBlank handler |
 | `ChangeClearPAD(0)` | Tell the driver not to acknowledge the VBlank interrupt itself: the SDK's `VSync` already does. The SDK examples recommend it |
 
-Wrap them in `EnterCriticalSection()` / `ExitCriticalSection()` (interrupts off), as the SDK's `cdrom/cdbrowse` example does, so no VBlank arrives half-way through the setup. Call them **after** `display_init()`: the SDK examples start the pad after `ResetGraph`, and so does this chapter. The buffers must live forever (a `static` array in `input.c`), because the driver writes into them from an interrupt long after `input_init` returned.
+Wrap them in `EnterCriticalSection()` / `ExitCriticalSection()` (interrupts off), as the SDK's `cdrom/cdbrowse` example does, so no VBlank arrives half-way through the setup. Call them **after** `display_init()`: `ResetGraph` sets up the SDK's interrupt handling, and the SDK examples start the pad after it. The buffers must live as long as the program (a `static` array in `input.c`), because the driver writes into them from an interrupt long after `input_init` has returned.
 
 Two facts to design around:
 
 - The buffer is written **behind your back**. Read it once per frame into your own variable and use that copy.
 - Until the first poll arrives, the buffer holds what it held before: for a `static` array, **all zero** (observed under OpenBIOS: the first reading lands about two frames after `main` starts). A zero `stat` then looks valid, and zero bits mean "every button pressed" (5.4). Check `stat == 0` **and** a known `type` before trusting `btn`; an empty port reports `stat = FFh` once polled.
 
-PSn00bSDK 0.24 has no higher-level pad library: `<psxpad.h>` holds definitions only. (Sony's SDK has `PadInit`/`PadRead`; PSn00bSDK does not.) Its `examples/io/pads` shows the other way: talking to SIO0 yourself from a timer interrupt, which is how you poll faster than the BIOS's once per frame or configure analog mode.
+PSn00bSDK 0.24 has no higher-level pad library (Sony's SDK has `PadInit`/`PadRead`): `<psxpad.h>` holds definitions only. Its `examples/io/pads` shows the alternative: driving SIO0 yourself from a timer interrupt, which is how you poll more often than once per frame or switch a pad to analog mode.
 
 ### 5.4 Bitmasks and active-low logic
 
@@ -116,18 +116,18 @@ The pad's button word has 16 bits:
 
 The pad is **active-low**: the electrical idle level is high, so a button that is *down* sends a **0** and an *up* button sends a **1**. An idle pad reads `0xFFFF`. Holding Up gives `0xFFEF`.
 
-Most people find "1 = down" easier, called **active-high**. Invert once, where the data enters your code:
+Most people find "1 = down" (**active-high**) easier. Invert once, where the data enters your code:
 
 ```
 raw  = 1111 1111 1110 1111      (Up held)
 ~raw = 0000 0000 0001 0000      bit 4 set: Up
 ```
 
-Everything above `input_update` then uses active-high masks and never sees the raw form. Mixing the two is the classic bug here: `if (raw & PAD_UP)` is true when Up is *not* pressed.
+Every caller of the module then uses active-high masks and never sees the raw form. Mixing the two is the classic bug here: `if (raw & PAD_UP)` is true when Up is *not* pressed.
 
 ### 5.5 Edge detection
 
-`held` says what is down. Game rules often want the *change*. An **edge** is the frame where the state differs from the frame before.
+`held` says what is down. Game rules often want the *change*: an **edge** is a frame where a button's state differs from the frame before.
 
 ```
 frame:      1  2  3  4  5  6  7  8
@@ -137,7 +137,7 @@ pressed(X): 0  0  1  0  0  0  0  0     down now, up before
 released(X):0  0  0  0  0  0  1  0     up now, down before
 ```
 
-To compute it you keep **two** words: the latest reading and the one before. With active-high words `now` and `before`:
+To compute edges you keep **two** words: the latest reading and the one before. With active-high words `now` and `before`:
 
 | Query | Bits that qualify |
 |---|---|
@@ -149,7 +149,7 @@ To compute it you keep **two** words: the latest reading and the one before. Wit
 
 ### 5.6 The `input` module
 
-Added to `psxe` (`include/psxe/input.h`, `src/input.c`). The header is given in `starter/`:
+The module joins `psxe` as `include/psxe/input.h` and `src/input.c`. The header is given in `starter/`:
 
 | Item | Contract |
 |---|---|
@@ -182,18 +182,18 @@ Press keys in the emulator window (PCSX-Redux maps the keyboard to pad 1: **Conf
 
 A 16-pixel square on a dark screen that you steer.
 
-### 7.1 Behaviour
+### 7.1 Behavior
 
 | Input | Effect (applied once per frame) |
 |---|---|
 | D-pad | Moves the square by `speed` pixels per frame along each held direction. Two directions at once (diagonal) move on both axes. Opposite directions cancel |
 | Square (held) | The step is `fast` instead of `speed` |
-| X (Cross), on **press** | `colour = (colour + 1) % 6`. Holding the button does nothing more |
-| Start, on **release** | `x = home_x; y = home_y`. The colour stays |
+| X (Cross), on **press** | `color = (color + 1) % 6`. Holding the button does nothing more |
+| Start, on **release** | `x = home_x; y = home_y`. The color stays |
 
 After all of that, every frame, the position is **clamped**: `0 <= x <= SCREEN_W - size` and `0 <= y <= SCREEN_H - size`. The square stops at the edge; it does not wrap and is never partly off screen.
 
-Start acts on **release**: nothing happens while it is down, and the square jumps home on the frame it comes up. Many interfaces act on release (an on-screen button fires when the mouse button comes up, so you can still slide off it); here it is above all the exercise for the third query: `held` drives the D-pad and Square, `pressed` X, `released` Start.
+Start acts on **release**: nothing happens while it is down, and the square jumps home on the frame it comes up. Each query thus has a job: `held` drives the D-pad and Square, `pressed` X, `released` Start.
 
 ### 7.2 State the verifier reads
 
@@ -202,21 +202,21 @@ Start acts on **release**: nothing happens while it is down, and the square jump
 | Field (`cursor_state`, eight `int32_t`) | Offset | Initial | Meaning |
 |---|---|---|---|
 | `x`, `y` | 0, 4 | 152, 112 | Top-left corner of the square |
-| `colour` | 8 | 0 | Index into `cursor_colours` |
+| `color` | 8 | 0 | Index into `cursor_colors` |
 | `speed` | 12 | 2 | Pixels per frame |
 | `fast` | 16 | 4 | Pixels per frame while Square is held |
 | `home_x`, `home_y` | 20, 24 | 152, 112 | Where Start sends the cursor |
 | `size` | 28 | 16 | Side of the square |
 
-`cursor_colours[6][3]` (r, g, b): red `230,40,40`, green `40,200,60`, blue `60,110,255`, yellow `240,220,40`, magenta `220,60,220`, cyan `40,220,220`. The background is `(24, 24, 32)`.
+`cursor_colors[6][3]` (r, g, b): red `230,40,40`, green `40,200,60`, blue `60,110,255`, yellow `240,220,40`, magenta `220,60,220`, cyan `40,220,220`. The background is `(24, 24, 32)`.
 
-**Your rules must read all of these from the struct.** The verifier patches `speed`, `fast`, `home_*`, `size`, `x`, `y` and `colour` before some runs.
+**Your rules must read all of these from the struct.** The verifier patches `speed`, `fast`, `home_*`, `size`, `x`, `y` and `color` before some runs.
 
 ### 7.3 Steps
 
 1. In `psxe/src/input.c`, implement the five functions of 5.6. Start the driver as in 5.3. Include `<psxapi.h>` and `<psxpad.h>`.
-2. Test it first with the viewer idea in mind: after `input_update`, does `input_held(INPUT_UP)` follow the real button?
-3. In `main.c`, write `cursor_update()` (the table in 7.1). The loop, the drawing and `main` are given: the loop calls `input_update()`, then `cursor_update()`, then draws.
+2. Check the module before writing the full rules: does `input_held(INPUT_UP)` follow the real button?
+3. In `main.c`, write `cursor_update()` (the table and the clamp of 7.1). The loop, the drawing and `main` are given: the loop calls `input_update()`, then `cursor_update()`, then draws.
 4. Build and run (`make run`), then `verify.sh`.
 
 ### 7.4 Rules
@@ -228,10 +228,10 @@ Start acts on **release**: nothing happens while it is down, and the square jump
 
 ### 7.5 Hints
 
-- *The cursor never moves*: is `input_init` called after `display_init`? Does the driver ever see the buffer (is it `static` at file scope, not on the stack)?
+- *The cursor never moves*: does `input_init` hand the driver the buffer `input_update` reads? Is that buffer `static`, not on the stack?
 - *Everything is "pressed" at start-up*: you trusted the zeroed buffer (5.3).
 - *The square drifts the wrong way*: `~` is missing, or applied twice.
-- *The colour spins while X is down*: that is `held`, not `pressed`.
+- *The color spins while X is down*: that is `held`, not `pressed`.
 - *`pressed` never fires*: you updated `before` after computing the answer, or in `input_pressed` itself.
 - Compare against what the viewer showed you if the bit positions confuse you.
 
@@ -248,23 +248,23 @@ Start acts on **release**: nothing happens while it is down, and the square jump
 parts/part-04-c-on-the-playstation/ch22-controller-input-and-the-bios/verify/verify.sh
 ```
 
-The harness presses buttons on PCSX-Redux's emulated pad (**pad overrides**, set by the probe on given frames) and the probe records `cursor_state` every frame. It also calls your `input_held`, `input_pressed` and `input_released` directly, every frame, while buttons change. Four scripted runs of 130 to 330 frames each: the shipped numbers, patched numbers, big steps against all four edges, and a query test.
+The harness presses buttons on PCSX-Redux's emulated pad (**pad overrides**, applied on scripted frames) and the probe records `cursor_state` every frame. It also calls your `input_held`, `input_pressed` and `input_released` directly, every frame, while buttons change. Four scripted runs of 135 to 330 frames each: the shipped numbers, patched numbers, big steps against all four edges, and a query test.
 
 | Check | What it means | If it fails |
 |---|---|---|
-| `symbols`, `data layout as shipped` | Your program has the parts; state and colour table unedited | Removed or edited data; a function nobody calls was dropped by the linker |
+| `symbols`, `data layout as shipped` | Your program has the parts; state and color table unedited | Removed or edited data; a function nobody calls was dropped by the linker |
 | `libpsxe.a exports only the module API` | `nm`: four modules, each exporting only its API | A `static` is missing in `input.c` |
 | `input.c goes through the BIOS pad driver` | `input.o` references `InitPAD` and `StartPAD` | Reading the pad some other way |
 | `headers` | Four guarded, self-contained headers that define nothing | As Chapter 21 |
 | `main.c is thin` | At most 70 lines, only `psxe` headers | Pad code in `main.c` |
-| `the BIOS pad driver is started once` | One `InitPAD` with two RAM buffers, one `StartPAD` | Not called, called twice, wrong order |
+| `the BIOS pad driver is started once` | One `InitPAD` with two RAM buffers, one `StartPAD` | `input_init` not called, or called twice |
 | `input_update is called once per frame` | The probe counts calls per VBlank | Called twice or not every frame |
 | `D-pad`, `Square` | Moves by `speed`/`fast` per frame, diagonals, opposites cancel; each frame's step is exactly 0 or the speed | No `~`, wrong axis, `else if` chains |
-| `X changes the colour once per PRESS` | A 30-frame hold: exactly one change; three 3-frame taps: three; wraps at 6 | `held` instead of `pressed` |
-| `Start ... RELEASED` | Nothing while it is down, home (from the struct) after release; colour kept | Hard-coded home, wrong edge |
-| `speeds, size and colour come from cursor_state` | Patched run: speed 3, fast 7, colour 3 | Constants in your rules |
+| `X changes the color once per PRESS` | A 30-frame hold: exactly one change; three 3-frame taps: three; wraps at 6 | `held` instead of `pressed` |
+| `Start ... RELEASED` | Nothing while it is down, home (from the struct) after release; color kept | Hard-coded home, wrong edge |
+| `speeds, size and color come from cursor_state` | Patched run: speed 3, fast 7, color 3 | Constants in your rules |
 | `clamped ... on all four edges` | Every frame inside `0..SCREEN-size` with a 32 px square and 40 px steps | Clamp missing or uses a constant size |
-| `screenshots` | One square at the reported position, in the reported colour, nothing else | Drawing not driven by the state |
+| `screenshots` | One square at the reported position, in the reported color, nothing else | Drawing not driven by the state |
 | `input_held / pressed / released, called directly` | Over a 30-frame press, an overlapping press and a 1-frame tap: pressed fires for exactly one frame, released too; reading twice changes nothing; masks of several bits mean "any"; empty mask is 0 | Query with side effects; wrong edge |
 | `raw pad polarity and start-up` | An idle pad reports nothing down; nothing changed before the first scripted press | Forgot to invert, or no `stat`/`type` test (the zeroed buffer read as "all pressed") |
 
@@ -274,12 +274,12 @@ A pass ends with `CHAPTER 22: PASSED (18/18 checks)`. Timing: the script starts 
 
 - **Active-low confusion.** Test `!(raw & mask)`, or invert once on entry. Never mix.
 - **Trusting the buffer before the first poll.** Zero bits read as every button down, and a zero `stat` looks valid. Check `stat` and `type`.
-- **A pad buffer on the stack, or a local.** The driver keeps writing to it after your function returns. Make it `static`.
+- **A pad buffer on the stack.** The driver keeps writing to it after your function returns. Make it `static`.
 - **Calling `input_update` more than once per frame.** The second call makes `before == now`, and every edge disappears.
 - **Detecting edges with `held` and a flag in game code.** Fine for one button; with ten, it is ten flags. Keep it in the module.
 - **Level vs. edge.** Movement wants `held`; toggles, menu choices and "fire once" want `pressed`; "confirm on release" wants `released`.
-- **Starting the pad before `display_init`.** `ResetGraph` sets up the SDK's interrupt handling; follow the order the SDK examples use (graphics first).
-- **Assuming a digital pad.** Analog pads also report `type` 5 or 7 with the same first bytes; accept all three if you want them to work.
+- **Starting the pad before `display_init`.** Follow the order of 5.3: graphics first.
+- **Assuming a digital pad.** Analog pads report `type` 5 or 7 with the same first four bytes; accept all three if you want them to work.
 - **Different BIOS, different details.** Test on real hardware or a retail BIOS before relying on anything beyond what a poll writes.
 
 ## 10. Quiz
@@ -292,4 +292,4 @@ A pass ends with `CHAPTER 22: PASSED (18/18 checks)`. Timing: the script starts 
 - `.toolchain/opt/psn00bsdk/include/libpsn00b/psxpad.h` and `psxapi.h`.
 - `.toolchain/opt/psn00bsdk/share/psn00bsdk/examples/io/pads/` (manual SIO0 polling) and `graphics/fpscam/main.c` (the BIOS driver as used in this chapter).
 - PCSX-Redux Lua documentation, `PCSX.SIO0` pad overrides (https://pcsx-redux.consoledev.net/Lua/introduction/).
-- Part V starts with fixed-point maths (Chapter 23); the `input` module returns when the camera needs steering.
+- Part V starts with fixed-point math (Chapter 23); the `input` module returns when the camera needs steering.

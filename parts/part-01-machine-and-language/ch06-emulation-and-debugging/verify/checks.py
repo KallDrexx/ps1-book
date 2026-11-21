@@ -38,13 +38,12 @@ NEEDED = {
     3: ("main", "done", "inputs", "samples", "results"),
 }
 FINDING_HINT = {
-    1: "Run the starter and put a read breakpoint on `guard`. Then ask why the loop went round once too often: "
-       "the address is that of the branch that decides it.",
-    2: "Open the disassembly around the loop's `bne`. Count the words the `li` after it became, and "
-       "remember what a delay slot does with them. The address is that of the first word of that `li`.",
-    3: "Step through the loop watching `at` in the Registers window. The address is that of the first "
-       "instruction of the pseudo-instruction that overwrites it.",
+    1: "Wanted: the address of the branch whose decision makes the loop run once too often.",
+    2: "Wanted: the address of the first word of the pseudo-instruction that does not do what its author assumed.",
+    3: "Wanted: the address of the first word of the pseudo-instruction that destroys a value the program still needs.",
 }
+FINDING_COMMON = (" Read it in the Assembly window of the original (unedited) build."
+                  " Section 7 of the chapter has a hint for each bug.")
 
 
 # ---------------------------------------------------------------- helpers
@@ -167,8 +166,7 @@ def _(ctx):
 
 
 @check("bug2 sums (word XOR key) for every word (three inputs)",
-       hint="Every pass must start with the full key 0x5EC0DE77. Look at what the `li` in the delay slot really "
-            "executes on a taken branch.")
+       hint="Every pass must XOR its word with the full key 0x5EC0DE77. Watch the key register on each pass.")
 def _(ctx):
     r = rnd()
     sets = [[r.randrange(1 << 32) for _ in range(6)],
@@ -178,11 +176,11 @@ def _(ctx):
         res = run_prog(ctx, 2, f"b2_{i}", patches={"words": blob(*w)})
         want = sum(x ^ KEY for x in w) & M
         expect_eq(res.u32("results", 0), want, f"bug2 checksum, words {[hex(x) for x in w]}",
-                  hint="Only the first word was combined with the whole key.")
+                  hint="Some words were not combined with the whole key. Watch the key register on each pass.")
 
 
 @check("bug3 reports the right total and word count (three inputs)",
-       hint="A total that stays in $at is overwritten by the next pseudo-instruction that needs $at as a scratch.")
+       hint="The running total is being destroyed inside the loop. Single-step one pass and watch the registers.")
 def _(ctx):
     r = rnd()
     smp = lambda: [r.randrange(1, 40) for _ in range(8)]
@@ -209,15 +207,18 @@ def _(ctx):
 
 # ---------------------------------------------------------------- findings
 def _finding_check(n):
-    @check(f"findings.txt: bug{n} names the faulty instruction", hint=FINDING_HINT[n])
+    @check(f"findings.txt: bug{n} names the faulty instruction", hint=FINDING_HINT[n] + FINDING_COMMON)
     def _(ctx):
         found = parse_findings(ctx)
         if n not in found:
             raise CheckFailure(expected=f"a line like `bug{n}: 0x80010000` in findings.txt (8 hex digits)",
                                actual=f"no valid bug{n} line",
                                hint="Fill in all three lines of findings.txt.")
-        want = fault_addr(ctx, n)
-        expect_eq(found[n], want, f"bug{n} address in findings.txt", hint=FINDING_HINT[n], fmt="hex")
+        # Never print the right address: a failure must not give the answer away.
+        if found[n] != fault_addr(ctx, n):
+            raise CheckFailure(expected=f"the address of the faulty instruction of the original bug{n}",
+                               actual=f"0x{found[n]:08X}, which is not it",
+                               hint=FINDING_HINT[n] + FINDING_COMMON)
     return _
 
 

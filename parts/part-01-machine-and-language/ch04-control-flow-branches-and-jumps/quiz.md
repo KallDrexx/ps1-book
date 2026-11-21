@@ -22,12 +22,12 @@ Offsets count words from the delay slot (`0x80010024`): `(0x80010010 - 0x8001002
 
 **5. Which single instruction branches only when `$t0` is zero?**
 <details><summary>Answer</summary>
-`beq $t0, $zero, label` (`beqz` is the pseudo form). `blez`/`bgez` also include zero but also accept negatives or positives respectively.
+`beq $t0, $zero, label` (`beqz` is the pseudo form). `blez` and `bgez` also branch on zero, but on negative or positive values too.
 </details>
 
 **6. Why does `j` reach any address in RAM but a branch only about +/-128 KiB?**
 <details><summary>Answer</summary>
-`j` stores 26 bits of the word address and takes the top 4 bits from the delay slot's address, covering a 256 MB region. A branch stores only a 16-bit signed word offset relative to the delay slot.
+`j` stores the low 26 bits of the word address and takes the top 4 bits from the delay slot's address, covering a 256 MB region. A branch stores only a 16-bit signed word offset relative to the delay slot.
 </details>
 
 **7. The loop below ends with `bgtz`. What happens for a starting `n` of -1, and what if `bgtz` were `bne $t0, $zero, loop`?**
@@ -43,5 +43,5 @@ With `bgtz` the body runs once and exits (-2 is not greater than 0). With `bne` 
 
 **8. How can you count how many times `a < b` held without any branch?**
 <details><summary>Answer</summary>
-`slt $t, $a, $b` then `addu $count, $count, $t`, because `slt` produces exactly 0 or 1.
+`slt t, a, b` then `addu count, count, t`, because `slt` produces exactly 0 or 1.
 </details>

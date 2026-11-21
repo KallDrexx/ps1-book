@@ -70,11 +70,11 @@ extern TpkTextures ship_store;    /* SHIP.TPK's textures */
 int ship_place(Ship *s, const Track *t);
 
 /* The heading of the direction (x, z): the whole-unit angle a in 0..4095, 0 along +z and 1024 along +x, that points the same way
-   (isin(a) * x + icos(a) * z > 0) and minimises |isin(a) * z - icos(a) * x| (the first one on a tie). Minimising the CROSS product, not
+   (isin(a) * x + icos(a) * z > 0) and minimizes |isin(a) * z - icos(a) * x| (the first one on a tie). Minimizing the CROSS product, not
    maximising the dot product: the dot is flat at its peak, so table errors would move the maximum by a few units. (0, 0) gives 0. |x|, |z| <= 8192. */
 int32_t heading_angle(int32_t x, int32_t z);
 
-/* The whole-unit angle p in -1024..1024 that minimises |isin(p) + y| (the first on a tie), y the 4.12 y component of a unit
+/* The whole-unit angle p in -1024..1024 that minimizes |isin(p) + y| (the first on a tie), y the 4.12 y component of a unit
    direction: nose up for y < 0 (+y is down). |y| <= 4096. */
 int32_t pitch_angle(int32_t y);
 

@@ -1,4 +1,4 @@
-/* Chapter 26 worked example: two cards, each spinning at its own speed, one left of centre and one right.
+/* Chapter 26 worked example: two cards, each spinning at its own speed, one left of center and one right.
  * The GTE holds ONE rotation and ONE translation. A card is drawn with whatever matrix is loaded when its corners
  * are transformed. With FORGET_UPLOAD 1 the second card is transformed before its own matrix is uploaded, so it is
  * drawn with the first card's matrix: same spin, same place. Set it to 0 to see two independent cards. */

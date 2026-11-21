@@ -63,8 +63,8 @@ extern char         collide_text[32];   /* the debug readout of the last frame (
 /* floor(sqrt(n)) for an unsigned 32-bit value. */
 uint32_t collide_isqrt(uint32_t n);
 
-/* The same answer as heading_angle (Chapter 37: the first whole-unit angle that points the way and minimises the cross product), found
-   in 129 + 64 evaluations of isin / icos instead of 4096: a hit may happen on every tick, and 4096 evaluations are 3.6 ms. (0, 0) gives 0. */
+/* The same answer as heading_angle (Chapter 37: the first whole-unit angle that points the way and minimizes the cross product), found
+   in 129 + 64 evaluations of isin / icos instead of 4096: a hit may happen on every tick, and 4096 evaluations are about 330,000 instructions. (0, 0) gives 0. */
 int32_t collide_heading(int32_t x, int32_t z);
 
 /* Start of a game: zero collide_state, then last_hit = -1000000. Called by set_state when the game is entered. */

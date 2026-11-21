@@ -23,8 +23,9 @@ error is reported as `NOBUILD`).
 | `harness.py` | Entry point + the API chapter authors import (`from harness import *`) |
 | `redux.lua` | Loaded into PCSX-Redux; runs the job, defines the `verify` Lua API, writes `results.json` |
 | `symbols.py` | `Symbols` (armips `.sym`/`.sym2`, ELF via `nm`), `PsxExe` (header, patching, disassembly) |
-| `image.py` | `Image` (PPM screenshots), `Vram`, colour-tolerance assertions, perceptual hashes |
+| `image.py` | `Image` (PPM screenshots), `Vram`, color-tolerance assertions, perceptual hashes |
 | `failure.py` | `CheckFailure`, `HarnessError` |
+| `directcall.lua` | Probe helper for calling the reader's routines directly (see "Direct subroutine calls") |
 | `templates/verify.sh`, `checks.py`, `Makefile.armips` | Copy these into a new chapter |
 
 ## New-chapter recipe
@@ -58,7 +59,8 @@ def _(ctx): ...
 A check **passes by returning**, and **fails by raising** `CheckFailure`
 (usually via an `expect_*` helper). Any other exception is reported as a failed
 check with a "bug in checks.py" note. The hint printed is the exception's
-`hint=` or, if absent, the decorator's.
+`hint=` or, if absent, the decorator's (this includes `ctx.require_symbols`, which falls back to a generic
+"keep the starter's labels" hint only when neither gives one).
 
 ### `config(...)` options
 
@@ -73,7 +75,7 @@ check with a "bug in checks.py" note. The hint printed is the exception's
 | `sym` / `elf` | `"main.sym"` / `None` | symbol source. C chapters: `sym="", elf="game.elf"` (uses `mipsel-none-elf-nm`) |
 | `iso` | `None` | e.g. `"hoverline.cue"`: boot from disc instead of side-loading `exe` |
 | `break_at` | `"done"` | label/address where the run stops and state is captured; `None` = run to `max_frames` |
-| `max_frames` | `600` | emulated video frames (60/s) before giving up; CD boots need ~350 frames before `main` |
+| `max_frames` | `600` | emulated video frames (60/s) before giving up; a CD boot needs ~310 frames before `main` |
 | `settle_frames` | `2` | frames to keep running after `break_at` before screenshots/VRAM are taken |
 | `reads` | `{}` | `{"results": 64}` or `{"tbl": ("symbol_or_addr", 256)}`; snapshotted **at the moment of the break** |
 | `shots` | `()` | `"end"` (taken `settle_frames` after break / at the frame limit), an int frame number, or `(name, frame)` |
@@ -90,7 +92,7 @@ check with a "bug in checks.py" note. The hint printed is the exception's
 | `ctx.result` | The default emulator run (a `RunResult`), executed lazily once |
 | `ctx.run(name=None, **overrides)` | Another session with any `config` field overridden (`patches=`, `inputs=`, `reads=`, `break_at=`, ...). Cached. ~1-2 s each |
 | `ctx.symbols` | `Symbols`: `ctx.symbols["done"]`, `.get`, `.require(...)`, `.size(name)` (sym2/nm only) |
-| `ctx.require_symbols("a","b")` | Fails the check listing missing labels |
+| `ctx.require_symbols("a","b", hint="")` | Fails the check listing missing labels |
 | `ctx.exe` | `PsxExe`: `.pc .load_addr .text_size .code .problems()` |
 | `ctx.disassemble()` | `list[Insn(addr, word, text)]`; `mnemonic(insn)` -> `"addiu"`. Registers appear as `t0`, not `$t0`. Data words show as `.word`/garbage, so restrict with `ctx.disassemble_range("start_label", "end_label")` |
 | `ctx.source_text("**/*.s")`, `ctx.source_files()` | Reader's sources (comments stripped by default) for "forbidden construct" checks |
@@ -129,8 +131,8 @@ vram.raw(x,y)   vram.pixel(x,y)   vram.rect(x,y,w,h)   vram.expect_rect(x,y,w,h,
 bgr555(r,g,b)   rgb_from_bgr555(v)
 ```
 
-**Tolerances.** The PS1 stores 5 bits per channel; an 8-bit colour comes back quantised
-(`0x80` -> `0x84`). Use `tol >= 8` for flat colours and ~`16-24` near Gouraud/edge pixels.
+**Tolerances.** The PS1 stores 5 bits per channel; an 8-bit color comes back quantized
+(`0x80` -> `0x84`). Use `tol >= 8` for flat colors and ~`16-24` near Gouraud/edge pixels.
 Never compare whole screenshots byte-for-byte.
 
 ## `probe.lua` API (global `verify`, LuaJIT)

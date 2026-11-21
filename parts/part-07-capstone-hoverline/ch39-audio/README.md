@@ -2,13 +2,13 @@
 
 ## 1. Concept
 
-*Hoverline* has been silent. This chapter gives it an **engine hum whose pitch follows the ship's speed**, a **boost chime**, a **collision thud** and a **music track from the disc**. The first three are *samples*: small recordings kept in the **SPU's** own RAM and played by writing a few registers. The music is *CD audio*: the disc carries a second, audio track and the drive streams it straight to the speakers, without the CPU.
+*Hoverline* has been silent. This chapter gives it an **engine hum whose pitch follows the ship's speed**, a **boost chime**, a **collision thud** and a **music track from the disc**. The first three are *samples*: small recordings kept in the **SPU's** own RAM and played by writing a few registers. The music is *CD audio*: the disc carries a second track of audio, and the drive plays it into the SPU's mixer without the CPU touching the data.
 
-The **SPU** (sound processing unit) is a 24-voice sampler. You hand it sample data once, then each sound is a handful of register writes: *where* the sample is, *how fast* to play it (the pitch), *how loud*, and *go* (key-on).
+The SPU (sound processing unit) is a 24-voice sampler. You upload sample data once; after that each sound is a handful of register writes: *where* the sample is, *how fast* to play it (the pitch), *how loud*, and *go* (key-on).
 
 ## 2. Why it matters
 
-Sound is half of what a racer feels like: the pitch of the hum is the speedometer you do not look at. It is also the first time the program drives hardware that **runs by itself and cannot be read back easily**: you write registers and trust the chip, so exact register values, addresses in 8-byte units and ADPCM block flags matter, and the verifier has to watch the *writes* instead of the result.
+Sound is half of what a racer feels like: the pitch of the hum is the speedometer you do not look at. It is also the first hardware in the book whose result **cannot be read back**: you write registers and trust the chip, so exact register values, addresses in 8-byte units and ADPCM block flags matter, and the verifier has to watch the *writes* instead of the output.
 
 ## 3. Learning objectives
 
@@ -56,7 +56,7 @@ The output runs at 44,100 Hz whatever the samples are: a voice **steps through i
          | BOOST    7616 B  (0x04150)   |  every size rounded up to 64 bytes (5.2)
          | THUD     4480 B  (0x05F10)   |
          | BEEP     3200 B  (0x07090)   |
-         | GO       7616 B  (0x07D10)   |  ends at 0x09AD0: 38 KB of 512 KB
+         | GO       7616 B  (0x07D10)   |  ends at 0x09AD0: 39 KB of 512 KB
  0x09AD0 +------------------------------+
          | free ...                     |
          | (reverb work area, top, unused)
@@ -92,11 +92,11 @@ Voice `v` owns 16 bytes at `0x1F801C00 + 16 v`:
 | Offset | Register | Value |
 |---|---|---|
 | +0, +2 | volume left, right | 15 bits, `0x3FFF` = full (bit 15 clear = fixed volume) |
-| +4 | **pitch** | `0x1000` = native 44,100 Hz; the book never writes above `0x3FFF` (about 4 x: two octaves up; psx-spx gives `0x4000` as the useful maximum) |
+| +4 | **pitch** | `0x1000` = native 44,100 Hz; `0x4000` (4 x, two octaves up) is the fastest (psx-spx); the book clamps to `0x3FFF` |
 | +6 | **start address** | in **8-byte units**: `addr / 8` |
 | +8, +10 | ADSR | see below |
-| +12 | envelope level | current level, read-only |
-| +14 | repeat address | set by a flag-4 block as it plays |
+| +12 | envelope level | the current level, updated by the SPU: read it, do not write it |
+| +14 | repeat address | where an end block jumps to; set by a flag-4 block as it plays, and (per psx-spx, not measured here) loaded with the start address at key-on |
 
 Global registers: `SPU_KEY_ON1/2` (`0x1F801D88/8A`, one bit per voice, voices 0-15 and 16-23), `SPU_KEY_OFF1/2` (`0x1F801D8C/8E`), `SPU_CHAN_STATUS1/2` (`0x1F801D9C/9E`, the **ENDX** bits: voice `v` has played a block with the end flag), `SPU_CD_VOL_L/R` (`0x1F801DB0/B2`), `SPU_CTRL` (`0x1F801DAA`). A key-on write *starts* the voices whose bits are set: it copies the start address into the current address and starts the envelope. **Set every register of the voice before the key-on.**
 
@@ -105,16 +105,16 @@ Global registers: `SPU_KEY_ON1/2` (`0x1F801D88/8A`, one bit per voice, voices 0-
 ```
    pitch = rate * 4096 / 44100        (integer division)
 
-   rate 22050 Hz  -> 0x0800        half the step: native speed for this sample
+   rate 22050 Hz  -> 0x0800        half a sample per output: native speed for this sample
    rate 44100 Hz  -> 0x1000
    pitch 0x0400   -> plays at 11025 Hz: one octave below native
-   pitch 0x0FB8   -> plays at 43325 Hz: about one octave above
-   (each doubling of the pitch is one octave: the maximum 0x3FFF is two octaves above 0x1000)
+   pitch 0x0FB8   -> plays at 43325 Hz: almost one octave above native
+   (each doubling of the pitch is one octave)
 ```
 
 `psxspu.h` has the macro `getSPUSampleRate(rate)` for this and `getSPUAddr(addr)` for the 8-byte units (it rounds **up**).
 
-**The envelope.** The SPU multiplies the voice by an **ADSR** envelope: **A**ttack (rise to full), **D**ecay (fall to the sustain level), **S**ustain (hold, rising or falling at a rate), **R**elease (fall to 0 after the key-off). `ADSR1` (`+8`): bits 15-8 attack (mode, shift, step), bits 7-4 decay shift, bits 3-0 **sustain level** (0-15; 15 = full). `ADSR2` (`+10`): bits 15-6 sustain (mode, direction, shift, step), bit 5 release mode, bits 4-0 release shift. After `SpuInit` the registers hold nothing useful, so every voice needs them. The book wants *no shaping*: the fastest attack and sustain level 15, so `ADSR1` = `0x00FF`; a release with shift 10 (a fade of about 50 ms) gives `ADSR2` = `0x000A`. (The SDK's example writes `0x00FF` and `0`.)
+**The envelope.** The SPU multiplies the voice by an **ADSR** envelope: **A**ttack (rise to full), **D**ecay (fall to the sustain level), **S**ustain (hold, rising or falling at a rate), **R**elease (fall to 0 after the key-off). `ADSR1` (`+8`): bits 15-8 attack (mode, shift, step), bits 7-4 decay shift, bits 3-0 **sustain level** (0-15; 15 = full). `ADSR2` (`+10`): bits 15-6 sustain (mode, direction, shift, step), bit 5 release mode, bits 4-0 release shift. After `SpuInit` the registers hold nothing useful, so every voice needs them. The book wants *no shaping*: the fastest attack and sustain level 15 give `ADSR1` = `0x00FF`; a release with shift 10 (a fade of about 50 ms after key-off) gives `ADSR2` = `0x000A`.
 
 **Stopping.** A one-shot needs no key-off: its last block (flag 1) makes the SPU **mute the voice and set its ENDX bit** (5.8). The looped engine runs until the program keys it off (`SPU_KEY_OFF1` bit 0).
 
@@ -128,7 +128,7 @@ There are 24 voices; the engine owns **voice 0** for as long as the game runs. E
 | **round robin** | a cursor over a pool; the oldest voice is reused | one-shots: a thud lasts 0.35 s and the pool has 23 voices, so it is never reused while it plays |
 | priority / steal | give a voice to the important sound | the stretch goal |
 
-`audio_play_sfx(id)` takes the next voice, **keys it off first** (a voice that is still playing restarts cleanly), writes volume, pitch (`rate * 4096 / 44100` of *that* sample), start address and the envelope, then keys it on. `audio_voice_alloc()` is the cursor alone, so it can be tested without sound. `audio_init` resets it to 1.
+`audio_play_sfx(id)` takes the next voice, keys it off (a precaution: key-on restarts the sample and the envelope anyway), writes volume, pitch (`rate * 4096 / 44100` of *that* sample), start address and the envelope, then keys it on. `audio_voice_alloc()` is the cursor alone, so it can be tested without sound. `audio_init` resets it to 1.
 
 ### 5.5 The engine hum
 
@@ -147,9 +147,9 @@ The hum is the looped `ENGINE` sample on voice 0, **started once when the game s
 | 0 | 2048 | `0x0400` | 11,025 Hz (an octave low: idle) |
 | 20 | 4048 | `0x07E8` | 21,792 Hz |
 | 40 | 6048 | `0x0BD0` | 32,558 Hz |
-| 60 (cap) | 8048 | `0x0FB8` | 43,325 Hz (about 3.9 x the idle rate, two octaves up) |
+| 60 (cap) | 8048 | `0x0FB8` | 43,325 Hz (3.9 x the idle rate: almost two octaves up) |
 
-The mapping is **monotone** (a faster ship never sounds lower) because both terms only grow; and **linear in speed**: the ear hears frequency ratios, so a more musical map would be exponential (a stretch goal). Because `base` comes from the file's rate, an engine re-recorded at another rate sounds the same.
+The mapping is **monotone** (a faster ship never sounds lower) because every step preserves order, and **linear in speed**. The ear hears frequency ratios, so a more musical map would be exponential (a stretch goal). Because `base` comes from the file's rate, an engine re-recorded at another rate sounds the same.
 
 ### 5.6 Game events
 
@@ -162,7 +162,7 @@ Two events trigger one-shots now; Chapter 40 will replace the second with real c
 
 *Off the road*: `|lateral| > half_width` of `ship_section`, where `lateral = (dx*right.x + dy*right.y + dz*right.z) >> 12` with `d = pos - section.centre` (each component of `d` clamped to +-32767 first: a ship far away must not overflow). `right` is the section's 4.12 unit vector (E.10.4), `half_width` 600 on the book's tracks.
 
-Details that matter and that the verifier tests: an event fires **on the change**, not on every frame the condition holds (stay on a pad or outside the road and nothing repeats); two consecutive boost sections (28, 29 on track 1) are two sections, so **two chimes**; a teleport *onto* a pad is a change of section (a chime), a teleport while already outside stays outside (no second thud); entering the game raises nothing (`audio_events_reset` stores the start state).
+The verifier tests these details: an event fires **on the change**, not on every frame the condition holds (stay on a pad or outside the road and nothing repeats); two consecutive boost sections (28, 29 on track 1) are two sections, so **two chimes**; a teleport *onto* a pad is a change of section (a chime), a teleport while already outside stays outside (no second thud); entering the game raises nothing (`audio_events_reset` stores the start state).
 
 ```
         boost pad sections 28, 29                    |lateral| > 600
@@ -174,7 +174,7 @@ Details that matter and that the verifier tests: an event fires **on the change*
 
 The music is **not** a sample: 24 seconds of 44.1 kHz stereo PCM is 4.2 MB, eight times the whole SPU RAM (and still more than twice it as ADPCM). It is a **CD-DA** (Red Book audio) track: raw 44,100 Hz, 16-bit, stereo PCM on a second track that the drive plays itself.
 
-**On the disc.** `tools/assets/musicgen.py` writes an original 24 s loop (A minor, 120 BPM, 12 bars: bass, arpeggio, pad and drums, all synthesised; `mkassets.py --music` makes `MUSIC.WAV`, 4.2 MB). `iso.xml` adds it after the data track:
+**On the disc.** `tools/assets/musicgen.py` writes an original 24 s loop (A minor, 120 BPM, 12 bars: bass, arpeggio, pad and drums, all synthesized; `mkassets.py --music` makes `MUSIC.WAV`, 4.2 MB). `iso.xml` adds it after the data track:
 
 ```
    <track type="audio" source="assets/MUSIC.WAV" />     ->  hoverline.cue:  TRACK 02 AUDIO
@@ -195,7 +195,7 @@ Track 1 is the data track (the program, the assets); track 2 is the music. mkpsx
 
 **Looping.** The drive does not loop. With `CdlModeAP` it pauses at the end of the track and signals `CdlDataEnd`: `CdAutoPauseCallback` registers a function that sets a flag (a callback must be short), and `audio_update` (once per frame) sees the flag and sends `CdlPlay` again. (`CdlModeRept` is the **report** mode, position reports during play, not a repeat.) The music starts when the program has loaded, on the **title**, and plays on through the game.
 
-**Why not XA?** XA audio is ADPCM interleaved with data in Mode 2 sectors of the data track, fed to the SPU by the drive while the CPU reads the file (the SDK's `cdxa` example shows it): about 4 to 8 times smaller than CD-DA, but it needs a Mode 2 form 2 file and the read loop. CD-DA is two lines of code and costs disc space; the book's disc has plenty.
+**Why not XA?** XA audio is ADPCM in Mode 2 Form 2 sectors of the data track, interleaved with other sectors; the drive decodes it during a read and feeds the same CD input (the SDK's `cdxa` example shows it). It is 4 to 8 times smaller than CD-DA at similar quality, but it needs an XA-encoded, interleaved file and more code. CD-DA is a few calls and costs disc space; the book's disc has plenty.
 
 ### 5.8 What the emulator showed
 
@@ -205,21 +205,19 @@ PCSX-Redux, with the probe of 5.9 (`audio_stats.endx`, `env_engine` and `env_las
 |---|---|
 | Does the loop (flag 4 at block 1, flag 3 at the last) keep the engine running? | yes: the envelope level stays `0x7FFF` for the whole run (a flag-1 end would drop it to 0), and the ENDX bit of voice 0 is set at the loop ends |
 | What does a **flag-1 end block** do to a one-shot? | the envelope level goes to **0** with no key-off and the voice's ENDX bit is set |
-| A one-shot ending in a silent **flag-7** block instead (a one-off run)? | the same: envelope 0 and ENDX set. By the flag table of E.4 a `07` block repeats itself silently and should leave the envelope up, so Redux does not follow the table here. This is one emulator's behaviour, not a hardware fact; the book writes `01`, which mutes the voice under either reading |
+| A one-shot ending in a silent **flag-7** block instead (a one-off run)? | the same: envelope 0 and ENDX set. By the flag table of E.4 a `07` block repeats itself silently and should leave the envelope up, so Redux does not follow the table here. This is one emulator's behavior, not a hardware fact; the book writes `01`, which mutes the voice under either reading |
 | Does `CdlPlay` with a track number play track 2, and does `CdlModeAP` end it? | the command is accepted, and the auto-pause callback fires after the 24 s track (24 s of emulated time later): `music_restarts` counts it |
 
-**Not verified** (no second emulator is installed in the book's toolchain, and the verifier cannot hear): how **DuckStation** and **Mednafen** handle a flag-1 block and a silent flag-7 block (other tools end one-shots with the latter; the book writes flag 1), and **real hardware**; what a block with shift 13 to 15 sounds like (psx-spx says it plays like 9; the book never writes it); whether `CdlPlay`'s track parameter is honoured by every emulator (the SDK warns that some ignore it).
+**Not verified** (the toolchain has one emulator, and the verifier cannot hear): how other emulators and real hardware treat a flag-1 and a silent flag-7 ending (other tools end one-shots with the latter); what a block with shift 13 to 15 sounds like (psx-spx says like 9; the book never writes one); whether every emulator honors `CdlPlay`'s track parameter (the SDK warns that some ignore it).
 
 ### 5.9 How the verifier hears
 
-It cannot record sound. It **watches the writes**.
+It cannot record sound, so it **watches the writes**. Section 8 lists the checks; this is how they get their evidence.
 
-1. **Registers.** The SPU's registers cannot be read from the emulator's Lua. PCSX-Redux fires a **write breakpoint** for stores to I/O addresses; the breakpoint callback gets the address but not the value, so the probe decodes the **store instruction** (`sh rt, off(rs)`) at the PC and reads the value from register `rt`. `verify.on_hwwrite` (in `tools/verify-lib/redux.lua`) does this and logs, for `0x1F801C00` to `0x1F801DFF` (SPU) and `0x1F801800` to `0x1F801803` (CD controller), one line per store: the pose it belongs to, the offset, the width and the value. `checks.py` replays the log to know every voice register at every key-on (which voice, which address, which pitch and volume), every key-off, the CD commands (`0x03` = Play, parameter 2) and the CD volume matrix.
-2. **SPU RAM.** `PCSX.SPU.Logger.exportSPD(file, 0, true)` writes an SPU dump (`PSXSPUDUMPv1r1`) that holds the **RAM image**; the probe enables the logger at the start and exports at the end. In this build RAM address `0x1000` is at file offset `0x44` (the SDK's dummy block is the anchor the verifier checks for), so `example/audio_ref.py`'s `spd_ram` reads any range. The five `.VAG` bodies must be there byte for byte.
-3. **The run.** The pad is idle except for START. At the end of every frame the probe writes a **pose** into `ship` (position on or beside the track, and a speed); the next frame's `ship_update` leaves a speed-0 pose alone, so the position the events see is the pose. The script: teleports and slow runs across the boost pads (sections 28, 29, 76, 77), excursions off both edges, a drive along the verge, teleports while outside, a thud on alternate frames (more than 23 one-shots: the voices wrap), a speed sweep 0 to the cap and back, a long still period after a thud.
-4. **Direct calls.** At the entry of `main` the probe calls `audio_pitch_for_speed` 90 times (negative speeds, the clamp, five sample rates and constants) and `audio_voice_alloc` 50 times.
-5. **Another disc.** The verifier builds a second image where `ENGINE`, `BOOST` and `THUD` have other sample rates (the rate field of the VAG header only) and patches other `idle_mul`, `span_mul` and volumes in: a hard-coded pitch fails.
-6. **The disc.** The `.cue` lists `TRACK 02 AUDIO` and the `.bin` holds exactly the WAV's sectors after it.
+1. **Registers.** The emulator's Lua cannot read the SPU's registers, but PCSX-Redux fires a **write breakpoint** on stores to I/O addresses. The callback gets the address and not the value, so the probe decodes the **store instruction** at the PC and reads the value from its source register (`verify.on_hwwrite` in `tools/verify-lib/redux.lua`). Every store to `0x1F801C00`-`0x1F801DFF` (SPU) and `0x1F801800`-`0x1F801803` (CD controller) is logged with the frame it belongs to. `checks.py` replays the log, so it knows every voice register at every key-on, every key-off, the CD commands and the CD volume matrix.
+2. **SPU RAM.** `PCSX.SPU.Logger.exportSPD` writes an SPU dump that holds the **RAM image** (in this build, RAM address `0x1000` is at file offset `0x44`; the SDK's dummy block is the anchor the verifier checks for). The five `.VAG` bodies must be there byte for byte.
+3. **The run.** The pad is idle except for START. At the end of every frame the probe writes a **pose** (a position on or beside the track, and a speed) into `ship`; `ship_update` leaves a speed-0 pose where it is, so the events see exactly the posed position. The script teleports and drives across the boost pads, leaves the road on both sides, drives along the verge, teleports while outside, raises a thud on alternate frames (more than 23 one-shots, so the voices wrap), sweeps the speed from 0 to the cap and back, and holds still after a last thud.
+4. **Direct calls and a second disc.** At the entry of `main` the probe calls `audio_pitch_for_speed` 90 times and `audio_voice_alloc` 50 times. A second image, with other sample rates in the headers of `ENGINE`, `BOOST` and `THUD` and other `audio_cfg` values patched in, makes a hard-coded pitch or volume fail.
 
 ## 6. Worked example
 
@@ -237,9 +235,9 @@ A chime: the ship moves from section 27 to 28, which has a boost face. The frame
 
 ## 7. Project: sound for Hoverline
 
-### 7.1 Behaviour
+### 7.1 Behavior
 
-Chapter 38's game. From the title on the CD music plays. Entering the game starts the hum; it rises as you accelerate (X) and falls when you brake (Square). Driving into a **boost** section (28, 29, 76, 77) plays the chime; driving off the edge of the road (there is no wall yet) plays the thud, once per excursion. START back to the title silences the hum and the music goes on.
+Chapter 38's game, with sound. The CD music plays from the title on. Entering the game starts the hum; it rises as you accelerate (X) and falls when you brake (Square). Driving into a **boost** section (28, 29, 76, 77) plays the chime; driving off the edge of the road (there is no wall yet) plays the thud, once per excursion. START returns to the title and silences the hum; the music goes on.
 
 ### 7.2 The contract
 
@@ -305,7 +303,7 @@ About a minute: a build, the **main** run (about 800 frames), the **alt** disc (
 | `spu_ram_holds_the_vag_data` | each body is in the SPU dump at the table's address, byte for byte | wrong address, a short transfer, the header uploaded |
 | `engine_starts_on_voice_0` | one key-on of voice 0 when the game starts, with the right address, volume, idle pitch; the envelope stays up (the loop works); ENDX shows loop ends | restarting each frame, wrong register |
 | `engine_pitch_follows_speed` | the pitch written in every game frame equals the formula (all poses); monotone through the sweep up and down; 40+ distinct values; both ends exact | the formula, writing only at key-on |
-| `pitch_function_direct_calls` | 90 calls (negative speeds, clamp, other rates and constants) equal the model; callee-saved registers kept | overflow, no clamp, hard-coded rate |
+| `pitch_function_direct_calls` | 90 calls (speeds from negative to `1 << 24`, five sample rates, other constants) equal the model; callee-saved registers kept | overflow, no clamp, hard-coded rate |
 | `voice_allocation_round_robin` | `1..23, 1..23, 1..4` | cursor, voice 0 handed out |
 | `boost_chime_events`, `collision_thud_events` | one key-on per event in the right frame, round-robin voice, pitch from the sample's rate, volume, start address | edge detection, the lateral rule |
 | `no_stray_key_ons` | nothing else keys on; counters agree; all of voices 1-23 used and never 0 | key-on every frame |
@@ -313,7 +311,7 @@ About a minute: a build, the **main** run (about 800 frames), the **alt** disc (
 | `engine_stops_on_the_title` | a key-off of voice 0 on returning to the title | the hook |
 | `music_plays_from_the_cd` | `CdlSetmode` with DA and AP, then `CdlPlay` with 2; CD volume registers; `SPU_CTRL` bits; the volume matrix | missing `CdMix` |
 | `music_restarts_when_the_track_ends` | a second `CdlPlay` after the 24 s track (at least 1,300 vertical blanks after the first); `music_restarts` counts it | callback, the flag, a timer instead of the callback |
-| `nothing_hard_coded_alt_disc` | on the other disc: pitches, key-ons, RAM and the CD volume follow the other rates and constants | constants in the code |
+| `nothing_hard_coded_alt_disc` | on the second disc (5.9): pitches, key-ons, RAM and the CD volume follow the other rates and constants | constants in the code |
 
 A pass ends with `CHAPTER 39: PASSED (15/15 checks)`. The untouched starter fails; so do (all tried): a pitch that ignores the speed, a key-on of the engine every frame, a start address off by 16 bytes, a sample uploaded 64 bytes away from the address in the table, no `CdlPlay`, and hard-coded `0x800` / 22,050. Not verified: the sound itself (5.8).
 
@@ -324,7 +322,7 @@ A pass ends with `CHAPTER 39: PASSED (15/15 checks)`. The untouched starter fail
 - **The header in SPU RAM.** Upload the blocks, not the 48 header bytes; and the **size** field is big-endian.
 - **No end flag on a one-shot.** The voice runs on into whatever follows in SPU RAM (noise).
 - **A short or unaligned transfer.** The SPU's DMA moves 64-byte blocks.
-- **Key-on before the registers.** The voice starts with the previous voice's pitch.
+- **Key-on before the registers.** The voice starts with the pitch and address of its previous sound.
 - **Key-on every frame.** The sound restarts 60 times a second: a buzz, and a "stuck" voice.
 - **Everything on voice 0.** Two sounds cut each other; use a pool.
 - **CD volume zero.** `SpuInit` gives the SPU's CD input `0x7FFF`, but the drive's matrix (`CdMix`) and `SPU_CTRL` bit 0 matter too; with any of them at zero the music is silent without an error.
@@ -338,6 +336,6 @@ A pass ends with `CHAPTER 39: PASSED (15/15 checks)`. The untouched starter fail
 ## 11. Further reading
 
 - Appendix E.4 (VAG), E.2 (the disc layout; the audio track), [Appendix B](../../../appendices/B-memory-map-and-io.md) (SPU registers), `tools/assets/README.md` (`musicgen.py`, `--music`).
-- psx-spx: *SPU Overview*, *SPU Voice Registers*, *SPU ADPCM Samples*, *SPU ADSR Envelope*, *SPU Reverb*, *CDROM Control Commands* (Play, Setmode), *CDROM Audio*.
+- psx-spx: *SPU Overview*, *SPU Voice Registers*, *SPU ADPCM Samples*, *SPU ADSR Envelope*, *SPU Reverb*, *CDROM Control Commands* (Setmode), *CDROM - CD Audio Commands* (Play).
 - The SDK's examples `sound/vagsample`, `sound/spustream` (streaming from main RAM), `sound/cdstream`, `cdrom/cdxa`.
 - Chapter 40 (collision events replace the thud), Chapter 41 (countdown beeps, the lap chime).

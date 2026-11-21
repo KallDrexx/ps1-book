@@ -2,17 +2,17 @@
 
 **Theme.** Driving the PS1 GPU directly by writing command packets to its hardware ports, with no SDK.
 
-**Part outcome.** You can initialize the display, draw shaded polygons with reusable stack-parameter routines, upload 16- and 24-bit images to VRAM, and animate a double-buffered scene synchronised to VBlank, in pure assembly.
+**Part outcome.** You can initialize the display, draw shaded polygons with reusable stack-parameter routines, upload 16- and 24-bit images to VRAM, and animate a double-buffered scene synchronized to VBlank, in pure assembly.
 
 ## Chapters
 
-| # | Chapter | You build | Status |
-|---|---|---|---|
-| 13 | [The GPU, VRAM, and Command Packets](ch13-the-gpu-vram-and-command-packets/README.md) | `gpu_init`, `gpu_clear`, `gpu_rect`: a 320x240 display cleared to 8 colour bars | available |
-| 14 | [Rendering Polygons](ch14-rendering-polygons/README.md) | "Polygon Gallery": flat and Gouraud triangles and quads | available |
-| 15 | [Drawing Subroutines and Stack Parameters](ch15-drawing-subroutines-and-stack-parameters/README.md) | `draw_flat_tri`, `draw_flat_quad`, `draw_gouraud_tri` and a 20-polygon scene from a data table | available |
-| 16 | [Copying Data to VRAM](ch16-copying-data-to-vram/README.md) | `vram_upload`: a 16-bpp image, then a 24-bpp full-screen image | available |
-| 17 | [Part III Capstone: Animation in Assembly](ch17-animation-in-assembly/README.md) | "Bouncing Gem": a Gouraud diamond bounces between two framebuffers, synchronised to VBlank, with a frame-counter bar graph | available |
+| # | Chapter | You build |
+|---|---|---|
+| 13 | [The GPU, VRAM, and Command Packets](ch13-the-gpu-vram-and-command-packets/README.md) | `gpu_init`, `gpu_clear`, `gpu_rect`: a 320x240 display cleared to 8 color bars |
+| 14 | [Rendering Polygons](ch14-rendering-polygons/README.md) | "Polygon Gallery": flat and Gouraud triangles and quads |
+| 15 | [Drawing Subroutines and Stack Parameters](ch15-drawing-subroutines-and-stack-parameters/README.md) | `draw_flat_tri`, `draw_flat_quad`, `draw_gouraud_tri` and a 20-polygon scene from a data table |
+| 16 | [Copying Data to VRAM](ch16-copying-data-to-vram/README.md) | `vram_upload`: a 16-bpp image, then a 24-bpp full-screen image |
+| 17 | [Part III Capstone: Animation in Assembly](ch17-animation-in-assembly/README.md) | "Bouncing Gem": a Gouraud diamond bounces between two framebuffers, synchronized to VBlank, with a frame-counter bar graph |
 
 ## How the part flows
 
@@ -28,7 +28,7 @@ Chapter 13 builds the foundation: what the GPU is, how VRAM is laid out, and how
 Finish Part II. You will constantly use:
 
 - the O32 calling convention with a fifth argument on the stack (Chapter 10);
-- shifts and masks to pack coordinates and colours into words (Chapter 9);
+- shifts and masks to pack coordinates and colors into words (Chapter 9);
 - aligned data and `lw`/`sw` (Chapter 11).
 
 The workflow is unchanged: `source tools/env.sh`, `make` in `starter/`, `verify.sh`.

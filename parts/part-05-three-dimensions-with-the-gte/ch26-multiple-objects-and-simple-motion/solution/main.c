@@ -18,12 +18,12 @@
 
 /* One bouncing cube. Every field is an int32, in this order: the verifier reads and patches the array. */
 typedef struct {
-	int32_t x, y, z;          /* centre, world units; y is 20.12 fixed point (y >> 12 = units), y grows DOWN */
+	int32_t x, y, z;          /* center, world units; y is 20.12 fixed point (y >> 12 = units), y grows DOWN */
 	int32_t vy;               /* vertical velocity, 20.12 units per frame (positive = falling) */
 	int32_t ax, ay, az;       /* angles about X, Y, Z, 0..4095 */
 	int32_t sx, sy, sz;       /* added to the angles every frame */
 	int32_t size;             /* half the cube's edge, units */
-	int32_t radius;           /* collision radius, units (centre to floor at rest) */
+	int32_t radius;           /* collision radius, units (center to floor at rest) */
 	int32_t bounce;           /* restitution, 4.12 (4096 = loses no speed) */
 	int32_t colour;           /* r | g << 8 | b << 16 */
 	int32_t bounces;          /* floor contacts so far */
@@ -48,7 +48,7 @@ SVECTOR cube[8] = {                       /* the unit cube, +-1.0 (4096); corner
 uint8_t faces[6][4] = {                   /* Chapter 25's table */
 	{ 0, 1, 2, 3 }, { 5, 4, 7, 6 }, { 4, 0, 6, 2 }, { 1, 5, 3, 7 }, { 4, 5, 0, 1 }, { 2, 3, 6, 7 },
 };
-uint16_t face_shade[6] = { 256, 208, 176, 232, 192, 160 };   /* face f colour = channel * shade >> 8 */
+uint16_t face_shade[6] = { 256, 208, 176, 232, 192, 160 };   /* face f color = channel * shade >> 8 */
 uint8_t floor_colors[2][3] = { { 72, 72, 96 }, { 168, 168, 190 } };   /* tile (col + row) even / odd */
 
 MATRIX  cam_mtx;                          /* identity rotation, translation = cam */

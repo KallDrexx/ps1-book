@@ -164,7 +164,8 @@ def _(ctx):
 @check("the copies come from the loads, not from constants",
        hint="The verifier changed the words at +0x00, +0x0C and 0x1F800000 just before your first load "
             "of each. The copies at +0x10-0x17 and +0x20 must show the new bytes, so build them from "
-            "lbu/lw results, not from lui/ori constants.")
+            "lbu/lw results, not from lui/ori constants. A register stored on the line right after its "
+            "load (load delay) also fails here.")
 def _(ctx):
     r = ctx.run("perturb", probe=PERTURB)
     mem = r.mem("results")

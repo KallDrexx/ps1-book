@@ -25,7 +25,7 @@ The last batch transforms whatever follows `cube[7]` and its three-word store wr
 
 <details><summary>Answer</summary>
 
-The read waits for the command to finish, so the CPU is idle for the rest of its 15 cycles. Instructions that need no GTE register fill that idle time for free. When there are more than the window holds, the extra ones run after the command is done and cost their full price. PCSX-Redux's interpreter charges 2 cycles per instruction, so the window holds about 7. That is the emulator's model: on hardware an ALU instruction from the cache costs about 1 cycle (more fit) and a load from RAM several (fewer fit).
+The read waits for the command to finish, so the CPU is idle for the rest of its 15 cycles. Instructions that need no GTE register fill that idle time for free. When there are more than the window holds, the extra ones run after the command is done and cost their full price. PCSX-Redux's interpreter charges 2 cycles per instruction, so the 13-cycle wait holds six and half of a seventh. That is the emulator's model: on hardware an ALU instruction from the cache costs about 1 cycle (more fit) and a load from RAM several (fewer fit).
 </details>
 
 **5.** Which of these can run while an `RTPT` is in progress without stalling: `addiu` on a CPU register, `lw` from RAM, `swc2` of `SXY0`, `mfc2` of an unrelated register, a second `cop2` command?

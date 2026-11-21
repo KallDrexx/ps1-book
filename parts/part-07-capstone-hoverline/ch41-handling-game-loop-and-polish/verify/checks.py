@@ -354,14 +354,14 @@ def text_of(words, n_lines):
 
 
 # ---- checks: the pure functions ----------------------------------------------------------------------------------------------------------
-@check("air_resistance", hint="handling_drag: speed - fx_mul(speed, min(fx_mul(drag, dt), 4096)); the constant is handling_cfg.drag; no clamping of the result.")
+@check("air_resistance", hint="handling_drag (README 5.2, handling.h): the fraction is scaled by dt and then clamped; the constant comes from handling_cfg.drag; the result itself is not clamped.")
 def _(ctx):
     for case, rec in kind_cases(ctx, "drag"):
         want = H.drag(case["speed"], case["dt"], case["h"])
         expect_eq(s32(rec["v0"]), want, f"{case['tag']}: speed {case['speed']}, dt {case['dt']}, drag {case['h']['drag']}")
 
 
-@check("skid_blend", hint="handling_skid: g = min(fx_mul(grip, dt), 4096); vel[i] += fx_mul(target[i] - vel[i], g) for the three axes, in place; target untouched; the constant is handling_cfg.grip.")
+@check("skid_blend", hint="handling_skid (README 5.3, handling.h): all three axes, in place; target untouched; the fraction is scaled by dt and then clamped; the constant comes from handling_cfg.grip.")
 def _(ctx):
     for case, rec in kind_cases(ctx, "skid"):
         want = H.skid(case["vel"], case["tgt"], case["dt"], case["h"])
@@ -371,15 +371,15 @@ def _(ctx):
         expect_true([s32(v) for v in rec["out"]["tgt"]] == case["tgt"], f"{case['tag']}: the target is left alone", show([s32(v) for v in rec["out"]["tgt"]]), "target is const.")
 
 
-@check("pitch_target_from_the_road", hint="handling_pitch_target: flat plane (up.y > -256) gives 0; g = (-(up.x*hx + up.z*hz)) / up.y (truncating), clamped to +-32767; y = g*4096 / isqrt(4096^2 + g^2); "
-                                         "the smallest p in -256..256 minimising |isin(p) + y|; result p << 12.")
+@check("pitch_target_from_the_road", hint="handling_pitch_target (README 5.4, handling.h): the degenerate plane, the sign and the truncating division of the slope, its clamp, "
+                                         "the smallest angle on a tie, the 12.12 result.")
 def _(ctx):
     for case, rec in kind_cases(ctx, "pitch"):
         want = H.pitch_target(case["up"], case["yaw"])
         expect_eq(s32(rec["v0"]), want, f"{case['tag']}: up {show(case['up'])}, yaw {case['yaw']} (whole units: {want >> 12})")
 
 
-@check("auto_pitch_follows_the_section", hint="handling_auto_pitch: not a section -> nothing; else pitch += fx_mul(target - pitch, min(fx_mul(pitch_smooth, dt), 4096)) with target from the section's up and the ship's yaw; "
+@check("auto_pitch_follows_the_section", hint="handling_auto_pitch (README 5.4, handling.h): an index that is not a section changes nothing; the target comes from the section's up and the ship's yaw; the fraction is scaled by dt and then clamped; "
                                               "nothing else of the ship changes.")
 def _(ctx):
     for case, rec in kind_cases(ctx, "autopitch"):
@@ -391,7 +391,7 @@ def _(ctx):
 
 
 @check("calls_are_cheap", hint="The pitch target is asked every tick: a scan of 513 angles costs ~40,000 instructions. isin rises strictly over -256..256, so a binary search needs about ten evaluations. "
-                               "race_tick and the format functions are cheap too.")
+                               "race_tick and race_section_step must not loop over the track.")
 def _(ctx):
     limits = {"pitch": 2500, "autopitch": 3000, "rtick": 1500, "step": 400, "drag": 200, "skid": 400}
     worst = {}
@@ -404,7 +404,7 @@ def _(ctx):
             expect_true(worst[k] <= lim, f"{k}: at most {lim} instructions per call", f"{worst[k]}", "A scan over all the angles, or a loop over the whole track?")
 
 
-@check("section_step_follows_links", hint="race_section_step: +1 if cur is prev's `next`, -1 if it is prev's `prev` (the links, not index +- 1: the verifier swaps them in some sections), else 0; an index that is not a section gives 0.")
+@check("section_step_follows_links", hint="race_section_step (README 5.5, race.h): by the links, not index +- 1 (the verifier swaps them in some sections); an index that is not a section gives 0.")
 def _(ctx):
     for case, rec in kind_cases(ctx, "step"):
         want = H.section_step(TR[case["n"]], case["p"], case["q"])
@@ -425,25 +425,25 @@ def check_rtick(ctx, fields, what):
         expect_true(not bad, f"{what}: no field differs from the rules", f"differences (field, got, expected): {bad}", ctxt)
 
 
-@check("lap_counting", hint="race_tick: ticks++; step by the links from the previous section; progress += step; a lap completes when progress >= (lap + 1) * section_count (the track's own count); "
-                            "lap_ticks[lap] = ticks minus the earlier laps; prev_section follows; a negative section changes nothing but the clock.")
+@check("lap_counting", hint="race_tick (README 5.5, race.h steps 1 to 5): the order of the steps; the track's own section count; a lap's time excludes the earlier laps; "
+                            "a negative section changes nothing but the clock.")
 def _(ctx):
     check_rtick(ctx, {"ticks", "lap", "progress", "furthest", "prev_section", "lap_ticks[0]", "lap_ticks[1]", "lap_ticks[2]", "lap_ticks[3]", "lap_ticks[4]", "lap_ticks[5]", "lap_ticks[6]",
                       "lap_ticks[7]", "flags"}, "lap counting")
 
 
-@check("wrong_way_warning", hint="race_tick: wrong_way = 1 exactly when furthest - progress >= max(race_cfg.wrong_way, 1), computed every tick after the step.")
+@check("wrong_way_warning", hint="race_tick (README 5.6, race.h step 4): recomputed every tick after the step, from the furthest point; the limit comes from race_cfg.wrong_way and is at least 1.")
 def _(ctx):
     check_rtick(ctx, {"wrong_way"}, "wrong-way flag")
 
 
-@check("finish_and_best_lap", hint="At lap >= laps (laps clamped to 1..8): finished = 1, total = ticks, best_lap = the fastest lap of this race; race_best and new_best only when best_lap < race_best or race_best is 0 "
+@check("finish_and_best_lap", hint="race_tick at the last lap (README 5.9, race.h step 5): laps clamped to 1..8; finished, total and best_lap set; race_best and new_best change only for a strictly better lap or a first one "
                                     "(a tie is not a new best).")
 def _(ctx):
     check_rtick(ctx, {"finished", "total", "best_lap", "new_best", "race_best", "flags"}, "finish and best lap")
 
 
-@check("countdown_ticks", hint="race_countdown_tick: beep = cd_ticks % hz == 0 (before the increment); cd_ticks++; GO once cd_ticks >= count_from * hz (count_from clamped to 1..9); GO wins over a beep. Nothing else changes.")
+@check("countdown_ticks", hint="race_countdown_tick (README 5.7, race.h): the beep is tested before the increment, GO after it; count_from is clamped to 1..9; GO wins over a beep. Nothing else changes.")
 def _(ctx):
     for case, rec in kind_cases(ctx, "cd"):
         got = [s32(v) for v in rec["out"]["race"]]
@@ -452,7 +452,7 @@ def _(ctx):
         expect_eq(s32(rec["v0"]), case["want_flags"], f"the return value ({ctxt})")
 
 
-@check("time_text", hint="race_format_time: \"M:SS.cc\": ticks limited to 0..360000, cs = ticks * 100 / hz (integer), limited to 599999; M = cs / 6000, SS = (cs / 100) % 60, cc = cs % 100; a negative time is \"-:--.--\".")
+@check("time_text", hint="race_format_time (README 5.8, race.h): \"M:SS.cc\" from ticks and hz by integer division; the two limits; two digits for seconds and hundredths; a negative time is \"no time\".")
 def _(ctx):
     for case, rec in kind_cases(ctx, "ftime"):
         want = H.format_time(case["ticks"], case["hz"])
@@ -674,8 +674,8 @@ def _(ctx):
             expect_eq(got_beeps, want_beeps, f"{name}: the frames that beep", hint="A beep exactly on the tick of the second boundary, not before or after.")
             last = rows[-1]
             expect_eq(last["state"], H.RACE, f"{name}: the countdown ends in the race")
-            expect_true(104 in last["sfx"], f"{name}: the GO sound (SMP_GO = 4) on the frame the race begins", f"{last['sfx']}", "audio_play_sfx(SMP_GO) then set_state(STATE_RACE).")
-            expect_eq(last["race"][0], 3 * o.hz, f"{name}: race.cd_ticks when GO sounds", hint="count_from * hz = 180 at NTSC.")
+            expect_true(104 in last["sfx"], f"{name}: the GO sound (SMP_GO = 4) on the frame the race begins", f"{last['sfx']}", "game.h, the COUNTDOWN state: the GO sound and the change of state belong to the same tick.")
+            expect_eq(last["race"][0], 3 * o.hz, f"{name}: race.cd_ticks when GO sounds", hint="The countdown lasts count_from seconds of ticks (README 5.7).")
             expect_eq(last["race"][1], 0, f"{name}: race.ticks when GO sounds (no race tick yet)")
 
 
@@ -940,7 +940,7 @@ def _(ctx):
     expect_true(rows[cds[0]]["ship"] == rows[cds[1]]["ship"], "the restart puts the ship back on the start line", show(rows[cds[1]]["ship"]), f"first: {show(rows[cds[0]]['ship'])}")
     last = rows[-1]
     expect_eq(last["state"], 0, "the run ends on the title (START aborted the second race)")
-    expect_true(last["text"][0].startswith("BEST LAP "), "the title shows the best lap", f"{last['text'][0]!r}", "race_format_text(STATE_TITLE): 'BEST LAP m:ss.cc' when race_best > 0.")
+    expect_true(last["text"][0].startswith("BEST LAP "), "the title shows the best lap", f"{last['text'][0]!r}", "race_format_text for the title (README 5.8).")
     expect_eq(last["best"], rows[[i for i, r in enumerate(rows) if r["state"] == 3][0]]["race"][8], "race_best (one lap) = the first race's total")
 
 
@@ -955,7 +955,7 @@ def _(ctx):
         if row["state"] == H.RACE:
             race1.append(row)
     flagged = [r for r in race1 if r["race"][6] == 1]
-    expect_true(len(flagged) >= 4, "the warning is raised during the backward excursion", f"{len(flagged)} frames", "wrong_way = furthest - progress >= 2.")
+    expect_true(len(flagged) >= 4, "the warning is raised during the backward excursion", f"{len(flagged)} frames", "README 5.6.")
     for r in flagged[:4]:
         expect_true("WRONG WAY" in r["text"], f"frame {r['n']}: the text says WRONG WAY while the flag is set", f"{[l for l in r['text'] if l]}", "README 5.8.")
     early = [r for r in race1[:40]]
@@ -975,5 +975,5 @@ def _(ctx):
     expect_eq(res[0]["race"][2], 2, "laps completed on track 2")
     expect_eq(res[0]["race"][8], len(R3), "the total ticks of two laps (the ghost's route: 3 ticks at the start, then one section per tick)", hint="")
     expect_true("TOTAL " + H.format_time(len(R3), 60) in res[0]["text"], "the results text shows the total", f"{[l for l in res[0]['text'] if l]}", "race_format_time.")
-    expect_eq(sequence_of_states(o.rows), [1, 2, 3, 0], "START on the results screen goes to the title (not to a new race)", hint="RESULTS: START -> STATE_TITLE; CROSS -> STATE_COUNTDOWN.")
+    expect_eq(sequence_of_states(o.rows), [1, 2, 3, 0], "START on the results screen goes to the title (not to a new race)", hint="The RESULTS row of README 5.7.")
     expect_true(o.rows[-1]["text"][0] == "BEST LAP " + H.format_time(res[0]["race"][9], 60), "the title then shows the best lap", f"{o.rows[-1]['text'][0]!r}", "race_format_text(STATE_TITLE).")

@@ -1,8 +1,8 @@
 -- Chapter 18 probe.
--- Phase 1 (directcall.lua): expand5 for every 5-bit value, rgb888_to_bgr555 for edge and random colours.
+-- Phase 1 (directcall.lua): expand5 for every 5-bit value, rgb888_to_bgr555 for edge and random colors.
 -- Phase 2 (the real program): every entry to rgb888_to_bgr555 is recorded with its argument and its real
--- return value. If the colour variable `clear_rgb888` has the sentinel top byte 0x5A, the probe then
--- OVERWRITES $v0 on return with FORCE_BGR555: a program that does not use the routine's result shows the wrong colour.
+-- return value. If the color variable `clear_rgb888` has the sentinel top byte 0x5A, the probe then
+-- OVERWRITES $v0 on return with FORCE_BGR555: a program that does not use the routine's result shows the wrong color.
 local DC = dofile(verify.libdir .. '/directcall.lua')
 local rnd32 = DC.rnd32
 local FORCE_BGR555 = 0x03E0          -- pure green

@@ -3,10 +3,10 @@
 ;   draw_flat_tri(color, x0,y0, x1,y1, x2,y2)                      7 arguments: 4 in $a0-$a3, 3 on the stack
 ;   draw_flat_quad(color, x0,y0, x1,y1, x2,y2, x3,y3)              9 arguments: 4 in $a0-$a3, 5 on the stack
 ;   draw_gouraud_tri(c0,x0,y0, c1,x1,y1, c2,x2,y2)                 9 arguments: 4 in $a0-$a3, 5 on the stack
-;   Colours are 0x00RRGGBB, coordinates signed numbers; vertices go to the GPU in the order given.
+;   Colors are 0x00RRGGBB, coordinates signed numbers; vertices go to the GPU in the order given.
 ;   Each routine waits for the GPU once, then sends ONE packet; $s0-$s7, $gp, $fp and $sp are preserved.
 ;
-; main: gpu_init, clear the screen with the scene's background colour, then draw every entry of `scene`
+; main: gpu_init, clear the screen with the scene's background color, then draw every entry of `scene`
 ; (see the table at the bottom) in order, calling the routine its type names.
 
 .psx
@@ -105,7 +105,7 @@ main:
     jal   gpu_init
     nop
     la    $t0, scene
-    lw    $a0, 4($t0)           ; background colour
+    lw    $a0, 4($t0)           ; background color
     move  $a1, $zero
     move  $a2, $zero
     li    $a3, 320
@@ -224,7 +224,7 @@ gi_wait:
     jr    $ra
     nop
 
-gpu_clear:                      ; fill rectangle: GP0(02h), the colour is 0x00RRGGBB; h is the 5th argument, 16($sp)
+gpu_clear:                      ; fill rectangle: GP0(02h), the color is 0x00RRGGBB; h is the 5th argument, 16($sp)
     lui   $t0, 0x1F80
     lw    $t3, 16($sp)          ; h
 gc_wait:
@@ -288,13 +288,13 @@ routines_end:
 ; ---- data -------------------------------------------------------------------------------------------------
 .align 4
 ; The scene: a low-poly landscape. The verifier replaces this whole table (up to SCENE_MAX entries).
-; Layout: count, background colour, then `count` entries of 8 words (32 bytes):
-;     type, colour0, colour1, colour2, vertex0, vertex1, vertex2, vertex3
+; Layout: count, background color, then `count` entries of 8 words (32 bytes):
+;     type, color0, color1, color2, vertex0, vertex1, vertex2, vertex3
 ; Vertices are packed words (y << 16) | (x & 0xFFFF), absolute screen coordinates (drawing offset 0).
 ; Unused fields are 0. Polygons are drawn in table order, so later ones paint over earlier ones.
 scene:
     .word 23                         ; polygon count
-    .word 0x6090D0                      ; background colour (sky)
+    .word 0x6090D0                      ; background color (sky)
     ; sun
     .word T_FLAT_QUAD, 0xFFE080, 0x000000, 0x000000
     vtx 250,15 :: vtx 275,40 :: vtx 225,40 :: vtx 250,65

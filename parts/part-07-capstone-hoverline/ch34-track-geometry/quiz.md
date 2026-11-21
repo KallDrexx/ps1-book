@@ -4,7 +4,7 @@
 
 <details><summary>Answer</summary>
 
-672 vertices (112 rings x 6) and 560 faces (112 x 5). Neighbouring sections share a ring: ring `r + 1` is the end of section `r` and the start of section `r + 1`, stored once. The last section ends on ring 0.
+672 vertices (112 rings x 6) and 560 faces (112 x 5). Neighboring sections share a ring: ring `r + 1` is the end of section `r` and the start of section `r + 1`, stored once. The last section ends on ring 0.
 </details>
 
 **2.** `first_face` and `face_count` are `u16` in a section record. Why does `track_parse` compute `first_face + face_count` in 32 bits before comparing it with the file's face count?

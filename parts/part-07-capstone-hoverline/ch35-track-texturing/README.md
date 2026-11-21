@@ -2,11 +2,11 @@
 
 ## 1. Concept
 
-VRAM is a fixed 1024 x 512 picture that holds *everything*: the two framebuffers, every texture and every colour palette. Nothing places textures there for you. This chapter plans that space by hand (a **VRAM layout**), loads the eight track tiles into the places you chose, and draws every track face as a textured quad whose UVs come from the face record, **mirrored** when the face carries `FLIP_H`.
+VRAM is a fixed 1024 x 512 picture that holds *everything*: the two framebuffers, every texture and every color palette. Nothing places textures there for you. This chapter plans that space by hand (a **VRAM layout**), loads the eight track tiles into the places you chose, and draws every track face as a textured quad whose UVs come from the face record, **mirrored** when the face carries `FLIP_H`.
 
 ## 2. Why it matters
 
-The track is 560 faces but only eight small tiles: 64 x 64 texels each, reused everywhere. That reuse is the whole point of tiling. It only works when the layout is right: a tile that overlaps a framebuffer is overwritten every frame, a tile that crosses a texture page cannot be addressed, and a wrong page word shows another tile's pixels. Chapters 36 to 41 add more VRAM users (ship textures, a font, subdivided faces that reuse the same tiles). A layout you planned and wrote down is the one you can extend.
+The track is 560 faces but only eight small tiles: 64 x 64 texels each, reused everywhere. That reuse is the whole point of tiling. It only works when the layout is right: a tile that overlaps a framebuffer is overwritten every frame, a tile that crosses a texture page cannot be addressed, and a wrong page word shows another tile's pixels. Later chapters add more VRAM users (ship textures, a font). A layout you planned and wrote down is one you can extend.
 
 ## 3. Learning objectives
 
@@ -28,7 +28,7 @@ After this chapter you can:
 
 ### 5.1 VRAM is one picture, and you are the allocator
 
-VRAM is 1024 **units** wide and 512 **lines** tall. A unit is one 16-bit word, so VRAM is exactly 1 MiB (524,288 units). The GPU draws into it, scans the display out of it and reads textures from it. All of that shares one address space, and no one stops two uses from overlapping.
+VRAM is 1024 **units** wide and 512 **lines** tall. A unit is one 16-bit word, so VRAM is exactly 1 MiB (524,288 units). The GPU draws into it, scans the display out of it and reads textures from it. All of that shares one address space, and nothing stops two uses from overlapping.
 
 ```
         x ->  0         320                                           1023
@@ -49,7 +49,7 @@ The two buffers are the project's `psxe` display: draw buffer 0 at (0,0) and 1 a
 
 ### 5.2 What is already in VRAM
 
-`main.c` loads two more things at the places **their own TIMs name** (you may not overlap them). `tools/assets` also names a default place for the track tiles; you will not use it.
+`main.c` loads two more files at the places **their own TIMs name**; your tiles may not overlap them. `tools/assets` also names a default place for the track tiles; you will not use it.
 
 | What | Image (x, y, w x h) | CLUT (x, y, w x h) |
 |---|---|---|
@@ -58,16 +58,16 @@ The two buffers are the project's `psxe` display: draw buffer 0 at (0,0) and 1 a
 | `PROPS.TPK` tile 0 (scenery) | (512, 0) 8x64 | (32, 480) 16x1 |
 | `PROPS.TPK` tile 1 | (520, 0) 16x64 | (32, 481) 16x1 |
 
-`example/tiledump.py` prints this table from the real files (6). Two more claims on VRAM:
+`example/tiledump.py` prints this table from the real files (Section 6). Two more claims on VRAM:
 
-- **The SDK font.** `FntLoad(960, 0)` is what every PSn00bSDK example calls. It uploads a 32 x 32-unit image at (960, 0) and its 16 x 1 CLUT just below, at (960, 32): x 960..991, y 0..32. A program that prints text must keep that rectangle (or call `FntLoad` with another place) free.
+- **The SDK font.** The PSn00bSDK examples call `FntLoad(960, 0)`, which uploads a 32 x 32-unit image at (960, 0) and its 16 x 1 CLUT just below, at (960, 32): x 960..991, y 0..32. A program that prints text must keep that rectangle free, or pass `FntLoad` another place.
 - **More textures** in later chapters. Leave room: the free-space section of `vram_layout.md` is where you account for it.
 
 ### 5.3 Texture pages
 
 A polygon does not address VRAM freely. It names one **texture page** (**tpage**), and its UVs are coordinates *inside* that page.
 
-| | 4 bpp (16 colours) | 8 bpp (256 colours) | 16 bpp (direct) |
+| | 4 bpp (16 colors) | 8 bpp (256 colors) | 16 bpp (direct) |
 |---|---|---|---|
 | a page is | 256 x 256 texels | 256 x 256 texels | 256 x 256 texels |
 | in VRAM: width | 64 units | 128 units | 256 units |
@@ -102,17 +102,17 @@ For a tile whose image is at VRAM `(x, y)` (units, lines) and whose CLUT is at `
 
 | | Formula | Meaning |
 |---|---|---|
-| **tpage word** | `x/64 \| (y/256) << 4 \| (abr << 5) \| (tp << 7)` | page, semi-transparency mode (0 = none), colour depth: `tp` 0 = 4 bpp, 1 = 8, 2 = 16 |
+| **tpage word** | `x/64 \| (y/256) << 4 \| (abr << 5) \| (tp << 7)` | page, semi-transparency mode (0 = none), color depth: `tp` 0 = 4 bpp, 1 = 8, 2 = 16 |
 | **CLUT word** | `cx/16 \| cy << 6` | where the palette is |
 | **UV origin** | `u0 = (x mod 64) * m`, `v0 = y mod 256` | the tile's top-left texel in the page; `m` = 4, 2, 1 for 4, 8, 16 bpp |
 
 `getTPage(tp, abr, x, y)` and `getClut(x, y)` compute the words (`vram_layout.h` wraps them as `TPAGE_4BPP` and `CLUT_AT`). A face's absolute UV is the tile's `u0, v0` plus the face's texture-local UV (0..63 for these tiles).
 
-**CLUTs.** A CLUT is a 16-entry (4 bpp) or 256-entry (8 bpp) row of colours: **one line high**, anywhere in VRAM, but its `x` is a multiple of 16. A 4-bpp CLUT is 16 units wide, so eight of them in one row take 128 units. The rows below the framebuffers (y 480..511, x 0..319) are only 32 lines tall and fit CLUTs and nothing else well: the usual home. Each tile has its own CLUT here, because the TIMs carry their own palettes.
+**CLUTs.** A CLUT is a row of 16 (4 bpp) or 256 (8 bpp) colors, **one line high**. It may sit anywhere in VRAM as long as its `x` is a multiple of 16. A 4-bpp CLUT is 16 units wide, so eight of them in one row take 128 units. The strip below the framebuffers (x 0..319, y 480..511) is too low for a tile, which makes it the usual home for CLUTs. Each tile has its own CLUT here, because each TIM carries its own palette.
 
 ### 5.5 Relocating a tile
 
-Every TIM carries *its own* VRAM rectangles (E.3). `tim_upload` copies the pixels to exactly those rectangles. That is convenient for one texture and a trap for a program with a layout: two packs can name the same places, and the TIM does not know where the framebuffers are. The **tile's pixels do not change when it moves**: only the rectangle it is copied to, and the words that point to it.
+Every TIM carries *its own* VRAM rectangles (E.3). `tim_upload` copies the pixels to exactly those rectangles. That is convenient for one texture and a trap for a program with a layout: two packs can name the same places, and a TIM does not know where the framebuffers are. The **tile's pixels do not change when it moves**: only the rectangle they are copied to and the words that point to it change.
 
 This chapter's `tim_upload_at(info, img_x, img_y, clut_x, clut_y)` (given) is `tim_upload` with the destination as arguments. Your loader reads each TIM with `tim_parse`, **checks it against its slot**, and uploads it at the slot's place. The verifier's second disc is built so that a loader that trusts the TIM writes onto the framebuffers (7.4).
 
@@ -124,9 +124,9 @@ Each face (E.10.3) holds a texture index `tex` (the id in `TRACK.TPK`, or `0xFF`
 |---|---|---|---|---|
 | 0 | `asphalt` | speckled road | 111 | 56 |
 | 1 | `asphalt_worn` | patches and cracks | 111 | 0 |
-| 2 | `lane_stripe` | dashed centre line | 107 | 0 |
+| 2 | `lane_stripe` | dashed center line | 107 | 0 |
 | 3 | `boost` | chevrons | 4 | 0 |
-| 4 | `start_line` | chequered flag | 3 | 0 |
+| 4 | `start_line` | checkered flag | 3 | 0 |
 | 5 | `wall_a` | wall with a glowing rail | 168 | 56 |
 | 6 | `wall_b` | yellow-black hazard stripes | 56 | **56 (all)** |
 | 7 | `glow` | cyan gradient | 0 | 0 |
@@ -138,18 +138,18 @@ Do not rely on this table in code: the verifier's second disc permutes the ids. 
 **Flipping.** `FLIP_H` (bit 4) means *mirrored in U*. The tile in VRAM is untouched; the face's UVs are changed:
 
 ```
- as stored (lane face):              FLIP_H: u -> u_min + u_max - u   (here 63 - u)
+ a lane face as stored:              with FLIP_H: u -> u_min + u_max - u   (here 63 - u)
 
-   v0 (0,0)----v1 (63,0)               v0 (63,0)----v1 (0,0)
+   v0 (63,0)---v1 (0,0)                v0 (0,0)----v1 (63,0)
     |             |                     |             |
-   v2 (0,63)---v3 (63,63)              v2 (63,63)---v3 (0,63)
+   v2 (63,63)--v3 (0,63)               v2 (0,63)---v3 (63,63)
 
-   the picture reads  ->               the picture reads  <-
+   same corners, same v: the tile's left and right edges have changed places
 ```
 
-Why `u_min + u_max - u` and not "swap `u0` and `u1`"? On a **lane** quad the U edge is `v0 -> v1`, and both agree. On a **wall** quad the U axis runs along `v0 -> v2`: `u0 = u1`, so swapping them changes nothing. The general rule mirrors the face inside its own U range and works for both (Appendix E.10.3 states it). The mirror comes **before** the tile origin is added: `u = u0 + (u_min + u_max - u_local)`. The hazard-stripe tile (id 6) is only ever used flipped: ignoring `FLIP_H` is visible there, and on the start line (never flipped) a *wrong* mirror is visible too (the chequer swaps colours).
+Why `u_min + u_max - u` and not "swap `u0` and `u1`"? On a **lane** quad U runs along `v0 -> v1`, and the two rules agree. On a **wall** quad U runs along `v0 -> v2`: `u0 = u1`, so swapping them changes nothing. The general rule mirrors the face inside its own U range and works for both (Appendix E.10.3 states it). The mirror comes **before** the tile origin is added: `u = u0 + (u_min + u_max - u_local)`. The hazard-stripe tile (id 6) is only ever used flipped, so ignoring `FLIP_H` is visible there; the start line is never flipped, so a mirror applied to every face is visible there (the checker squares swap colors).
 
-**Edges.** The PS1 has no texture filtering: each pixel takes one texel, and the UVs are interpolated *between* the corners' values. With every corner inside `0..63` (`u0 + w - 1` is the last texel, Chapter 30), a face never reads its neighbour, so tiles may touch in VRAM. A one-texel border around each tile (copies of the edge texels) is the insurance for code whose UVs can reach `w`; it costs a bigger footprint (68 x 66 texels at 4 bpp: 17 units, three tiles across a page). Say in your `vram_layout.md` which you chose.
+**Edges.** The PS1 has no texture filtering: each pixel takes one texel, and the UVs are interpolated *between* the corners' values. With every corner inside `0..63` (`u0 + w - 1` is the last texel, Chapter 30), a face never reads its neighbor, so tiles may touch in VRAM. A one-texel border around each tile (copies of the edge texels) is insurance for code whose UVs can reach `w`. It costs a bigger footprint: 66 x 66 texels, which at 4 bpp rounds up to 17 units wide, so three tiles across a page instead of four. Say in your `vram_layout.md` which you chose.
 
 ### 5.7 The packet and the budget
 
@@ -168,13 +168,13 @@ A textured quad is a `POLY_FT4`, **40 bytes** (a flat `POLY_F4` is 24):
  word 9  u3 v3 | (padding)
 ```
 
-Colour 128 is the neutral value: the GPU multiplies the texel by `colour / 128`. The ordering-table slot, the culling and the counters are Chapter 34's, unchanged. Only the packet differs: 560 faces take up to 22,400 bytes (`PRIM_BUF_SIZE` is 32,768 in this chapter's `psxe`), 40,320 with every outline, and a full buffer drops faces exactly as before. A face with `tex = 0xFF` (or an id the program did not load) is drawn as in Chapter 34: a flat quad in the flag colour.
+Color 128 is the neutral value: the GPU multiplies the texel by `color / 128`. The ordering-table slot, the culling and the counters are Chapter 34's, unchanged. Only the packet differs: 560 faces take up to 22,400 bytes (`PRIM_BUF_SIZE` is 32,768 in this chapter's `psxe`), 40,320 with every outline, and a full buffer drops faces exactly as before. A face with `tex = 0xFF` (or an id the program did not load) is drawn as in Chapter 34: a flat quad in the flag color.
 
 ### 5.8 Looking at VRAM
 
-In PCSX-Redux: **Debug > GPU > VRAM viewers > Show main VRAM viewer** shows all 1024 x 512 pixels of VRAM. Pause, and find your tiles, the CLUT row and the framebuffers. A 4-bpp tile looks like garbled colours in this view, because VRAM holds *indices* packed four to a unit, not colours: the viewer shows them as 16-bit pixels. A **CLUT row** looks like 16 distinct colours in a line. Wrong places show up at once: a tile inside the framebuffer is overdrawn, a missing CLUT is a row of black.
+In PCSX-Redux, **Debug > GPU > VRAM viewers > Show main VRAM viewer** shows all 1024 x 512 units of VRAM. Pause and find your tiles, the CLUT row and the framebuffers. A 4-bpp tile looks garbled in this view: VRAM holds *indices* packed four to a unit, and the viewer shows each unit as one 16-bit pixel. A **CLUT** is a line of 16 colors. Wrong places show up at once: a tile inside a framebuffer is overdrawn, a missing CLUT is a row of black.
 
-The host-side equivalent is `example/vramdump.py` (6): an ASCII occupancy map and a PNG of a dump, which is what the verifier compares against.
+The host-side equivalent is `example/vramdump.py` (Section 6): an ASCII occupancy map or a PNG of a VRAM dump. The verifier checks the same dump.
 
 ## 6. Worked example
 
@@ -184,26 +184,26 @@ Two host scripts, both standard Python (the book's venv has Pillow for the PNG).
 python ../example/tiledump.py build/assets/TRACK.TPK build/assets/TRACK.TRK --disc-dir build/assets   # from starter/, after make
 ```
 
-prints, per tile: bpp, the rectangle and CLUT the TIM itself names (its default place: your plan may ignore it), the size, how many faces use it and how many are flipped, and the rectangles that are already taken. It is the input of your plan.
+prints, per tile, the bpp, the rectangle and CLUT the TIM itself names (its default place, which your plan ignores), the size, and how many faces use it and how many of those are flipped; then the rectangles that are already taken. It is the input of your plan.
 
 ```sh
-verify.sh --solution --keep         # leaves .../run-default/vram.bin (and the screenshots)
+../verify/verify.sh --solution --keep                                    # prints the work dir; it holds run-default/vram.bin (and the screenshots)
 python ../example/vramdump.py <work dir>/run-default/vram.bin             # ASCII occupancy map, 1 char = 16 units x 16 lines
 python ../example/vramdump.py vram.bin --png vram.png                     # the whole VRAM
 python ../example/vramdump.py vram.bin --png tiles.png --rect X Y W H     # only a rectangle, enlarged 4x
 ```
 
-Run it on a dump of the reference solution and compare the map with the one you drew: the framebuffers are the blocks of `#` at the left, everything else is thin.
+Compare the map of the reference solution's dump with the one you drew: the framebuffers are the blocks of `#` at the left, everything else is small.
 
 ## 7. Project: the textured track
 
-### 7.1 Behaviour
+### 7.1 Behavior
 
-The program is Chapter 34's: the title, **Start** into the game, the track from behind the start line, the fly camera, **Select** toggles the wireframe. Now the lanes and walls are textured: asphalt with a dashed centre line, glowing-rail and hazard-stripe walls, cyan-chevron boost pads and a chequered start line, with the mirrored faces mirrored. A face that cannot be textured is flat as before.
+The program is Chapter 34's: the title, **Start** into the game, the track from behind the start line, the fly camera, **Select** toggles the wireframe. Now the lanes and walls are textured: asphalt with a dashed center line, glowing-rail and hazard-stripe walls, cyan-chevron boost pads and a checkered start line, with the mirrored faces mirrored. A face that cannot be textured is flat as before.
 
 ### 7.2 The contract
 
-`starter/` is Chapter 34's `solution/` plus the new pieces. It builds and boots, and draws the **flat** track, because `track_tex_load` does nothing and `track_face_uv` says "untextured". **Read `track_tex.h`, `vram_layout.h` and `tim.h` first.** **Given:** everything of Chapter 34 (with the `gte_ldv0` pitfall of 9 fixed), `tim_upload_at`, `main.c` (it calls your `track_tex_load` on `\DATA\TRACK.TPK;1`; a failure is not fatal), `iso.xml` and `CMakeLists.txt` with the new file, `TileSlot` and the two helper macros. **You write:**
+`starter/` is Chapter 34's `solution/` plus the new pieces. It builds and boots, and draws the **flat** track, because `track_tex_load` does nothing and `track_face_uv` says "untextured". **Read `track_tex.h`, `vram_layout.h` and `tim.h` first.** **Given:** everything of Chapter 34 (with one fix around `gte_ldv0`, see Section 9), `tim_upload_at`, `main.c` (it calls your `track_tex_load` on `\DATA\TRACK.TPK;1`; a failure is not fatal), `iso.xml` and `CMakeLists.txt` with the new file, `TileSlot` and the two helper macros. **You write:**
 
 | File | What |
 |---|---|
@@ -234,24 +234,24 @@ The program is Chapter 34's: the title, **Start** into the game, the track from 
 
 - The plan is data: ids index `vram_layout`; code does not know that id 6 is a wall.
 - **Relocate**: the tile goes where the slot says, never where its TIM says. The verifier's second disc has TIMs that name places on the framebuffers.
-- The texture index is the face's own `tex`. `0xFF`, or an index the program did not load, means a flat quad in the flag colour (Chapter 34).
+- The texture index is the face's own `tex`. `0xFF`, or an index the program did not load, means a flat quad in the flag color (Chapter 34).
 - UVs are absolute inside the page: tile origin + face UV. `FLIP_H` mirrors with `u_min + u_max - u`, before the origin is added.
-- Check the slot before the upload: rectangles inside VRAM, the CLUT word consistent, bpp and size equal to the TIM's (`TT_ERR_*` in `track_tex.h`, in that order).
+- Check every slot before the first upload: the image and CLUT rectangles inside VRAM, the tpage word that of `(x, y)`, bpp and size equal to the TIM's (`TT_ERR_*` in `track_tex.h`, in that order).
 - No tile, CLUT or image overlaps a framebuffer, `LOGO.TIM`, `PROPS.TPK` or another tile.
 - Free every buffer `track_tex_load` allocates, on every path.
 
 ### 7.5 Hints
 
 - A tile is 16 units x 64 lines. `w` in the slot is in units.
-- `tpk_parse`, `tpk_unpack` and `cd_load_file` are Chapter 29 and 31's; `tim_parse` already refuses a TIM that crosses a page.
+- `cd_load_file` is Chapter 29's, `tpk_parse` and `tpk_unpack` are Chapter 31's; `tim_parse` already refuses a TIM that crosses a page.
 - `tim_upload_at` waits for the GPU (`DrawSync`) after each rectangle.
-- The `POLY_FT4` fields are `x0..y3`, `u0..v3`, `clut`, `tpage` (Chapter 30, 32). Write the four `trk_sxy` words as `fill_flat` does.
+- The `POLY_FT4` fields are `x0..y3`, `u0..v3`, `clut`, `tpage` (Chapters 30 and 32). Write the four `trk_sxy` words as `fill_flat` does.
 - Do not trust one view: the VRAM viewer shows the pixels, the verifier compares them byte for byte, the screenshot shows what a polygon makes of them.
 
 ### 7.6 Stretch goals
 
 - Make `asphalt_worn` an 8-bpp tile (`img2tim.py --bpp 8`), change your plan and the loader's slot check, and see the footprint grow.
-- Draw the track with a second CLUT (a night palette) by changing **only the `clut` word** of the packets: same pixels, other colours.
+- Draw the track with a second CLUT (a night palette) by changing **only the `clut` word** of the packets: same pixels, other colors.
 - Add a one-texel border to the tiles (5.6) and compare the seams (a bordered TIM no longer matches the verifier's tiles).
 - Make the boost pads semi-transparent: `abr` in the tpage word and code `0x2E`.
 
@@ -268,12 +268,14 @@ About 20 seconds: a build and two emulator runs (the disc, and a second disc). T
 | Check | What it means | If it fails |
 |---|---|---|
 | `vram_layout.md ...` (two checks) | the five headings, every tile named, at least 1400 characters of text outside comments, and every tile's x, y, CLUT x, y as numbers in the document | the template left empty; a plan the header does not match |
-| `the plan` | read from RAM: slot size = the TIM's; inside VRAM; one page per tile; tpage and CLUT words consistent; no overlap with the framebuffers, `LOGO`, `PROPS`, or each other | page crossing (`x mod 64 + w > 64`); words from other coordinates; a CLUT inside a tile |
+| `the plan` | read from RAM: slot size = the TIM's; tiles and CLUTs inside VRAM; one page per tile; the tpage word that of `(x, y)`; no overlap with the framebuffers, `LOGO`, `PROPS`, or each other | page crossing (`x mod 64 + w > 64`); words from other coordinates; a CLUT inside a tile |
 | `the loader's table` | `track_tex[id]` = (tpage, clut, `u0`, `v0`, 64, 64) from the declared slot | origin in units instead of texels |
 | `VRAM holds every tile ...` (main, alt) | each tile's image and CLUT, byte for byte, at the declared place; `LOGO` and `PROPS` intact | upload at the TIM's place (the second disc catches it); `DrawSync` missing |
 | `... packets ...` (main, alt) | every packet of every pose equals the model: `POLY_FT4`, UV = origin + face UV (mirrored for `FLIP_H`), tpage and CLUT words; `0xFF` faces as `POLY_F4`; UVs inside the tile | `FLIP_H` ignored or the wrong formula; tpage in the wrong word; hard-coded ids |
 | `... pictures ...` (main, alt) | sampled pixels of top-most faces equal the texel their UVs select (looked up in the TIM); flipped faces show the mirrored tile, unflipped faces do not | VRAM and packets disagree |
 | `the primitive buffers` | the guard bytes behind the buffers stayed `0xA5` | writing past `ot_alloc`'s block |
+
+The other four checks guard what is given: the state symbols are linked, the disc carries the generated files (and the program does not embed the tiles), `PRIM_BUF_SIZE` holds 560 textured quads, and Start still leaves the title.
 
 The second disc has track 2 moved far from the origin (Chapter 34), **all texture indices permuted**, two sections with `tex = 0xFF`, and a `TRACK.TPK` whose eight tiles are in reversed order and whose TIMs name places on the framebuffers. The `TT_ERR_*` paths are not exercised: test them yourself with a broken slot. A pass ends with `CHAPTER 35: PASSED (15/15 checks)`. The untouched starter fails; so do a tile on a framebuffer, a tile across a page, `FLIP_H` ignored, and an upload at the TIM's own place.
 
@@ -284,12 +286,12 @@ The second disc has track 2 moved far from the origin (Chapter 34), **all textur
 - **The tpage word of the wrong place.** It names the *page* the tile is in, not the tile: `x/64`, `y/256`, not `x`, `y`.
 - **CLUT and tpage in the wrong UV word.** CLUT with the first pair, tpage with the second.
 - **A CLUT with `x` not a multiple of 16.** The word has no bits for it; the palette is read from the wrong place.
-- **Trusting the TIM's own rectangles.** They are defaults for a loose file. The second disc shows what happens on top of a framebuffer.
+- **Trusting the TIM's own rectangles.** They are defaults for a loose file. On the second disc they lie on the framebuffers.
 - **Flip by swapping `u0` and `u1`.** Right on a lane quad, a no-op on a wall quad.
 - **Flipping after adding the origin.** `63 - (u0 + u)` is not the mirror in the page.
 - **UV 64.** The last texel of a 64-texel tile is 63.
 - **Uploading while the GPU is busy.** `LoadImage` is asynchronous: `DrawSync(0)` before freeing the file image (`tim_upload_at` does it).
-- **A local `SVECTOR` for `gte_ldv0`.** Chapter 34's code stored the vertex into the global `trk_rel` and then ran the `gte_ldv0` macro, whose `asm` has no `"memory"` clobber, so nothing told the compiler to finish the stores first. It happened to work. This chapter's copy has `__asm__ volatile("" ::: "memory");` before the macro: put the same barrier before any `gte_ld*` that reads something you have just written.
+- **`gte_ldv0` right after a store.** The macro's `asm` has no `"memory"` clobber, so nothing tells the compiler to finish earlier stores first. Chapter 34's code stored the vertex into `trk_rel` and then ran the macro; it happened to work. This chapter's copy has `__asm__ volatile("" ::: "memory");` before the macro: put the same barrier before any `gte_ld*` that reads something you have just written.
 - **Hard-coding which id is which.** The second disc permutes the ids.
 - **Forgetting the fallback.** `tex = 0xFF` is legal in a `.TRK`.
 
@@ -300,5 +302,5 @@ The second disc has track 2 moved far from the origin (Chapter 34), **all textur
 ## 11. Further reading
 
 - Appendix E.3.4 (TSB, CBA, UV origin), E.6 (`.TPK`), E.10.3 (faces, `FLIP_H`); `tools/assets/layout.py` (the book's default places, which are not a plan to copy).
-- psx-spx, "GPU Texture Caching", "GPU Render Polygon Commands" and "GPU Memory Transfers".
+- psx-spx, "GPU Rendering Attributes" (tpage and CLUT words), "GPU Render Polygon Commands" and "GPU Memory Transfer Commands".
 - Chapters 30 and 32 (the same packets), Chapter 36 (the tiles stretched over subdivided faces).

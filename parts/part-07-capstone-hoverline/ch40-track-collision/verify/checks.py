@@ -447,17 +447,17 @@ def _(ctx):
 
 
 # ---- checks: the pure functions -------------------------------------------------------------------------------------------------------------
-@check("edge_distance", hint="collide_edge_dist: dist = (s * cross(p - a)) / len with s the sign of cross(r - a); n = (s * -ez * 4096 / len, s * ex * 4096 / len); len = isqrt(ex^2 + ez^2); differences clamped.")
+@check("edge_distance", hint="collide_edge_dist: README 5.2 and collide.h (the sign from the reference point, the clamp, the length, the division).")
 def _(ctx):
     for case, rec in kind_cases(ctx, "dist"):
         want = M.edge_dist(case["seg"], case["p"])
         got = (s32(rec["v0"]), rec["out"]["n"][0], rec["out"]["n"][1])
         expect_eq(list(got), list(want), f"{case['tag']}: (dist, nx, nz) for seg {show(case['seg'])}, p {show(case['p'])}",
-                  hint="C division truncates toward zero; the sign s comes from the reference point, a zero cross counts as +1; len 0 gives 0 and a zero normal.")
+                  hint="README 5.2 and collide.h: which way the division rounds, where the sign comes from (and what a zero cross counts as), the zero-length edge.")
         expect_eq(rec["out"]["seg"], list(case["seg"]), f"{case['tag']}: the input segment is not modified")
 
 
-@check("edges_recipe_and_fallback", hint="collide_edges: the XZ of vertices[edges[0..3]]; a zero-length edge or a reference point on its line switches BOTH edges to centre -/+ right * half_width, forward * length.")
+@check("edges_recipe_and_fallback", hint="collide_edges: README 5.3 and collide.h (the recipe, when a section is irregular, the fallback that replaces BOTH edges).")
 def _(ctx):
     fallbacks = {1: 0, 2: 0, 3: 0}
     for case, rec in kind_cases(ctx, "edges"):
@@ -476,7 +476,7 @@ def _(ctx):
     expect_true(fallbacks[3] >= 2, "sections of the patched copy that use the fallback (at least 20 and 60)", str(fallbacks[3]), "(verifier self-check)")
 
 
-@check("section_under_the_ship", hint="collide_section: de <= 0 -> next, ds < 0 -> prev (by the links), at most 4 moves, then the brute-force search and a second walk. Not the nearest centre.")
+@check("section_under_the_ship", hint="collide_section: README 5.4 and collide.h (the two ring-line tests, the walk by the links, the search when the walk gives up). Not the nearest center.")
 def _(ctx):
     traps = 0
     for case, rec in kind_cases(ctx, "section"):
@@ -484,60 +484,60 @@ def _(ctx):
         want = M.section_over(TR[n], case["cur"], case["pos"])
         got = s32(rec["v0"])
         expect_eq(got, want, f"{case['tag']}: the section over {show(case['pos'])}", hint=(
-            "The nearest centre is %d here (Chapter 38's answer)." % M.nearest_brute(TR[n], case["pos"]) if case["trap"] else
-            "Test the start and end ring lines of the section (and of its neighbours), not distances to centres."))
+            "The nearest center is %d here (Chapter 38's answer)." % M.nearest_brute(TR[n], case["pos"]) if case["trap"] else
+            "Test the start and end ring lines of the section (and of its neighbors), not distances to centers."))
         traps += case["trap"]
-    expect_true(traps >= 25, "the test includes positions where the nearest centre is another section", str(traps), "(verifier self-check)")
+    expect_true(traps >= 25, "the test includes positions where the nearest center is another section", str(traps), "(verifier self-check)")
 
 
-@check("ground_height", hint="collide_ground: the plane through the centre with normal up: centre.y + (-(up.x * dx + up.z * dz)) / up.y, differences clamped, |up.y| < 256 gives centre.y.")
+@check("ground_height", hint="collide_ground: README 5.5 and collide.h (the plane through the section's centre with normal up, the clamp, the nearly vertical plane).")
 def _(ctx):
     for case, rec in kind_cases(ctx, "ground"):
         want = M.ground(TR[case["n"]], case["sec"], case["pos"])
-        expect_eq(s32(rec["v0"]), want, f"{case['tag']}: surface y under {show(case['pos'])}", hint="up.y is negative (+y is down): divide by it, do not use its absolute value. C division truncates.")
+        expect_eq(s32(rec["v0"]), want, f"{case['tag']}: surface y under {show(case['pos'])}", hint="README 5.5: mind the sign of up.y (+y is down) and which way the division rounds.")
 
 
-@check("floor_face_lookup", hint="collide_floor_face: the first FLOOR face of the section (table order) whose quad (corners v0 v1 v3 v2) contains the point; a point on a side is inside.")
+@check("floor_face_lookup", hint="collide_floor_face: README 5.6 and collide.h (which faces, in which order, the corner order of a quad, a point on a side).")
 def _(ctx):
     inside = 0
     for case, rec in kind_cases(ctx, "face"):
         want = M.floor_face(TR[case["n"]], case["sec"], case["pos"])
         got = s32(rec["v0"])
         inside += want >= 0
-        expect_eq(got, want, f"{case['tag']}: the floor face at {show(case['pos'])}", hint="Z order: the perimeter is v0, v1, v3, v2. Inside = the four cross products are not of both signs.")
+        expect_eq(got, want, f"{case['tag']}: the floor face at {show(case['pos'])}", hint="README 5.6: the faces are Z-ordered, so mind the order of the corners around the quad, and the rule for inside.")
     expect_true(inside >= 60, "the test includes enough points on the road", str(inside), "(verifier self-check)")
 
 
 # ---- checks: the tick ----------------------------------------------------------------------------------------------------------------------
-@check("tick_without_contact", hint="No edge within the radius: only pos.y (ground - hover) and pos_frac[1] = 0 change; ship_section, face and on_boost follow; nothing else is touched.")
+@check("tick_without_contact", hint="README 5.7, steps 1, 2, 5 and 6 (collide.h): with no edge within the radius the tick changes only the height and the readings; nothing else is touched.")
 def _(ctx):
     check_ship_cases(ctx, ("ship_idle", "ship_section", "ship_irregular"), "free flight")
 
 
-@check("wall_push_back_damp_and_yaw", hint="Push along the unit normal by radius - d; if the nose points into the wall: speed -= speed * wall_damp * impact, yaw toward the edge's heading by yaw_fix, yaw_vel = 0, vel refreshed.")
+@check("wall_push_back_damp_and_yaw", hint="README 5.7, 'A hit' (collide.h step 4): the push, then, only if the nose points into the wall, the damping, the yaw correction, yaw_vel and vel.")
 def _(ctx):
     n = check_ship_cases(ctx, ("ship_wall", "ship_wall_away"), "wall")
     expect_true(n >= 90, "wall cases", str(n), "")
 
 
-@check("thud_event_clock", hint="EV_THUD only when ship_ticks - last_hit >= thud_gap; last_hit = ship_ticks on EVERY hit (sliding along a wall is one thud).")
+@check("thud_event_clock", hint="README 5.7, 'The thud': when EV_THUD is raised and when last_hit is updated (sliding along a wall is one thud).")
 def _(ctx):
     check_ship_cases(ctx, ("ship_thud",), "thud clock")
 
 
-@check("boost_pad_impulse", hint="Entering a face with TRK_BOOST (on_boost 0 -> 1) adds boost_impulse, capped at ship_cfg.speed_cap, refreshes vel, counts one EV_BOOST; staying on it does nothing.")
+@check("boost_pad_impulse", hint="README 5.6 (collide.h step 6): the impulse comes once, on ENTERING a boost face, within the speed cap; staying on the pad does nothing.")
 def _(ctx):
     check_ship_cases(ctx, ("ship_boost",), "boost")
 
 
-@check("off_track_respawn", hint="More than off_limit OUTSIDE an edge: collide_respawn at the section (ship_place's pose), respawns++, on_boost = 0, return COLL_RESPAWN, nothing else.")
+@check("off_track_respawn", hint="README 5.7, 'Respawn' (collide.h step 3): when it happens, what is reset and counted, what is returned; nothing else runs in that tick.")
 def _(ctx):
     check_ship_cases(ctx, ("ship_respawn",), "respawn")
     for case, rec in kind_cases(ctx, "respawn"):
         S = TR[case["n"]]["sections"][case["sec"]]
         want = [S["centre"][i] + ((S["up"][i] * 120) >> 12) for i in range(3)] + [0, 0, 0, 0, 0, 0, 0, M.heading_angle(S["forward"][0], S["forward"][2]) << 12,
                                                                                     M.pitch_angle(S["forward"][1]) << 12, 0, 0]
-        expect_eq(rec["out"]["ship"], want, f"{case['tag']}: collide_respawn(section {case['sec']}) writes ship_place's pose", hint="pos_frac, vel, speed, roll, yaw_vel = 0.")
+        expect_eq(rec["out"]["ship"], want, f"{case['tag']}: collide_respawn(section {case['sec']}) writes ship_place's pose", hint="collide.h lists every field collide_respawn writes.")
 
 
 @check("events_reach_the_audio_counters", hint="audio_event(EV_THUD) / audio_event(EV_BOOST): audio_stats.events_thud / events_boost count every event the tick raises (the counters grow over the whole run of direct calls).")
@@ -765,7 +765,7 @@ def _(ctx):
                     "Look at the first one: it names the segment, the frame and the field. Rows come from the real program; the model replays one tick from the previous state.")
 
 
-@check("ship_stays_inside_the_road", hint="After every frame the ship's centre is at least `radius` (minus 3 for rounding) inside both edges of ship_section, in the XZ plane. Checked against collide_ref's edges, not against your code.")
+@check("ship_stays_inside_the_road", hint="After every frame the ship's center is at least `radius` (minus 3 for rounding) inside both edges of ship_section, in the XZ plane. Checked against collide_ref's edges, not against your code.")
 def _(ctx):
     for name in ("main", "menu"):
         o = run_of(ctx, name)
@@ -789,7 +789,7 @@ def _(ctx):
                             "Is collide_ship called every tick from game_update?")
 
 
-@check("hover_follows_the_ground", hint="After every tick pos.y = collide_ground(...) - hover (hover = ship_cfg.hover): the ship follows the slope and the bank of the road.")
+@check("hover_follows_the_ground", hint="README 5.5: after every tick the ship is the hover height above the road surface, so it follows the slope and the bank of the road.")
 def _(ctx):
     o = run_of(ctx, "main")
     bad = []
@@ -825,7 +825,7 @@ def _(ctx):
                     f"{after >> 12} units", "yaw += fx_mul(err, yaw_fix) with err wrapped to (-half turn, half turn]; yaw_vel = 0.")
 
 
-@check("boost_pad_run", hint="Driving over a pad's centre lane adds boost_impulse once (two adjoining pad sections are ONE pad); the side lane gives nothing.")
+@check("boost_pad_run", hint="Driving over a pad's center lane adds boost_impulse once (two adjoining pad sections are ONE pad); the side lane gives nothing.")
 def _(ctx):
     for name in ("main", "menu"):
         o = run_of(ctx, name)
@@ -867,7 +867,7 @@ def _(ctx):
             expect_eq(row["section"], want, f"{name}: {nm}: ship_section on the first frame after the teleport (it was {p[8]})")
 
 
-@check("respawn_run", hint="Far outside an edge the ship is put back at the section's centre: speed 0, heading along the road.")
+@check("respawn_run", hint="Far outside an edge the ship is put back at the section's center: speed 0, heading along the road.")
 def _(ctx):
     for name in ("main", "menu"):
         o = run_of(ctx, name)
@@ -878,7 +878,7 @@ def _(ctx):
         expect_true(rows[0]["ship"][9] == 0 or rows[0]["ship"][9] < 4 * 4096, f"{name}: speed after the respawn (CROSS may add one tick of thrust)", str(rows[0]["ship"][9]), "")
 
 
-@check("readout_text", hint="collide_format: \"L%5d R%5d F%3d\" from collide_state.dist_left, dist_right, face; drawn under the SEC / PRIMS line.")
+@check("readout_text", hint="collide_format: the format and its three values are in README 5.3 (collide.h); game.c draws the text under the SEC / PRIMS line.")
 def _(ctx):
     o = run_of(ctx, "main")
     for row in o.rows:
@@ -889,7 +889,7 @@ def _(ctx):
 
 
 # ---- the track menu ----------------------------------------------------------------------------------------------------------------------------
-@check("menu_loads_both_tracks", hint="track_switch(n): load TRACK.TRK / TRACK2.TRK, parse into a separate Track, replace `track`, free the old image, set track_selected and ship_section = -1.")
+@check("menu_loads_both_tracks", hint="track_switch: README 5.9 and trackload.h (the order of load, parse, replace and free; the globals to update).")
 def _(ctx):
     o = run_of(ctx, "menu")
     expect_eq(len(o.snaps), len(MENU_PRESSES), "snapshots on the title (one after each press)")
@@ -920,7 +920,7 @@ def _(ctx):
     expect_eq(e["track"]["sel"], 2, "track_selected when the game is entered")
 
 
-@check("menu_restarts_the_music", hint="Reading the disc interrupts CD-DA: every track_switch ends with audio_music_start() (a CdlPlay), so audio_stats.music_cmds grows by one per press.")
+@check("menu_restarts_the_music", hint="README 5.9: reading the disc interrupts CD-DA, so the music must be restarted; audio_stats.music_cmds must grow by one per press.")
 def _(ctx):
     o = run_of(ctx, "menu")
     base = o.info["start"]["music"]
@@ -935,7 +935,7 @@ def failed_menu(ctx, name):
     expect_eq(len(o.snaps), 3, "snapshots")
     s1, s2, s3 = o.snaps[0], o.snaps[1], o.snaps[2]
     expect_eq(s1["sel"], 1, f"{name} disc: track_selected after RIGHT (track 2 cannot be loaded: nothing changes)")
-    expect_eq(s1["track"], base["track"], f"{name} disc: the Track struct is unchanged after the failed load", hint="Parse into a separate Track: track_parse zeroes its output when it fails.")
+    expect_eq(s1["track"], base["track"], f"{name} disc: the Track struct is unchanged after the failed load", hint="README 5.9: where the new file is parsed, and what track_parse does to its output when it fails.")
     expect_eq(s1["image"], base["image"], f"{name} disc: track_image is unchanged after the failed load")
     expect_eq(s1["sec0"], base["sec0"], f"{name} disc: the old track's data is still there (the failed load must not free it)")
     expect_eq(s1["status"], 0, f"{name} disc: track_status stays 0 (the old track is fine)")
@@ -956,6 +956,6 @@ def _(ctx):
     failed_menu(ctx, "bad")
 
 
-@check("menu_missing_file_keeps_the_track", hint="A TRACK2.TRK that is not on the disc: cd_load_file returns NULL; return TRK_ERR_READ and change nothing.")
+@check("menu_missing_file_keeps_the_track", hint="A TRACK2.TRK that is not on the disc: README 5.9 gives the return value; nothing else may change.")
 def _(ctx):
     failed_menu(ctx, "missing")

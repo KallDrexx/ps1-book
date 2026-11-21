@@ -32,7 +32,7 @@ It prevents a header's contents from being pasted twice into one translation uni
 
 <details><summary>Answer</summary>
 
-Uppercase means a global symbol visible to other files; lowercase means local. `static` at file scope gave `cur` internal linkage. `T` is code, `b` is zero-initialised data (`.bss`).
+Uppercase means a global symbol visible to other files; lowercase means local. `static` at file scope gave `cur` internal linkage. `T` is code, `b` is zero-initialized data (`.bss`).
 </details>
 
 **6.** Give two benefits of making a module's state variables `static`.
@@ -53,7 +53,7 @@ Other files cannot change them except through the module's functions, so invaria
 
 <details><summary>Answer</summary>
 
-No. `gfx` depends on `ot`, never the reverse. A cycle would make each header need the other first. If two modules need each other, move the shared part into a third.
+No. `gfx` depends on `ot`, never the reverse. In a cycle, each header would need the other's declarations first. If two modules need each other, move the shared part into a third.
 </details>
 
 **9.** The linker reports *undefined reference to `gfx_quad_f4`* although `gfx.c` exists. List two causes.

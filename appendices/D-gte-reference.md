@@ -23,19 +23,19 @@ hardware differs (see D.5).
 | 1 | `VZ0` | `s16 z` | vertex 0, z (high half ignored/sign-extended on read) |
 | 2, 3 | `VXY1`, `VZ1` | same | vertex 1 |
 | 4, 5 | `VXY2`, `VZ2` | same | vertex 2 |
-| 6 | `RGBC` | bytes `r, g, b, code` | colour (and GPU command byte) for the lighting commands |
+| 6 | `RGBC` | bytes `r, g, b, code` | color (and GPU command byte) for the lighting commands |
 | 7 | `OTZ` | `u16` | average depth, written by `AVSZ3`/`AVSZ4` |
 | 8 | `IR0` | `s16`, 4.12 | interpolation / depth-cue factor |
 | 9, 10, 11 | `IR1`, `IR2`, `IR3` | `s16` | intermediate vector, saturated; the matrix commands' input and output |
 | 12, 13, 14 | `SXY0`, `SXY1`, `SXY2` | `s16 x`, `s16 y` | screen-point FIFO (oldest first) |
 | 15 | `SXYP` | | write: push into the FIFO; read: same as `SXY2` |
 | 16, 17, 18, 19 | `SZ0` .. `SZ3` | `u16` | depth FIFO (`SZ3` is the newest) |
-| 20, 21, 22 | `RGB0`, `RGB1`, `RGB2` | bytes `r, g, b, code` | colour FIFO |
+| 20, 21, 22 | `RGB0`, `RGB1`, `RGB2` | bytes `r, g, b, code` | color FIFO |
 | 23 | `RES1` | | prohibited (psx-spx) |
 | 24 | `MAC0` | `s32` | `NCLIP` area; `RTPS`'s depth-cue sum `DQB + DQA * (H / SZ3)`; `AVSZ` sum |
 | 25, 26, 27 | `MAC1`, `MAC2`, `MAC3` | `s32` | sums before saturation into `IR1..3` |
-| 28 | `IRGB` | 5-5-5 colour | write: expands into `IR1..3` (x 0x80) |
-| 29 | `ORGB` | 5-5-5 colour | read: `IR1..3 / 0x80` clamped to 0..31 |
+| 28 | `IRGB` | 5-5-5 color | write: expands into `IR1..3` (x 0x80) |
+| 29 | `ORGB` | 5-5-5 color | read: `IR1..3 / 0x80` clamped to 0..31 |
 | 30 | `LZCS` | `s32` | write a value ... |
 | 31 | `LZCR` | `s32` | ... read the count of its leading sign bits |
 
@@ -55,9 +55,9 @@ Chapter 27). `IR1..3`/`MAC1..3` after `RTPT` describe only the **last** vertex.
 | 0 .. 4 | `R11R12`, `R13R21`, `R22R23`, `R31R32`, `R33` | `s16` x 9, 4.12 | rotation matrix `RT`, row-major, two entries per word; `R33` in the low half of word 4 |
 | 5, 6, 7 | `TRX`, `TRY`, `TRZ` | `s32` | translation `TR`, in vertex units (not 4.12) |
 | 8 .. 12 | `L11L12` .. `L33` | `s16` x 9, 4.12 | light matrix `LLM` |
-| 13, 14, 15 | `RBK`, `GBK`, `BBK` | `s32`, 20.12 | background (ambient) colour |
-| 16 .. 20 | `LR1LR2` .. `LB3` | `s16` x 9, 4.12 | light colour matrix `LCM` |
-| 21, 22, 23 | `RFC`, `GFC`, `BFC` | `s32`, 28.4 | far colour (fog) |
+| 13, 14, 15 | `RBK`, `GBK`, `BBK` | `s32`, 20.12 | background (ambient) color |
+| 16 .. 20 | `LR1LR2` .. `LB3` | `s16` x 9, 4.12 | light color matrix `LCM` |
+| 21, 22, 23 | `RFC`, `GFC`, `BFC` | `s32`, 28.4 | far color (fog) |
 | 24, 25 | `OFX`, `OFY` | `s32`, 16.16 | screen offset; `gte_SetGeomOffset` takes whole pixels |
 | 26 | `H` | `u16` | projection distance. psx-spx notes that reading `H` back returns it sign-extended (*unverified here*) |
 | 27 | `DQA` | `s16`, 8.8 | depth-cue coefficient |
@@ -90,16 +90,15 @@ tools) are ignored by the hardware. Cycle counts are psx-spx's.
 | `GPF` / `GPL` | 0x3D / 0x3E | 5 | general-purpose interpolation (`IR0` times `IR`, `GPL` adds `MAC`) | `gte_gpf0/12`, `gte_gpl0/12` |
 | `MVMVA` | 0x12 | 8 | multiply a chosen vector by a chosen matrix, add a chosen translation | `gte_rt*`, `gte_ll*`, `gte_lc*`, `gte_mvmva(sf, mx, v, cv, lm)` |
 | `DPCS` / `DPCT` / `DCPL` | 0x10 / 0x2A / 0x29 | 8 / 17 / 8 | depth cueing; the header calls `DCPL` `gte_dpcl` | `gte_dpcs`, `gte_dpct`, `gte_dpcl` |
-| `INTPL` | 0x11 | 8 | interpolate a colour toward the far colour | `gte_intpl` |
-| `NCS` / `NCT` | 0x1E / 0x20 | 14 / 30 | normal colour (single / triple) | `gte_ncs`, `gte_nct` |
-| `NCCS` / `NCCT` | 0x1B / 0x3F | 17 / 39 | normal colour colour | `gte_nccs`, `gte_ncct` |
-| `NCDS` / `NCDT` | 0x13 / 0x16 | 19 / 44 | normal colour depth cue | `gte_ncds`, `gte_ncdt` |
-| `CC` / `CDP` | 0x1C / 0x14 | 11 / 13 | colour colour / colour depth cue | `gte_cc`, `gte_cdp` |
+| `INTPL` | 0x11 | 8 | interpolate a color toward the far color | `gte_intpl` |
+| `NCS` / `NCT` | 0x1E / 0x20 | 14 / 30 | normal color (single / triple) | `gte_ncs`, `gte_nct` |
+| `NCCS` / `NCCT` | 0x1B / 0x3F | 17 / 39 | normal color color | `gte_nccs`, `gte_ncct` |
+| `NCDS` / `NCDT` | 0x13 / 0x16 | 19 / 44 | normal color depth cue | `gte_ncds`, `gte_ncdt` |
+| `CC` / `CDP` | 0x1C / 0x14 | 11 / 13 | color color / color depth cue | `gte_cc`, `gte_cdp` |
 
 `gte_rt`, `gte_rtv0..2`, `gte_rtir`, with `tr`/`bk` suffixes, are `MVMVA` presets (matrix `RT`, vector `V0..2`/`IR`,
-translation none/`TR`/`BK`); `gte_ll*` use the light matrix, `gte_lc*` the colour matrix. The rows above with only
-cycle counts in the book are the ones Chapters 25 and 27 use: `RTPS` 15, `RTPT` 23, `NCLIP` 8, `AVSZ3` 5, `AVSZ4` 6.
-The lighting commands are listed for completeness: the book never uses them.
+translation none/`TR`/`BK`); `gte_ll*` use the light matrix, `gte_lc*` the color matrix. The book's projects use
+only `RTPS`, `RTPT`, `NCLIP`, `AVSZ3` and `AVSZ4` (Chapters 25 and 27); the other commands are listed for completeness.
 
 **Equations the book relies on** (`RTPS`; the header comments agree):
 
@@ -110,7 +109,7 @@ SX2 = (OFX + IR1 * (H / SZ3)) >> 16     SY2 = (OFY + IR2 * (H / SZ3)) >> 16     
 
 `H / SZ3` is a 16.16 ratio from a table plus one Newton-Raphson step (psx-spx "GTE Division Inaccuracy"), so it can
 be off in the last bit, and it saturates at `0x1FFFF`: where `H >= 2 * SZ3` the **divide overflow** flag (bit 17) is
-set and the point is clamped, not garbage. Matching a floating-point model to 1 pixel is right.
+set and the point is clamped, not garbage. Compare against a floating-point model with a tolerance of 1 pixel.
 
 **`NCLIP` sign.** Positive `MAC0` = the three points run **clockwise on screen** (y down) = front-facing in this book.
 (The SDK's own comment says negative is back-facing.) Zero is edge-on. Quads go in **Z order** `v0 v1 v2 v3`; the
@@ -127,15 +126,15 @@ judging, and OR the flags yourself across several commands. psx-spx bit map:
 | 30, 29, 28 | `MAC1` / `MAC2` / `MAC3` overflow, positive (44-bit) | yes |
 | 27, 26, 25 | `MAC1` / `MAC2` / `MAC3` overflow, negative | yes |
 | 24, 23, 22 | `IR1` / `IR2` / `IR3` saturated | 24 and 23 yes; **22 no** |
-| 21, 20, 19 | colour FIFO `R` / `G` / `B` saturated | no |
+| 21, 20, 19 | color FIFO `R` / `G` / `B` saturated | no |
 | 18 | `SZ3` or `OTZ` saturated | yes |
 | 17 | divide overflow (`H >= 2 * SZ3`, closer than `H/2` or behind the camera) | yes |
 | 16, 15 | `MAC0` overflow, positive / negative | yes |
 | 14, 13 | `SX2` / `SY2` saturated (off the -1024..1023 range) | yes |
 | 12 | `IR0` saturated to 0..4096 | no (normal after `InitGeom`) |
 
-In the shipped Chapter 25 run no error bit is set, and with `cam_z` = 3000 (the cube around the camera) bits 17 and
-31 are (the verifier checks both). Saturation is a result, not a trap: the GTE never raises a CPU exception. A
+The shipped Chapter 25 run sets no error bit; with `cam_z` = 3000 (the camera inside the cube) it sets bits 17 and
+31 (the verifier checks both cases). Saturation is a result, not a trap: the GTE never raises a CPU exception. A
 "CPU exception 12" in a GTE program is the **CPU's** `add` overflowing in `VectorNormalS` (Appendix F.8), not a `FLAG`
 bit.
 
@@ -149,8 +148,9 @@ bit.
 | Writes before a command | psx-spx documents a two-instruction delay for `lwc2` and nothing certain for `mtc2`/`ctc2`. The book's rule is the safe superset: **two instructions between any `lwc2`/`mtc2`/`ctc2` and a command**. The plain macros contain two `nop`s |
 | Emulator | PCSX-Redux models the stall but **not** the write delay: code with the `nop`s dropped passes in the emulator and may use stale inputs on hardware. Verifiers check the instruction stream |
 
-Measured in PCSX-Redux's interpreter (Chapter 27): the 15-cycle `RTPS` hides about 7 ALU instructions (flat cost,
-then 2 cycles per extra instruction); an `mfc2` before the filler makes all of it cost. On hardware an ALU instruction
+Measured in PCSX-Redux's interpreter (Chapter 27): after the `RTPS` instruction itself, 13 of its 15 cycles remain
+as wait, which at 2 cycles per instruction hides six ALU instructions and half of a seventh (flat cost, then 2 cycles
+per extra instruction); an `mfc2` before the filler makes all of it cost. On hardware an ALU instruction
 from the instruction cache is about 1 cycle and a RAM load several, so the window holds more ALU work and fewer
 loads; the numbers are the emulator's. Cycles count only under `-interpreter`; the dynarec's counts mean nothing for
 code this short (Appendix F.10). Measure with root counter 0 (`0x1F801100`, mode `0x1F801104`, mode 0 counts CPU
@@ -172,7 +172,7 @@ Loads (CPU memory or register -> GTE):
 | `gte_ldv3c(p)` | six consecutive words (three `SVECTOR`s, 8-byte stride) | `V0..V2` |
 | `gte_ldv3c_vertc(p)` | words at 0, 4, 12, 16, 24, 28 (12-byte stride) | `V0..V2` |
 | `gte_ldv01(&a, &b)`, `gte_ldv01c(p)` | two vertices | `V0`, `V1` |
-| `gte_ldrgb(&cv)`, `ldrgb3`, `ldrgb3c` | `CVECTOR`(s) | `RGBC` (6), colour FIFO |
+| `gte_ldrgb(&cv)`, `ldrgb3`, `ldrgb3c` | `CVECTOR`(s) | `RGBC` (6), color FIFO |
 | `gte_ldsxy0/1/2(v)`, `gte_ldsxy3(a, b, c)` | **CPU values** (packed x, y words) | `SXY0..2` (12..14) via `mtc2` |
 | `gte_ldsxy3c(p)` | three consecutive words (pointer) | `SXY0..2` via `lwc2` |
 | `gte_ldsz3(a, b, c)` | values | `SZ1..SZ3` (17..19) |
@@ -222,7 +222,7 @@ Commands (each: `nop; nop; cop2 <word>`): see D.3. **Bare variants:** 67 `gte_*_
 `gte_rtpt_b`, `gte_nclip_b`, `gte_avsz3_b`, `gte_avsz4_b`, `gte_mvmva_b(sf, mx, v, cv, lm)`, the `rt*`, `ll*`, `lc*`
 families, the lighting and `op`/`gpf`/`gpl`/`sqr` commands) expand to the `cop2` word alone, with no `nop`s. The
 caller must place two non-GTE instructions between the last register write and the command; the macro does not pin
-the neighbouring C code, so check the disassembly (`mipsel-none-elf-objdump -d -z`). Writing
+the neighboring C code, so check the disassembly (`mipsel-none-elf-objdump -d -z`). Writing
 `__asm__ volatile("cop2 0x0280030")` is equivalent to `gte_rtpt_b()`. (`gte_avsz4`'s header comment numbers the
 registers `SZ1..SZ4`; the macros load and store data registers 16..19, which are `SZ0..SZ3`.)
 

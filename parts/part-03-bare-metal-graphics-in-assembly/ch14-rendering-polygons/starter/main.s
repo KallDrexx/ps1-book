@@ -75,7 +75,7 @@ gi_wait:
     jr    $ra
     nop
 
-gpu_clear:                      ; fill rectangle: GP0(02h), the colour is 0x00RRGGBB
+gpu_clear:                      ; fill rectangle: GP0(02h), the color is 0x00RRGGBB
     lui   $t0, 0x1F80
     lw    $t3, 16($sp)          ; h
 gc_wait:
@@ -117,21 +117,21 @@ gw_loop:
     nop
 
 ; ---- data: the gallery (the verifier patches every table below) --------------
-; Colours are 0x00RRGGBB words, coordinates are signed 32-bit words, relative to `origin`.
+; Colors are 0x00RRGGBB words, coordinates are signed 32-bit words, relative to `origin`.
 .align 4
 origin:     .word 160, 120                  ; drawing offset: x, y
 bg_color:   .word 0x181830
-flat_tri:                                   ; colour, then x0 y0, x1 y1, x2 y2
+flat_tri:                                   ; color, then x y for v1, v2, v3
     .word 0xFFA000
     .word -90, -100,  -30, -20,  -150, -20
-flat_quad:                                  ; colour, then v1 v2 / v3 v4 (Z order)
+flat_quad:                                  ; color, then v1 v2 / v3 v4 (Z order)
     .word 0x20C0A0
     .word 30, -100,  140, -90,  20, -20,  130, -15
-gouraud_tri:                                ; colour0, x0 y0, colour1, x1 y1, colour2, x2 y2
+gouraud_tri:                                ; color, x y   for v1, v2, v3
     .word 0xFF0000, -90, 10
     .word 0x00FF00, -30, 95
     .word 0x0000FF, -150, 95
-gouraud_quad:                               ; colour, x y   for v1, v2, v3, v4
+gouraud_quad:                               ; color, x y   for v1, v2, v3, v4
     .word 0xFF0000, 30, 10
     .word 0xFFFF00, 140, 10
     .word 0x0000FF, 30, 95

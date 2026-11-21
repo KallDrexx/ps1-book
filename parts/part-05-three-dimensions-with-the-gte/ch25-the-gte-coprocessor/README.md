@@ -6,14 +6,14 @@ The **GTE** (Geometry Transformation Engine) is a coprocessor inside the PS1's C
 
 ## 2. Why it matters
 
-Chapter 24 spent about 8 multiplies, 2 divides and two function calls per corner. The GTE does a full transform in about 15 cycles, and the book's later 3D chapters (multiple objects, 64 cubes, a camera) would not fit in a frame without it. This chapter also adds two things the wireframe did not need: **back-face culling** (do not draw faces that point away) and **depth sorting** (draw far faces first, through the ordering table of Chapter 20).
+Chapter 24 spent about 8 multiplies, 2 divides and two function calls per corner. The GTE's `RTPS` command does the whole transform in 15 cycles, and the book's later 3D chapters (multiple objects, 64 cubes, a camera) would not fit in a frame without it. This chapter also adds two things the wireframe did not need: **back-face culling** (do not draw faces that point away) and **depth sorting** (draw far faces first, through the ordering table of Chapter 20).
 
 ## 3. Learning objectives
 
 After this chapter you can:
 
 - describe the GTE's place in the system (coprocessor 2) and name its main registers;
-- set up the GTE for a 320x240 screen: offset, projection distance;
+- set up the GTE for a 320x240 screen (screen offset and projection distance);
 - build a rotation matrix and a translation, and upload them;
 - transform a vertex with `RTPS` and read its screen position, depth and flags;
 - decide whether a face points at the camera with `NCLIP`, and explain why the corner order of a quad matters;
@@ -75,7 +75,7 @@ The classic Sony library had functions such as `RotTransPers`, `RotAverageNclip4
 | `<psxgte.h>` (library) | `InitGeom`, `RotMatrix`, `TransMatrix`, `MulMatrix`, `CompMatrixLV`, `PushMatrix`/`PopMatrix`, `isin`/`icos`, the types `MATRIX`, `SVECTOR`, `VECTOR` |
 | `<inline_c.h>` (macros) | one macro per GTE load, store and command: `gte_SetGeomOffset`, `gte_SetGeomScreen`, `gte_SetRotMatrix`, `gte_SetTransMatrix`, `gte_ldv0`, `gte_rtps`, `gte_rtpt`, `gte_ldsxy3`, `gte_nclip`, `gte_ldsz4`, `gte_avsz4`, `gte_stsxy`, `gte_stsz`, `gte_stopz`, `gte_stotz`, `gte_stflg`... |
 
-So the "functions" of the old books are short sequences of macros. The three you will need:
+So each "function" of the old books becomes a short sequence of macros. The three you will need:
 
 | Classic name | In 0.24 | Outputs |
 |---|---|---|
@@ -83,7 +83,7 @@ So the "functions" of the old books are short sequences of macros. The three you
 | `NormalClip(a, b, c)` | `gte_ldsxy3(a, b, c); gte_nclip(); gte_stopz(&area);` | `MAC0`: twice the signed area |
 | `RotAverageNclip4(...)` | four `RTPS`, `gte_nclip`, `gte_avsz4`, `gte_stotz` | screen XY of four corners, area, `OTZ` |
 
-The macros are plain inline assembly: include `<inline_c.h>` after `<psxgte.h>`. They contain the `nop`s of 5.1. Chapter 27 batches three vertices per command with `RTPT` and measures what the GTE costs.
+The macros are plain inline assembly: include `<inline_c.h>` after `<psxgte.h>`. Chapter 27 batches three vertices per command with `RTPT` and measures what the GTE costs.
 
 ### 5.3 Setting up: `InitGeom`
 
@@ -91,7 +91,7 @@ The macros are plain inline assembly: include `<inline_c.h>` after `<psxgte.h>`.
 
 | Call | Sets | This chapter |
 |---|---|---|
-| `gte_SetGeomOffset(x, y)` | `OFX`, `OFY`: the screen position of the projection's centre, in whole pixels | `(160, 120)` |
+| `gte_SetGeomOffset(x, y)` | `OFX`, `OFY`: the screen position of the projection's center, in whole pixels | `(160, 120)` |
 | `gte_SetGeomScreen(h)` | `H`: the projection distance of Chapter 24 | `proj_h` = 256 |
 
 Nothing else is needed for the transform. Call these once, after `InitGeom`.
@@ -104,11 +104,11 @@ Nothing else is needed for the transform. Call these once, after `InitGeom`.
 | `VECTOR` | `int32 vx, vy, vz` | translations |
 | `MATRIX` | `int16 m[3][3]` (4.12) then `int32 t[3]` | rotation and translation together |
 
-The **units** are the part to keep straight. The matrix is 4.12 (4096 = 1.0), but the vertex and the translation are plain integers in whatever unit you choose: with an identity matrix a vertex comes out unchanged. This chapter's cube has corners at +-4096 units (the same numbers as Chapter 24's 4.12 values, now just "units"), and the camera distance is 24576 units. Only the ratios matter: `h * 4096 / 24576` = 43 pixels for a corner's x.
+The **units** are the part to keep straight. The matrix is 4.12 (4096 = 1.0), but the vertex and the translation are plain integers in whatever unit you choose: with an identity matrix a vertex comes out unchanged. This chapter's cube has corners at +-4096 units (the same numbers as Chapter 24's 4.12 values, now just "units"), and the camera distance is 24576 units. Only the ratios matter: a point 4096 units off the axis at the cube's center depth lands `h * 4096 / 24576` = 43 pixels from the screen center.
 
 ### 5.5 The matrix
 
-`RotMatrix(&rot, &mtx)` fills `mtx.m` from three angles (`rot.vx`, `vy`, `vz`, **4096 per turn**, like Chapter 23). It multiplies the three rotations as **`Rx * Ry * Rz`**. A vertex `v` becomes `Rx * (Ry * (Rz * v))`: it is turned about **Z first, then Y, then X**. The direction is the one from Chapter 24: positive `vx` moves +Y toward +Z, positive `vy` moves +Z toward +X, positive `vz` moves +X toward +Y (clockwise on screen). Note the order: with `vz = 0` it is Y then X, the reverse of Chapter 24's loop, so the same two angles give a different spin.
+`RotMatrix(&rot, &mtx)` fills `mtx.m` from three angles (`rot.vx`, `vy`, `vz`, **4096 per turn**, like Chapter 23). It multiplies the three rotations as **`Rx * Ry * Rz`**. A vertex `v` becomes `Rx * (Ry * (Rz * v))`: it is turned about **Z first, then Y, then X**. The direction is the one from Chapter 24: positive `vx` moves +Y toward +Z, positive `vy` moves +Z toward +X, positive `vz` moves +X toward +Y (clockwise on screen). With `vz = 0` the order is Y then X, the reverse of Chapter 24's loop, so the same two angles give a different spin.
 
 `TransMatrix(&mtx, &pos)` copies a `VECTOR` into `mtx.t`. It does not touch the rotation. The GTE computes `R * v + T`, so as in Chapter 24 the cube is rotated first and then moved: `pos = (0, 0, cam_z)`.
 
@@ -135,24 +135,24 @@ The **units** are the part to keep straight. The matrix is 4.12 (4096 = 1.0), bu
 
 Also left behind: `IR1..IR3` (the view-space x, y, z) and `IR0` (a depth-cueing factor for fog, unused here).
 
-**The divide.** The GTE has no real divider: it computes `H / SZ3` with a table and one Newton-Raphson step, so it can be off by a little in the last bit. The ratio is a 16.16 number saturated at `0x1FFFF` (just under 2.0). Where `H >= 2 * SZ3` it is **divide overflow**: the vertex is closer than `H / 2` (128 units with `h = 256`), or behind the camera, and the flag says so. The result is a saturated number, not garbage, which is why the GTE needs no near-plane clip for crude work.
+**The divide.** The GTE has no real divider: it computes `H / SZ3` with a table and one Newton-Raphson step, so it can be off by a little in the last bit. The ratio is a 16.16 number saturated at `0x1FFFF` (just under 2.0). Where `H >= 2 * SZ3` the divide **overflows**: the vertex is no farther than `H / 2` (128 units with `h = 256`), or behind the camera, and flag bit 17 says so. The result is a saturated number, not garbage, which is why the GTE needs no near-plane clip for crude work.
 
 **Flags.** `FLAG` is cleared by every command. The bits worth knowing:
 
 | Bit | Meaning |
 |---|---|
 | 31 | summary: at least one error bit (23 to 30, 13 to 18) is set |
-| 17 | divide overflow (`H >= 2 * SZ3`) |
+| 24, 23, 22 | `IR1` / `IR2` / `IR3` saturated |
 | 18 | `SZ3` or `OTZ` saturated |
-| 14, 13 | `SX2` / `SY2` saturated (off the +-1024 range) |
-| 24 to 22 | `IR1` to `IR3` saturated |
+| 17 | divide overflow (`H >= 2 * SZ3`) |
+| 14, 13 | `SX2` / `SY2` saturated (outside -1024..1023) |
 | 12 | `IR0` saturated to 0..4096 (normal here: `InitGeom`'s depth-cue values `DQA`/`DQB` saturate it; not an error and not part of bit 31) |
 
 **Precision.** The GTE rounds in places Chapter 24's code did not (the divide above; one `>> 12` after the sum). A program matching Chapter 24's numbers to 1 pixel is right.
 
 ### 5.7 Faces, winding and `NCLIP`
 
-A cube has 6 **faces**, each a quad of 4 corner indices. A face turned away from the camera is hidden by the faces in front of it, so drawing it is wasted work (and with a painter's algorithm it may also be wrong). **Back-face culling** skips it, and the GTE can tell which faces those are from the 2D result alone:
+A cube has 6 **faces**, each a quad of 4 corner indices. A face turned away from the camera is hidden by the faces in front of it, so drawing it is wasted work (and a sort by average depth can put it on top of a nearer face). **Back-face culling** skips it, and the GTE can tell which faces those are from the 2D result alone:
 
 ```
   NCLIP(p0, p1, p2) = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)       (twice the signed area)
@@ -167,7 +167,7 @@ A cube has 6 **faces**, each a quad of 4 corner indices. A face turned away from
   (screen y points down: "clockwise" is as you see it on the TV)
 ```
 
-**Positive means clockwise.** (The SDK's own comment states the same: a negative `MAC0` means the triangle is back facing.) Zero means edge-on. Seen from outside, a solid object's faces run clockwise if you list their corners one way, and turning the object over reverses the winding on screen: that is the whole trick. It only works if **every face is listed in the same sense**.
+**Positive means clockwise.** (The SDK's own comment states the same: a negative `MAC0` means the triangle is back facing.) Zero means edge-on. List each face's corners so they run clockwise when the face is seen from outside the object. The face then winds clockwise on screen while it faces the camera, and counter-clockwise once it has turned away. This only works if **every face is listed in the same sense**.
 
 **The quad's corner order.** The GPU draws a four-point polygon as two triangles `(v0, v1, v2)` and `(v1, v2, v3)`, so corners go in **Z order**, not around the perimeter:
 
@@ -184,11 +184,13 @@ The rule that makes every face right: **look at the face from outside the cube; 
 ```
         4--------5            face 0: z = -1   0 1 2 3     (toward the camera at rest)
        /|       /|            face 1: z = +1   5 4 7 6     (seen from behind: left and right swap)
-      6--------7 |            face 2: x = -1   4 0 6 2
-      | 0------|-1            face 3: x = +1   1 5 3 7
+      0--------1 |            face 2: x = -1   4 0 6 2
+      | 6------|-7            face 3: x = +1   1 5 3 7
       |/       |/             face 4: y = -1   4 5 0 1     (the top: y is down, so -1 is up)
       2--------3              face 5: y = +1   2 3 6 7     (the bottom)
 ```
+
+The cube is drawn as the camera sees it at rest: x to the right, y down, corners 0 to 3 in front, 4 to 7 behind.
 
 The starter gives this table. Do not "tidy" it: the tempting mistake is to write each face's corners in some natural order, and then half the faces vanish when they should show.
 
@@ -200,7 +202,7 @@ The GPU has no depth buffer, so you sort. For one quad, take the **average depth
   OTZ = (ZSF4 * (SZ0 + SZ1 + SZ2 + SZ3)) >> 12          (clamped to 0..65535; flag 18 if it clamps)
 ```
 
-from the four newest `SZ` registers. With `ZSF4 = 256` (InitGeom's value) that is `sum / 16`, the mean depth divided by 4. (`AVSZ3` with `ZSF3 = 341` gives the same for three corners.)
+from the four `SZ` registers. With `ZSF4 = 256` (InitGeom's value) that is `sum / 16`, the mean depth divided by 4. (`AVSZ3` with `ZSF3 = 341` gives the same for three corners.)
 
 The four `SZ` registers hold the **last four transforms**, so reading them is only right straight after transforming exactly that face's corners. This chapter transforms each corner once and keeps `SZ` in an array; to average a face, load its four values back with `gte_ldsz4(a, b, c, d)`, run `gte_avsz4()` and read `gte_stotz(&otz)`. (`RotAverageNclip4` of the old SDK transforms the four corners of every face again: 24 transforms per cube instead of 8.)
 
@@ -217,10 +219,10 @@ Chapter 20's table has 64 slots: slot 0 is nearest (drawn last), 63 is farthest 
 | Mean depth | `OTZ` | slot |
 |---|---|---|
 | 16384 | 4096 | 32 |
-| 24576 (the cube's centre) | 6144 | 48 |
+| 24576 (the cube's center) | 6144 | 48 |
 | 32768 | 8192 | 64: clamped to 63 |
 
-With this chapter's cube a face's centre is 20500 to 28700 units away, so its quad lands in slots 40 to 56. A scene with a bigger range uses a bigger shift; a shallower one a smaller shift, so the 64 slots are spent where the objects are.
+With this chapter's cube a face's center is 20500 to 28700 units away, so its quad lands in slots 40 to 56. A scene with a bigger range uses a bigger shift; a shallower one a smaller shift, so the 64 slots are spent where the objects are.
 
 ## 6. Worked example
 
@@ -234,7 +236,7 @@ make run
 
 Try each of these:
 
-1. Swap the colours' test (`area > 0` to `area < 0`). Which side is green now?  (The back: the sign decides which side counts as the front.)
+1. Reverse the color test (`area > 0` to `area < 0`). Which side is green now? (The back: the sign decides which side counts as the front.)
 2. Swap the card's corners 1 and 2 in `card[]`. What changes, and why? (Every winding reverses: the front is red at rest.)
 3. Change the `12000` distance to `2000`. Watch the card as it turns toward you: when a corner comes closer than `h / 2` the divide overflows (5.6).
 
@@ -242,9 +244,9 @@ Try each of these:
 
 Draw the Chapter 24 cube as six solid quads: transform with the GTE, cull the back faces with `NCLIP`, sort the rest into the ordering table by average depth, and spin it.
 
-### 7.1 Behaviour
+### 7.1 Behavior
 
-A flat-shaded cube, one colour per face, spinning about two axes, in the middle of a dark blue screen (`display_clear(16, 16, 32)`). Never more than three faces are visible at once, and they are never hidden behind each other.
+A flat-shaded cube, one color per face, spinning about two axes, in the middle of a dark blue screen (`display_clear(16, 16, 32)`). Never more than three faces are visible at once, and they are never hidden behind each other.
 
 ### 7.2 The contract
 
@@ -257,7 +259,7 @@ A flat-shaded cube, one colour per face, spinning about two axes, in the middle 
 | `face_colors[6][3]` | `uint8_t` | red, green, blue, yellow, magenta, cyan | `r, g, b` of face `f` |
 | `rot` | `SVECTOR` | `{128, 256, 0}` | Current angles about X, Y, Z (4096 = one turn, always kept in 0..4095) |
 | `rot_step` | `SVECTOR` | `{24, 40, 0}` | Added to `rot` every frame (may be negative) |
-| `cam_z` | `int32_t` | 24576 | The translation's z: the cube's centre is this far away |
+| `cam_z` | `int32_t` | 24576 | The translation's z: the cube's center is this far away |
 | `proj_h` | `int32_t` | 256 | Projection distance `h`, in pixels |
 | `mtx` | `MATRIX` | 0 | You fill it: `RotMatrix` plus `TransMatrix`, the matrix you upload |
 | `screen_xy[8]` | `int32_t` | 0 | Corner `i` as one `SXY` word: x in the low 16 bits, y in the high 16 |
@@ -293,7 +295,7 @@ With the shipped numbers the corners stay 17500 to 31700 units away: no divide o
 ### 7.4 Rules
 
 - **Use the GTE** for the transform, the culling test and the depth. The verifier looks for `RTPS`/`RTPT`, `NCLIP` and `AVSZ3`/`AVSZ4` in your own objects, and rejects calls from `main.c` to `psxe`'s CPU arithmetic (`fx_mul`, `fx_div`, `fx_rotate`, `fx_lerp`, `fx_sqrt`). No `float`/`double`.
-- Read the tables and numbers from the symbols above; the verifier patches them (angles, speeds, colours, cube size, `cam_z`, `proj_h`) and expects the picture to follow.
+- Read the tables and numbers from the symbols above; the verifier patches them (angles, speeds, colors, cube size, `cam_z`, `proj_h`) and expects the picture to follow.
 - Do not write to `cube`, `faces`, `face_colors`, `rot_step`, `cam_z` or `proj_h`. Keep the keep-alive line in `main` and the three marker functions.
 - Frame budget: at most 5,700 CPU cycles between `render_begin()` and `render_end()`: twice the reference solution's worst frame (about 2,850). `RotMatrix` is the expensive part: build the matrix once per frame. (Rebuilding it for every face blows the budget; transforming each face's four corners again, 24 transforms instead of 8, still fits.)
 
@@ -302,10 +304,10 @@ With the shipped numbers the corners stay 17500 to 31700 units away: no divide o
 - *Every face is drawn all the time*: you do not test `NCLIP`, or you test `area != 0`.
 - *The cube looks inside-out (you see the inside of the far faces)*: the test has the wrong sign. Positive is the front.
 - *Some faces never appear*: you reordered the face table, or you use perimeter order.
-- *The cube is not centred, or is tiny or huge*: `gte_SetGeomOffset` / `gte_SetGeomScreen`, or the matrix was never uploaded.
-- *The cube does not move*: you updated `rot` but not the `mtx` upload, or you call `RotMatrix` on a copy.
+- *The cube is not centerd, or is tiny or huge*: `gte_SetGeomOffset` / `gte_SetGeomScreen`, or the matrix was never uploaded.
+- *The cube does not move*: you updated `rot` but did not rebuild and upload `mtx`, or you call `RotMatrix` on a copy.
 - *`gte_ldsxy3` appears to load garbage*: it takes the three 32-bit values, not pointers.
-- *Faces fight (the wrong one on top)*: slot too small or too large a shift; print the slots of the three faces and compare them with their depths.
+- *Faces fight (the wrong one on top)*: the shift is too small or too large; print the slots of the three faces and compare them with their depths.
 - *The first frame is wrong, the rest right*: `InitGeom` or the offset ran after the first transform.
 
 ### 7.6 Stretch goals
@@ -314,7 +316,7 @@ With the shipped numbers the corners stay 17500 to 31700 units away: no divide o
 - Light the faces: shade each by how much its normal points at the camera (the corners' cross product, or `NCLIP`'s area as a rough brightness).
 - Transform with `gte_rtpt` three corners at a time and compare the cycle count (Chapter 27 does this properly).
 - Two cubes, one inside the other, drawn in different sizes: where does average-Z sorting go wrong?
-- Draw both sides of every face with different colours, using the sign of `NCLIP` instead of culling (the worked example, on a cube).
+- Draw both sides of every face with different colors, using the sign of `NCLIP` instead of culling (the worked example, on a cube).
 
 ## 8. Verification
 
@@ -324,22 +326,22 @@ parts/part-05-three-dimensions-with-the-gte/ch25-the-gte-coprocessor/verify/veri
 parts/part-05-three-dimensions-with-the-gte/ch25-the-gte-coprocessor/verify/verify.sh --solution # the reference
 ```
 
-The probe records, every time the program calls `frame_done()`, the angles, `mtx`, `screen_xy`, `screen_z`, the flags, the counters, the cycles between the two markers, and the quads it finds by **walking the ordering table** handed to `DrawOTag` (slot, colour, corners). Python recomputes the cube: the same `RotMatrix`, the GTE's divide ported from psx-spx, and `NCLIP` on the reference corners.
+The probe records, every time the program calls `frame_done()`, the angles, `mtx`, `screen_xy`, `screen_z`, the flags, the counters, the cycles between the two markers, and the quads it finds by **walking the ordering table** handed to `DrawOTag` (slot, color, corners). Python recomputes the cube: the same `RotMatrix`, the GTE's divide ported from psx-spx, and `NCLIP` on the reference corners.
 
 | Check | What it means | If it fails |
 |---|---|---|
 | `the state symbols exist` | The labels of 7.2 and the marker functions are in the program | You removed a declaration or the keep-alive line |
 | `the program uses the GTE...` | `objdump` of your objects (not the SDK's libraries) contains the GTE commands `RTPS`/`RTPT`, `NCLIP`, `AVSZ3`/`AVSZ4` | Missing macro; a software loop in its place |
-| `the CPU does not redo the GTE's work` | `main.o` references no `fx_mul/fx_div/fx_rotate...` | Chapter 24's maths left in |
+| `the CPU does not redo the GTE's work` | `main.o` references no `fx_mul/fx_div/fx_rotate...` | Chapter 24's math left in |
 | `integers only` | No soft-float helper referenced | A `float` crept in |
 | `frame loop...` | `frame_no` 1..120; `rot` equals `start + k * step` (`& 4095`); 0 to 3 quads; `faces_drawn` is the running total; `face_mask` has one bit per quad; the table walk finds exactly `prims_submitted` quads | Angles not wrapped; counters not reset; a primitive not linked, or linked but not counted |
 | `matrix...` | `mtx` equals `RotMatrix(rot)` (each entry within 4, in 4.12) and its translation is `(0, 0, cam_z)` | Wrong angles; another rotation order; translation missing |
-| `projection...` | `screen_xy` (1 px) and `screen_z` (exactly) equal what `RTPS` gives for your `mtx` | `InitGeom`, offset, `h`, matrix upload; the message tells if the centre is missing |
+| `projection...` | `screen_xy` (1 px) and `screen_z` (exactly) equal what `RTPS` gives for your `mtx` | `InitGeom`, offset, `h`, matrix upload; the message says so if the screen offset is missing |
 | `culling...` | In 120 frames, the faces drawn are exactly those the reference says face the camera (faces within an edge-on margin are not judged); never more than 3 | Test missing, wrong sign, wrong corner order |
 | `sorting...` | Each quad sits in slot `(mean SZ / 4) >> 7` (+-1), and faces at different depths get different slots | A constant slot; `AVSZ3` with the wrong corners; a different shift |
-| `picture (spinning...)` | Screenshots at frames 30 and 95: each visible face's centre has its colour; no pixel of any hidden face's colour; every lit pixel is a face colour | Wrong corners for a face; hidden faces drawn |
+| `picture (spinning...)` | Screenshots at frames 30 and 95: each visible face's center has its color; no pixel of any hidden face's color; every lit pixel is a face color | Wrong corners for a face; hidden faces drawn |
 | `six frozen poses...` | `rot_step` patched to 0, six orientations showing 1, 2 and 3 faces: matrix, projection, culling, sorting and the picture | A face table with the wrong winding; anything that depends on motion |
-| `colours come from face_colors[]` | A pose with the colour table permuted: the picture follows | Colours in code instead of the table |
+| `colors come from face_colors[]` | A pose with the color table permuted: the picture follows | Colors in code instead of the table |
 | `patched lens, cube size, speeds and a third axis` | `h`, `cam_z`, size, steps on all three axes, start angles changed | A constant in place of `proj_h`, `cam_z`, a cube coordinate; `rot.vz` ignored |
 | `GTE flags` | No error bit in the shipped run. With `cam_z` = 3000 (cube around the camera) bits 17 and 31 are set | Flags not read after every `RTPS`, or reset in between |
 | `frame time` | At most 5,700 cycles between the markers | `RotMatrix` called more than once per frame; other repeated work |

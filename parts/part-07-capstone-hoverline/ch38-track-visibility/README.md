@@ -2,17 +2,17 @@
 
 ## 1. Concept
 
-So far the game draws **every section of the track, every frame**, although the player sees a tenth of it. This chapter finds out **which section the ship is nearest to** and draws only a **window** of sections around it: some ahead, a few behind. Finding the section is a small search problem with a fast path (the ship is almost always in the same section as last frame, or in a neighbour) and a slow path (the first frame, or a teleport). The picture gets a **debug readout** (`SEC 098  PRIMS  124`) so you can watch it work.
+So far the game draws **every section of the track, every frame**, although only a fraction of it is in view. This chapter finds **which section the ship is nearest to** and draws only a **window** of sections around it: some ahead, a few behind. Finding the section is a small search problem with a fast path (the ship is almost always in the same section as last frame, or in a neighbor) and a slow path (the first frame, or a teleport). A **debug readout** (`SEC  98  PRIMS  124`) lets you watch it work.
 
 ## 2. Why it matters
 
-Chapter 36's subdivision and Chapter 37's ship push the frame past one vertical blank, so the game runs at 30 frames per second. The cheapest primitive is the one you never build: culling by *section* is the first and biggest saving, long before any per-face test. The **nearest section** is also the game's main spatial index. Chapter 40 asks which road edges are near the ship and Chapter 41 how far along the lap it is. Both start from `ship_section`.
+Chapter 37's whole-track frame costs about one full vertical blank: once more of the track is in view, frames miss the blank and the game drops to 30 frames per second. The cheapest primitive is the one you never build: culling by *section* is the first and biggest saving, long before any per-face test. The **nearest section** is also the game's main spatial index: Chapter 40 asks which road edges are near the ship, Chapter 41 how far along the lap it is, and both start from `ship_section`.
 
 ## 3. Learning objectives
 
 After this chapter you can:
 
-- explain why a loop of sections is treated as a **ring** and take `next` / `prev` links across the lap boundary;
+- treat a loop of sections as a **ring** and follow its `next` / `prev` links across the lap boundary;
 - define a **distance metric** exactly (squared, 3D, 64-bit, ties to the lowest index) so that two implementations agree on every input;
 - find the nearest section by **brute force** and then **incrementally** through the links;
 - decide **when the fast path cannot be trusted** (teleports, fast flight, leaving the road) and fall back;
@@ -28,7 +28,7 @@ After this chapter you can:
 
 ### 5.1 Why a window: the numbers
 
-Measured on this chapter's solution with the emulator's cycle counter: **work** is everything from the start of a frame to the call of `VSync(0)`: input, physics, the section update, drawing the track, the ship and the readout, and `DrawSync`'s wait for the GPU. One NTSC vertical blank is **566,120** CPU cycles. All rows use the same 110 poses (the first 110 of the verifier's lap, 5.9).
+The table is measured on this chapter's solution with the emulator's cycle counter. **Work** is everything from the start of a frame to the call of `VSync(0)`: input, physics, the section update, drawing the track, the ship and the readout, and `DrawSync`'s wait for the GPU. One NTSC vertical blank is **566,120** CPU cycles. All rows use the same 110 poses (the first 110 of the verifier's lap, 5.9).
 
 | Frame (110 posed frames) | Sections | Packets (mean / max) | Work, cycles (mean / max) | Share of a blank | Frames over one blank |
 |---|---|---|---|---|---|
@@ -39,7 +39,7 @@ Measured on this chapter's solution with the emulator's cycle counter: **work** 
 
 Three lessons. The window gives back more than half the frame. Work is roughly proportional to the **packets**, so the section count is the lever. And subdivision **still does not fit**, even with the window: it stays **off by default** (the R1 toggle remains).
 
-**What these numbers leave out.** The emulator does not charge for the GPU's *rasterisation*: its `DrawSync` returns almost at once. On a console the program sends the table and then waits in `DrawSync` until the GPU has filled every pixel, so a real frame is this work **plus** the fill time, which depends on the screen area covered and the overdraw rather than on the packet count. 43% is therefore a CPU figure and a lower bound: the 57% left is the room the GPU has. This book does not measure the fill time.
+**What these numbers leave out.** The emulator does not charge for the GPU's *rasterization*: its `DrawSync` returns almost at once. On a console the program sends the table and then waits in `DrawSync` until the GPU has filled every pixel, so a real frame is this work **plus** the fill time, which depends on the screen area covered and the overdraw rather than on the packet count. 43% is therefore a CPU figure and a lower bound: the 57% left is the room the GPU has. This book does not measure the fill time.
 
 ### 5.2 The ring and the window
 
@@ -65,28 +65,28 @@ The window drawn for section `s` is
 | too wide | if `count >= n`: `first = 0`, `count = n` (everything, each section once) |
 | negative inputs | `vis_ahead` or `vis_behind` below 0 counts as 0 |
 
-Defaults `VIS_AHEAD` 24 and `VIS_BEHIND` 4 are the manifest's `vis_rule` (E.10.5). Both are variables (`vis_ahead`, `vis_behind`) so the verifier can patch them. The sections drawn **ahead** matter most: the camera looks forward and the road recedes. The few behind keep the road under and just behind the camera.
+The defaults, `VIS_AHEAD` 24 and `VIS_BEHIND` 4, are the manifest's `vis_rule` (E.10.5). The program reads them from variables (`vis_ahead`, `vis_behind`) so the verifier can patch them. The sections drawn **ahead** matter most: the camera looks forward and the road recedes. The few behind keep the road under and just behind the camera.
 
 ### 5.3 The nearest section: one exact metric
 
 "Nearest" must mean the same thing in every implementation, or the verifier cannot compare. This chapter's metric:
 
 ```
-d2(i) = dx*dx + dy*dy + dz*dz     with  d = pos - centre(i)   per axis
+d2(i) = dx*dx + dy*dy + dz*dz     with  d = pos - sections[i].centre   per axis
 ```
 
-- **3D**, not the XZ plane: the ship hovers above the road and the track climbs; the heights agree between neighbours.
+- **3D**, not the XZ plane: the track climbs, and where one stretch passes over another only the height tells them apart.
 - **Squared**: no square root; the order of distances is the order of their squares.
-- **64-bit**: compute each `d` and each square in a 64-bit integer. A ship only 65,536 units from a centre already squares past `u32`, and a ship that has left the track is exactly the case that happens (the verifier flies it 150,000 units away). 64 bits hold the sum of three squares while every `|d|` is below 2^31, far beyond any world the format allows. On the R3000 a 32 x 32 to 64 multiply is one instruction; `int64_t` costs a few more cycles, nothing else.
+- **64-bit**: compute each `d` and each square in 64 bits and add the squares as an unsigned 64-bit value. A difference of 65,536 units already squares past `u32`, and a ship that has left the track gets there (the verifier flies it 150,000 units away). An unsigned 64-bit sum holds three squares while every `|d|` is below 2^31, far beyond any world the format allows. The cost is small: the compiler turns each 64-bit square into two multiply instructions and a few additions, with no library call.
 - **Ties** go to the **lowest index**.
 
-The **brute-force search** is a loop over every section with a strict `<` (so the first, lowest index, keeps a tie). For 104 to 112 sections it costs about **17,600 to 21,300 cycles** in the solution (3 to 4% of a blank): cheap, but not free, and it grows with the track.
+The **brute-force search** is a loop over every section with a strict `<` (so the first, lowest index keeps a tie). For 104 to 112 sections it costs about **17,600 to 21,300 cycles** in the solution (3 to 4% of a blank): cheap, but not free, and it grows with the track.
 
-**What "nearest" is not.** The nearest *centre* is not always the section the ship is *over*. The boundary between two sections' "nearest" zones is the plane halfway between their centres, while the road's boundary is the ring between them; on a bend, a bank or a change of section length the two differ, so near a ring the answer can be the neighbour. For choosing what to draw that does not matter (the window is 29 sections wide). It matters for Chapter 40's collision, which needs the section whose edges are beside the ship: it starts from `ship_section` and has to test the neighbour too when the ship is past a ring.
+**What "nearest" is not.** The nearest *center* is not always the section the ship is *over*. The boundary between two sections' "nearest" zones is the plane halfway between their centers, while the road's boundary is the ring between them; on a bend, a bank or a change of section length the two differ, so near a ring the answer can be the neighbor. For choosing what to draw that does not matter (the window is 29 sections wide). It matters for Chapter 40's collision, which needs the section whose edges are beside the ship: it starts from `ship_section` and has to test the neighbor too when the ship is past a ring.
 
 ### 5.4 The incremental update
 
-Between two frames the ship moves at most 60 units per tick; a section is about 1000 long. So the nearest section is almost always **the one it was**, or a neighbour. Test those three and follow the links:
+The ship moves at most 60 units per tick and a section is about 1000 long, so the nearest section is almost always **the one it was**, or a neighbor. Test those three and follow the links:
 
 ```
  cur = last frame's section
@@ -103,11 +103,11 @@ Rules that matter:
 - **Use the links**, `sections[cur].next` and `.prev`, never `cur + 1`: the lap boundary is `111 -> 0` and, in another track, the link could do something else (the format has a reserved `JUNCTION` flag).
 - Comparing the pair **(d2, index)**, not only `d2`, makes a tie deterministic and makes the walk **terminate**: the pair strictly decreases at every move.
 - A fast ship (several sections per frame) simply needs more moves. After `VIS_MAX_STEPS` moves, give up and search everything (5.5).
-- A normal frame costs three to five distances, about **650 to 2,400 cycles** here (median 1,100) against 17,600+ for a full search. The verifier measures it.
+- A walk that stays put costs three distances, and each move two more. Updates that need no full search measure **650 to 2,400 cycles** (median 1,100), against 17,600 or more for a full search. The verifier measures it.
 
 ### 5.5 Teleports and being lost
 
-The walk is a **hill climb**: it follows the distance downhill. That finds the nearest section when the distance has one valley around the ship. It fails when the ship jumps (a respawn, a debug warp), and a **local minimum** can trap it: a section closer than both its neighbours but not the nearest, for example where the loop passes close to itself. Two rules limit the damage:
+The walk is a **hill climb**: it follows the distance downhill. That finds the nearest section when the distance has one valley around the ship. It fails when the ship jumps (a respawn, a debug warp), and a **local minimum** can trap it: a section closer than both its neighbors but not the nearest, for example where the loop passes close to itself. The fall-back rules:
 
 | Situation | Rule |
 |---|---|
@@ -116,19 +116,19 @@ The walk is a **hill climb**: it follows the distance downhill. That finds the n
 | the walk stops, but the section is **farther than `vis_lost`** (4000 units, `d2 > vis_lost^2`) | brute force |
 | otherwise | the walk's answer |
 
-The third rule is the safety net: a ship **on the road** is within a few hundred units of its section, so a result 4000 units away is not trustworthy and flight far off the road gets the exact answer, at the price of a full search each frame (only 3% of a blank). The rules are not a proof: a local minimum *within* 4000 units would be kept. On the book's two tracks no part of the loop comes back within that distance, and on every pose of the verifier's laps the rule's answer equals the brute-force one; a track that doubles back closely would need a smaller `vis_lost` or a periodic full search. `vis_lost` is a variable the verifier can patch.
+The `vis_lost` rule is the safety net: a ship **on the road** is well under 1000 units from its section's center, so a result 4000 units away cannot be trusted. Flight far off the road therefore gets the exact answer, at the price of a full search each frame (3 to 4% of a blank). The rules are not a proof: a local minimum *within* 4000 units would be kept. On the book's two tracks no part of the loop comes back within that distance, and on every pose of the verifier's laps the rule's answer equals the brute-force one; a track that doubles back closely would need a smaller `vis_lost` or a periodic full search. `vis_lost` is a variable the verifier can patch.
 
 Brute force is also the **initial value**: `set_state` calls it right after `ship_place`.
 
 ### 5.6 What the window reuses from Chapter 34
 
-Vertices near (and far from) the camera need nothing new; the window sits in front of Chapter 34's rules:
+The window only chooses which sections are visited; Chapter 34's per-vertex and per-face rules apply unchanged:
 
 - A vertex more than 32,767 units from the eye in any axis is **far** and its faces are skipped (not clamped). With 24 sections ahead (about 24,000 units) the far rule rarely fires, but it is still the safety net.
 - A face with a vertex nearer than `TRK_NEAR_Z` = 128 is skipped (**near**), faces facing away (`NCLIP`) and oversized faces (1023 x 511) likewise: Chapter 34's buckets, unchanged.
 - `track_draw` is cut into `track_draw_begin` (reset the statistics, load the rotation into the GTE) and `track_draw_section` (the five faces of one section). `track_draw(first, count)` is those two in a loop, so a **window** and a **list** are two ways to call the same code.
 
-The ring vertices are shared, so a window touches the vertices of rings `first .. first + count` (one more ring than sections). The verifier uses that: after the frame, the vertices that `trk_vstate` marks as *seen* are exactly those of the faces of the window.
+The ring vertices are shared, so a window touches the vertices of rings `first .. first + count` (one more ring than sections). The verifier uses that: after the frame, the vertices that `trk_vstate` marks as *seen* must be exactly those of the window's faces.
 
 ### 5.7 The readout and the primitive count
 
@@ -138,15 +138,15 @@ The ring vertices are shared, so a window touches the vertices of rings `first .
 SEC  98  PRIMS  124        ("SEC %3d  PRIMS %4d": the section in 3 columns, the packets in 4)
 ```
 
-It is written into `vis_text` (31 characters at most), from `ship_section` and `prims_this_frame` of the **same** frame.
+It is written into `vis_text` (`char[32]`), from `ship_section` and `prims_this_frame` of the **same** frame.
 
-The SDK has a bitmap font. `FntLoad(x, y)` uploads it once; the book puts it at **`FntLoad(960, 0)`**: VRAM x 960..991, y 0..31 plus its palette just below, in the free area Chapter 35's `vram_layout.md` left for it. To draw the line **on top of the track**, sort its characters into the *nearest* slot of the ordering table (the table is drawn from slot 63 down, so slot 0 is drawn last): `FntSort(ot, buffer, x, y, text)`, with the table entry from the new `ot_slot(0)` of this chapter's `psxe` copy, and a buffer from `ot_alloc`. Within one slot the packet linked last is drawn first, so a road face that also lands in slot 0 (just in front of the camera, at the bottom of the screen) would cover the text; at the top-left corner there is none. Each character is one 8 x 8 sprite packet (about 16 bytes); the readout line is therefore *not* in `prims_this_frame` (the verifier's walk of the table finds `prims_this_frame` packets plus the characters).
+The SDK has a bitmap font. `FntLoad(x, y)` uploads it once; the book puts it at **`FntLoad(960, 0)`**: VRAM x 960..991, y 0..31 plus its palette just below, in the free area Chapter 35's `vram_layout.md` left for it. To draw the line **on top of the track**, sort its characters into the *nearest* slot of the ordering table (the table is drawn from slot 63 down, so slot 0 is drawn last): `FntSort(ot, buffer, x, y, text)`, with the table entry from the new `ot_slot(0)` of this chapter's `psxe` copy, and a buffer from `ot_alloc`. Within one slot the packet linked last is drawn first, so a road face that also lands in slot 0 (just in front of the camera, at the bottom of the screen) would cover the text; at the top-left corner there is none. `FntSort` links one 8 x 8 sprite packet (16 bytes) per non-space character and one texture-page packet for the line. None of them are in `prims_this_frame`: the verifier's walk of the table finds `prims_this_frame` packets plus the readout's.
 
-`FntPrint` / `FntFlush` draw immediately, **before** the table is drawn, so the track would cover them: that is why this chapter sorts the text itself.
+`FntPrint` / `FntFlush` do not use the table: `FntFlush` draws at the moment it is called. While the frame is being built that is **before** the table is drawn, so the track would cover the text. Sorting the text into the table avoids the problem.
 
 ### 5.8 The alternative: a precomputed visibility list
 
-The `.TRK` carries a **visibility list** (E.10.5): for every section `i`, a slice `vis[vis_first .. vis_first + vis_count - 1]` of the sections to draw. On the generated tracks it holds the same 24 ahead and 4 behind, **plus** any section whose centre is within six average lengths (the manifest's `vis_rule`: meant for a road that passes close to itself across a bend). On the book's two tracks no other part of the loop is that close, so the only extras are the 5th and 6th sections behind: track 1's lists have 30 or 31 entries, and list mode draws almost the window.
+The `.TRK` carries a **visibility list** (E.10.5): for every section `i`, a slice `vis[vis_first .. vis_first + vis_count - 1]` of the sections to draw. On the generated tracks it holds the same 24 ahead and 4 behind, **plus** any section whose center is within six average section lengths (the manifest's `vis_rule`: meant for a road that passes close to itself across a bend). On the book's two tracks no other part of the loop is that close, so the only extras are the 5th and 6th sections behind: track 1's lists have 30 or 31 entries, and list mode draws almost the window.
 
 | | Window | List |
 |---|---|---|
@@ -161,7 +161,7 @@ The `.TRK` carries a **visibility list** (E.10.5): for every section `i`, a slic
 
 Nothing collides yet: the ship flies straight and leaves the road, so a lap cannot be flown with the pad. The probe **poses the ship**:
 
-1. At the end of every frame (the program's `frame_done`), the probe writes the next pose into `ship`: `pos` (on the centre line, with a lateral sway and the hover height), `yaw` along the road, `speed` 0.
+1. At the end of every frame (the program's `frame_done`), the probe writes the next pose into `ship`: `pos` (on the center line, with a lateral sway and the hover height), `yaw` along the road, `speed` 0.
 2. The pad is idle and the speed 0, so `ship_update` leaves the pose alone. The game then runs the chase camera, **your update**, the draw, the readout.
 3. At the next `frame_done` the probe records the row: `ship_section`, the counters, the vertices the frame touched, the packets of the ordering table, the frame's work in cycles, and which vertical blanks passed. The verifier also checks that `ship.pos` is still the pose it wrote.
 
@@ -169,7 +169,7 @@ The script, generated from the `.TRK`: smooth running over the **lap boundary** 
 
 ## 6. Worked example
 
-Track 1, ship at the start pose (23829, -746, 487). Section centres: 111 is (23649, -512, -463), 0 is (23883, -639, 496), 1 is (23874, -765, 1487).
+Track 1, ship at the start pose (23829, -746, 487). Section centers: 111 is (23649, -512, -463), 0 is (23883, -639, 496), 1 is (23874, -765, 1487).
 
 | Section | d2 |
 |---|---|
@@ -183,9 +183,9 @@ The window for `s` = 2, 24 ahead and 4 behind: `first = (2 - 4) mod 112 = 110`, 
 
 ## 7. Project: windowed track rendering
 
-### 7.1 Behaviour
+### 7.1 Behavior
 
-Chapter 37's game. The picture is now the track **window** around the ship, the ship, and the readout at the top-left. Fly with X and the arrows as before: the section number counts up, the packet count stays near 100 to 130, and the frame rate stays at 60. **Select**, **Triangle** and **R1** work as before.
+Chapter 37's game. The picture is now the track **window** around the ship, the ship, and the readout at the top-left. Fly with **X** and **Left / Right** as before: the section number counts up, the packet count stays near 100 to 130, and the frame rate stays at 60. **Select**, **Triangle** and **R1** work as before.
 
 ### 7.2 The contract
 
@@ -213,7 +213,7 @@ Chapter 37's game. The picture is now the track **window** around the ship, the 
 | `vis_list_done` | 1 if the stretch goal is implemented |
 | `ship` | the posed state (14 words, as Chapter 37) |
 
-The probe hooks the entry and return of `track_nearest_update` to count its cycles: keep it a function of its own, in its own file.
+The probe hooks the entry and return of `track_nearest_update` to count its cycles: keep it a real function in `track_vis.c` (not `static`, not inlined into `game_update`).
 
 ### 7.3 Steps
 
@@ -229,7 +229,7 @@ The probe hooks the entry and return of `track_nearest_update` to count its cycl
 - The update uses the **links**, not `+ 1`, and makes a normal frame cost a few distances. **A full search every frame gives the right answers but fails the verifier**: `update_uses_the_links_not_the_whole_track` allows only the full searches the rule of 5.5 needs (+3) and 8,000 cycles for an update without one. This is a rule of the exercise, not of the frame rate (a full search is 3 to 4% of a blank on these tracks): the incremental walk is what the chapter teaches, and its cost does not grow with the track.
 - Draw the window of `vis_ahead` and `vis_behind` as they are **now**: they are read each frame.
 - `prims_this_frame` is read *before* the readout is added.
-- No new global limits: nothing is hard-coded to track 1 (112 sections) or to its position.
+- Hard-code nothing about track 1: not its 112 sections, not its position.
 
 ### 7.5 Hints
 
@@ -237,13 +237,13 @@ The probe hooks the entry and return of `track_nearest_update` to count its cycl
 - `((x % n) + n) % n` is the non-negative remainder in C.
 - Keep `best` and its distance in two variables, and compare the distance first, the index second.
 - A section's links are `uint16_t`; compare them as `int`.
-- Print the numbers with `snprintf(vis_text, sizeof vis_text, "...")`; `%3d` and `%4d` need `int`, not `int32_t` on every compiler (cast).
+- Print the numbers with `snprintf(vis_text, sizeof vis_text, "...")`; `%3d` and `%4d` take an `int`, and with this toolchain `int32_t` is `long`: cast.
 
 ### 7.6 Stretch goals
 
 - **The visibility list** (5.8): `track_draw_list`, `vis_list_done = 1`. The verifier then runs with `vis_mode = 1` and compares the vertices touched with the section's slice.
 - **A two-step update** that looks at `next(next(cur))` and `prev(prev(cur))` before moving: fewer iterations on fast flight.
-- **Draw order of the window**: far to near is automatic (the table sorts it); but you can *stop* the window at the first section beyond `TRK_FAR_LIMIT`.
+- **A shorter window**: *stop* the window at the first section that lies wholly beyond `TRK_FAR_LIMIT`.
 - **A dynamic window**: grow `vis_ahead` while the frame has spare cycles, shrink it when `frame_ticks` exceeds 1.
 - **Subdivision inside the window**: the near level only: how many frames does that fit?
 
@@ -260,9 +260,9 @@ About one minute: a build and up to five emulator runs from the disc image, all 
 | Check | What it means | If it fails |
 |---|---|---|
 | `starts_in_the_game` | the first `ship_section` is the brute-force answer for the start pose; the probe's poses are seen (`ship.pos`) | the metric, a missing first search |
-| `nearest_section_main_lap` | on every frame of the lap `ship_section` equals the reference (first gate: 99% of frames and every miss fixed the next frame; then all of them) | the first wrong pose, its kind, got and wanted |
+| `nearest_section_main_lap` | on every frame of the lap `ship_section` equals the reference (first gate: 99% of frames and every miss fixed the next frame; then all of them) | the metric, the tie rule, the links (the message names the first wrong poses) |
 | `teleports_recover` | right on the teleport frame **and** the next | no fall-back |
-| `update_uses_the_links_not_the_whole_track` | full searches are at most the frames that need one (+3); an update without a full search is under 8,000 cycles (measured at most 2,000) | searching every frame |
+| `update_uses_the_links_not_the_whole_track` | full searches are at most the frames that need one (+3); an update without a full search is under 8,000 cycles (measured: at most 2,400) | searching every frame |
 | `window_rule_main`, `window_rule_patched` | on every frame: `first` and `count` follow the rule; `track_stats` sees 5 faces per section; the vertices `track_draw` touched are **exactly** those of the window (also 9 / 2 and "wider than the track"); windows that wrap occur | off-by-one, no wrap, ignoring the patched variables |
 | `prim_counts` | `prims_this_frame` equals the packets in the frame's ordering table (readout characters excluded), the ship's share is plausible, at most 170 in any frame, guard bytes intact | counting after the readout, whole-track drawing |
 | `frame_budget_main` | between every two frames of the lap **exactly one** vertical blank; the busiest frame's work is under 540,000 cycles | window too wide |
@@ -278,14 +278,14 @@ A pass ends with `CHAPTER 38: PASSED (13/13 checks)`. The untouched starter fail
 
 - **`cur + 1` for the next section.** It works until the lap boundary (and fails on any track that is not a simple loop).
 - **A negative remainder.** In C `-2 % 112` is `-2`. Add `n` and take the remainder again.
-- **32-bit squares.** Fine on the first track near the origin, wrong as soon as the world is shifted; the verifier shifts it.
+- **32-bit squares.** Unsigned ones happen to fit while the ship is on these roads; they wrap once a difference reaches 65,536 units, and the verifier flies the ship 150,000 units away.
 - **A tie broken by the scan order of the walk.** Compare `(d2, index)`, or two equal answers differ by one section.
 - **Trusting the hill climb after a jump.** It stops on a local valley. The 5-move limit and `vis_lost` are there for it.
 - **Counting the readout.** `prims_this_frame` is read before `FntSort`.
 - **`FntFlush` for the text.** It draws before the table: the track covers it.
 - **Window too small ahead.** The road pops in at the horizon; 24 is the book's choice, not a law.
 - **Forgetting the whole-track case.** A window wider than the track must not draw a section twice.
-- **Believing subdivision fits now.** Measured: it does not. R1 is off by default.
+- **Believing subdivision fits now.** Measured: it does not. Subdivision stays off by default (R1 toggles it).
 
 ## 10. Quiz
 

@@ -6,14 +6,14 @@
 
 ## Chapters
 
-| # | Chapter | You build | Status |
-|---|---|---|---|
-| 7 | [The Pipeline and Delay Slots](ch07-the-pipeline-and-delay-slots/README.md) | "Factorial, Tightly": `n!` plain, then with every delay slot doing work | available |
-| 8 | [Subroutines](ch08-subroutines/README.md) | `factorial`, `sum_array`, `max_array` as callable functions, plus a test driver | available |
-| 9 | [Signed Numbers, Logic, and Bit Shifting](ch09-signed-numbers-logic-and-shifts/README.md) | "Bit Toolkit": `abs`, `sign_extend`, `popcount`, colour packing, `swap_endian32` | available |
-| 10 | [The Stack and the MIPS ABI](ch10-the-stack-and-the-mips-abi/README.md) | Recursive `factorial` and `fibonacci`, `sum6` with stack arguments | available |
-| 11 | [Data Layout and Memory Alignment](ch11-data-layout-and-memory-alignment/README.md) | "Vertex Table": aligned `SVECTOR` structs, bounding box, packed copy with `lwl`/`lwr` | available |
-| 12 | [RISC vs. CISC, Multiply and Divide](ch12-risc-vs-cisc-multiply-and-divide/README.md) | Word-at-a-time `memcpy`/`memset`/`strlen`, shift-and-add `mul320` and friends, `udiv10` by reciprocal | available |
+| # | Chapter | You build |
+|---|---|---|
+| 7 | [The Pipeline and Delay Slots](ch07-the-pipeline-and-delay-slots/README.md) | "Factorial, Tightly": `n!` plain, then with every delay slot doing work |
+| 8 | [Subroutines](ch08-subroutines/README.md) | `factorial`, `sum_array`, `max_array` as callable functions, plus a test driver |
+| 9 | [Signed Numbers, Logic, and Bit Shifting](ch09-signed-numbers-logic-and-shifts/README.md) | "Bit Toolkit": `abs`, `sign_extend`, `popcount`, color packing, `swap_endian32` |
+| 10 | [The Stack and the MIPS ABI](ch10-the-stack-and-the-mips-abi/README.md) | Recursive `factorial` and `fibonacci`, `sum6` with stack arguments |
+| 11 | [Data Layout and Memory Alignment](ch11-data-layout-and-memory-alignment/README.md) | "Vertex Table": aligned `SVECTOR` structs, bounding box, packed copy with `lwl`/`lwr` |
+| 12 | [RISC vs. CISC, Multiply and Divide](ch12-risc-vs-cisc-multiply-and-divide/README.md) | Word-at-a-time `memcpy`/`memset`/`strlen`, shift-and-add `mul320` and friends, `udiv10` by reciprocal |
 
 ## How the part flows
 

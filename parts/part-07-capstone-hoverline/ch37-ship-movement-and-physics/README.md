@@ -37,7 +37,7 @@ Four things describe the ship at an instant:
 | `yaw`, `pitch`, `roll` | which way it faces (three **Euler angles**) | `yaw_vel`; pitch is fixed this chapter |
 | `speed`, `yaw_vel` | scalar rates | thrust, brake, steering, damping |
 
-The book's axes: **+x right, +y DOWN, +z forward**. Every angle is in 4096ths of a turn.
+The book's axes: **+x right, +y DOWN, +z forward**. Angles are measured in 4096ths of a turn (5.2 gives the stored format).
 
 ```
             -y (up)
@@ -53,7 +53,7 @@ The book's axes: **+x right, +y DOWN, +z forward**. Every angle is in 4096ths of
 
 Yaw is exactly the `ry` of Appendix E.9: the heading `(sin yaw, 0, cos yaw)` of the +z axis, `RotMatrix`'s `vy`, **no sign change**. So **LEFT lowers the yaw** and RIGHT raises it. The `.SHP` ship (530 long) has its nose along +z, wings along x and its top toward -y.
 
-This chapter's ship does not move its velocity independently of its nose: the velocity is always `forward * speed`. That makes it easy to drive; Chapter 41 adds a **skid** by letting `vel` lag behind `forward * speed`, which is why both fields exist.
+In this chapter the ship always moves where its nose points: the velocity is `forward * speed`. That makes it easy to drive; Chapter 41 adds a **skid** by letting `vel` lag behind `forward * speed`, which is why both fields exist.
 
 ### 5.2 Units and formats
 
@@ -63,10 +63,10 @@ This chapter's ship does not move its velocity independently of its nose: the ve
 | `speed`, `vel` | 4.12 world units per **NTSC tick** | `60 * 4096` = 60 units per tick = 3600 per second |
 | angles | **12.12**: `angle << 12`, one turn = `1 << 24` | `angle >> 12` is the 4096-per-turn angle that `isin`, `icos` and `RotMatrix` take |
 | `yaw_vel` | 12.12 angle per NTSC tick | |
-| `thrust`, `brake`, `yaw_accel` | rates per NTSC tick, per tick | |
+| `thrust`, `brake`, `yaw_accel` | change of `speed` / `yaw_vel` per NTSC tick | accelerations |
 | `dt` (`dt_scale`) | 4.12 factor | 4096 = 1.0 |
 
-*Why a fraction?* At 60 units per tick the integer position is fine, but a ship creeping at 0.3 units per tick would never move if you truncated each step. The 12-bit remainder carries over (5.5, step 7). *Why 12.12 angles?* A yaw rate of 0.004 units per tick must still do something; with whole-unit angles it would be 0. Both are the same trick: more fraction bits where the quantities are small. The product of two 4.12 numbers is `fx_mul(a, b) = (a * b) >> 12` (Chapter 23, a 64-bit product and an arithmetic shift, so it rounds toward minus infinity).
+*Why a fraction?* At 60 units per tick the integer position is fine, but a ship creeping at 0.3 units per tick would never move if you truncated each step. The 12-bit remainder carries it over to the next tick (5.5, step 7). *Why 12.12 angles?* A yaw rate of 0.004 units per tick must still do something; with whole-unit angles it would be 0. Both are the same trick: more fraction bits where the quantities are small. The product of two 4.12 numbers is `fx_mul(a, b) = (a * b) >> 12` (Chapter 23, a 64-bit product and an arithmetic shift, so it rounds toward minus infinity).
 
 A **tick** is one video frame of the console: 1/60 s on NTSC, 1/50 s on PAL (5.7).
 
@@ -86,7 +86,7 @@ A **tick** is one video frame of the console: 1/60 s on NTSC, 1/50 s on PAL (5.7
                                       +------ +x          (1024 = a quarter turn toward +x)
 ```
 
-`heading_angle(x, z)` finds the whole-unit angle 0..4095 that points the same way as `(x, z)` (`isin(a) x + icos(a) z > 0`) and **minimises the cross product** `|isin(a) z - icos(a) x|`; the first one wins a tie. Why not maximise the dot product? Near its peak the dot product is flat: the table's rounding errors (`isin` is off by up to 12 of its 4096, about 0.3%) move the maximum by as much as 14 units. The cross product crosses zero **steeply**, so its minimum stays within 1.5 units of the true heading. `pitch_angle(y)` minimises `|isin(p) + y|` for `p` in -1024..1024 (nose up is positive, and negative y). Both loops run once when the game starts.
+`heading_angle(x, z)` finds the whole-unit angle 0..4095 that points the same way as `(x, z)` (`isin(a) x + icos(a) z > 0`) and **minimizes the cross product** `|isin(a) z - icos(a) x|`; the first one wins a tie. Why not maximize the dot product? Near its peak the dot product is flat: the table's errors (`isin` is off by up to 12 of its 4096, about 0.3%) move the maximum by up to 15 units. The cross product crosses zero **steeply**, so its minimum stays within 1.5 units of the true heading. `pitch_angle(y)` minimizes `|isin(p) + y|` for `p` in -1024..1024 (nose up is a positive pitch and a negative y). Both searches run only when the ship is placed.
 
 The generated road banks and climbs at the start (section 0: `up` = (-1837, -3650, -285), `forward.y` = -522). The ship does **not** tilt to the bank: only its pitch follows the slope, and only at the start. Chapter 41 adds auto-pitch and Chapter 40 the road limits; here the ship flies straight on and soon leaves the road. That is expected.
 
@@ -100,14 +100,14 @@ The **forward vector** is where the nose points: `forward = R * (0, 0, 1)`, the 
 
 In code: `fx_mul(isin(a), icos(p))`, `-isin(p)`, `fx_mul(icos(a), icos(p))` with `a = yaw >> 12`, `p = pitch >> 12`.
 
-**Which order of rotations?** A column vector is rotated by the matrix on its **right** first, so a product can be read two ways. *Extrinsic* (about the fixed world axes, right to left) or *intrinsic* (about the axes the body carries, left to right). The SDK's `RotMatrix(rx, ry, rz)` returns `Rx * Ry * Rz`: extrinsically, roll about world z, then yaw about world y, then **pitch last, about world x**; intrinsically, pitch, then yaw about the new y, then roll about the newest z. Same matrix, two stories. Its flaw for a vehicle is the first one: a ship yawed 90 degrees that pitches turns about the world's x axis, which is now its own *nose*, so it rolls; `forward` at yaw 1024 would not depend on the pitch at all.
+**Which order of rotations?** A column vector is rotated by the matrix on its **right** first, so a product can be read two ways: *extrinsically* (about the fixed world axes, right to left) or *intrinsically* (about the axes the body carries, left to right). The SDK's `RotMatrix(rx, ry, rz)` returns `Rx * Ry * Rz`: extrinsically, roll about world z, then yaw about world y, then **pitch last, about world x**; intrinsically, pitch, then yaw about the new y, then roll about the newest z. Same matrix, two stories. Its flaw for a vehicle is the first one: a ship yawed 90 degrees that pitches turns about the world's x axis, which is now its own *nose*, so it rolls; `forward` at yaw 1024 would not depend on the pitch at all.
 
 ```
  RotMatrix  Rx*Ry*Rz   yaw 90, pitch up:  nose stays on +x, the ship ROLLS      (wrong for a ship)
  ship       Ry*Rx*Rz   yaw 90, pitch up:  nose on +x raised toward -y            (what a pilot expects)
 ```
 
-The ship uses **`M = Ry(yaw) * (Rx(pitch) * Rz(roll))`**. Read intrinsically (left to right): yaw about the world's vertical, then pitch about the ship's own right axis, then roll about its nose. Read extrinsically: roll and pitch happen first, while the ship still faces +z, and the yaw turns the whole ship last. Build it from two `RotMatrix` calls, `(pitch, 0, roll)` (= `Rx * Rz`) and `(0, yaw, 0)`, and one `MulMatrix0`. With pitch 0, as here after the start, the order of yaw and roll does not matter; the verifier still tests it with a pitched ship.
+The ship uses **`M = Ry(yaw) * (Rx(pitch) * Rz(roll))`**. Read intrinsically (left to right): yaw about the world's vertical, then pitch about the ship's own right axis, then roll about its nose. Read extrinsically: roll and pitch happen first, while the ship still faces +z, and the yaw turns the whole ship last. Build it from two `RotMatrix` calls, `(pitch, 0, roll)` (= `Rx * Rz`) and `(0, yaw, 0)`, and one `MulMatrix0`. With pitch 0 this is the same matrix as `RotMatrix(0, yaw, roll)`; the two differ as soon as the ship is pitched, as it is on the climbing start line (pitch 83), and the verifier tests the order with pitched ships.
 
 ### 5.5 One tick: the update order
 
@@ -126,16 +126,16 @@ The ship uses **`M = Ry(yaw) * (Rx(pitch) * Rz(roll))`**. Read intrinsically (le
 Pitch never changes. Notes:
 
 - **Euler integration.** `v += a dt` then `p += v dt`, in this order (*semi-implicit* Euler: the new velocity moves the position). It is first-order accurate; the error shows in 5.7.
-- **Angular damping.** The turning rate decays by a fixed *fraction* each tick (`yaw_damp` = 512 = 1/8), so releasing the stick eases the ship straight. With steering held, `yaw_vel` settles where the push and the decay balance: `(yaw_vel + yaw_accel) * (1 - yaw_damp) = yaw_vel`, so `yaw_vel = yaw_accel * (1 - 1/8) / (1/8)` = 14 units per tick, about 74 degrees per second. The **dead zone** `|yaw_vel| < 16` (0.004 units per tick) exists because `fx_mul` rounds toward minus infinity: a small positive rate would never decay to 0.
+- **Angular damping.** The turning rate decays by a fixed *fraction* each tick (`yaw_damp` = 512 = 1/8), so releasing the D-pad eases the ship straight. With steering held, `yaw_vel` settles where the push and the decay balance: `(yaw_vel + yaw_accel) * (1 - yaw_damp) = yaw_vel`, so `yaw_vel = yaw_accel * (1 - 1/8) / (1/8)` = 7 * 8192 = 57344: 14 units per tick, about 74 degrees per second. The **dead zone** `|yaw_vel| < 16` (0.004 units per tick) exists because `fx_mul` rounds toward minus infinity: a small positive rate would never decay to 0.
 - **The cap**, defined exactly: the *scalar* `speed` is clamped to `speed_cap` (60.0), and to 0 from below: **braking stops at 0, it never reverses**. `|vel|` equals `speed` up to the sin/cos table's error (under 0.5%); `vel` is derived, not clamped. Holding CROSS and SQUARE together applies both, then clamps. Without either, nothing changes the speed: **no drag** in this chapter.
 - **Roll** is signed (a left bank is negative) and not wrapped. 5.6 explains its target.
-- All products use the 64-bit `fx_mul`; there is no overflow for the constants in this chapter.
+- Every 4.12 product goes through `fx_mul` (a 64-bit intermediate); nothing overflows with this chapter's constants.
 
 ### 5.6 Banking and drawing the ship
 
 A real craft leans into a turn. The roll's **target** is proportional to the turning rate, `yaw_vel * roll_gain` (16: the steady 14 units per tick of yaw give a 224-unit, 20-degree bank), and the roll *eases toward it* by `roll_smooth` (1/4) of the error per tick: a smooth lean in, a smooth recovery. The sign needs no thought: LEFT makes `yaw_vel` negative, the target negative, and **negative roll puts the left wing down**.
 
-To draw it, exactly as Chapter 33 draws an object (camera-relative, view *rotation* only, Chapter 33's recipe):
+To draw it, follow Chapter 33's recipe for an object (camera-relative position, view *rotation* only):
 
 1. `M = ship_matrix(&ship)`; `d = ship.pos - cam_eye` (`s32`, small) as the translation;
 2. `world = CompMatrixLV(view rotation with t = 0, M)`, `load_matrix(&world)` (the noipa wrapper, Chapter 25);
@@ -154,9 +154,9 @@ The ship is drawn after the track in the same ordering table; both use the OT sl
  frame C                                   [ draw ]       ticks run: 1
 ```
 
-`game_update` reads the blank counter (`VSync(-1)`) and runs `frame_ticks` = the blanks since the last frame (clamped to 1..4, so a long stall such as a disc read cannot fire hundreds of steps) calls of `ship_update`, all with the same pad reading. A game with one update per frame would run at half speed whenever a frame takes two blanks.
+`game_update` reads the blank counter (`VSync(-1)`), sets `frame_ticks` to the blanks since the last frame, clamped to 1..4 (so a long stall such as a disc read cannot fire hundreds of steps), and calls `ship_update` that many times with the same pad reading. A game with one update per frame would run at half speed whenever a frame takes two blanks.
 
-**Measured on this chapter's program** (the verifier's scripted route, 5.6 s from the start line, subdivision off): one tick per frame, **60 frames per second**, for the first 3.6 s; then the view takes in more of the track, the whole-track pass of Chapter 34 costs a little more than a frame, and nearly every frame takes two blanks: 30 frames per second, with the physics still exact. (PAL's longer frame holds 50 per second for the whole route.) The renderer is not optimised yet: it cannot hold 60 until Chapter 38. With Chapter 36's subdivision on (`subdiv_enabled`, toggled by **R1**) the frame takes two blanks (sometimes three) at every pose: about 30 per second. So this chapter's default is **subdivision off**, keeping the start line at 60; Chapter 38 draws only a window of sections and brings the default back to one blank (with subdivision on, most frames still take two).
+**Measured on this chapter's program** (the verifier's scripted route, 5.6 s from the start line, subdivision off): one tick per frame, **60 frames per second**, for the first 3.6 s; then the view takes in more of the track, the whole-track pass of Chapter 34 costs a little more than a frame, and nearly every frame takes two blanks: 30 frames per second, with the physics still exact. (PAL's longer frame holds 50 per second for the whole route.) With Chapter 36's subdivision on (`subdiv_enabled`, toggled by **R1**) every frame takes two blanks, sometimes three: about 30 per second. So this chapter's default is **subdivision off**, which keeps the start line at 60. Chapter 38 draws only a window of sections and brings the whole route back to one blank (with subdivision on, most frames still take two).
 
 **NTSC vs PAL.** A PAL frame lasts 1/50 s: 1.2 times longer. Per-tick rates are written for NTSC; every step multiplies by `dt`:
 
@@ -167,7 +167,7 @@ The ship is drawn after the track in the same ordering table; both use the OT sl
 
 A tick moves 1.2 times as much, there are 1.2 times fewer of them per second, and the ship covers the same distance per **second**. Not exactly: Euler integration is first order, so a larger step approximates the same curve a little differently. Over the verifier's 5.6 s route the two standards end within about 2% of the distance travelled (their yaw differs by 1 to 2 degrees after the turn); the check allows 2.5% + 20 units.
 
-**The video mode.** `video_mode` (0 NTSC, 1 PAL) is read once at the start of `main`: `display_init_mode(pal)` calls `ResetGraph(0)`, then `SetVideoMode(MODE_PAL)` (**GP1(08h)**, bit 3, the GPU's PAL flag) before it builds the display environments, and `dt_scale = video_mode ? 4915 : 4096`. PCSX-Redux follows the bit: measured, the vertical-blank period is about 566,100 CPU cycles (59.83 Hz) with `video_mode` 0 and 675,900 (50.11 Hz) with 1, and `VSync` follows. Real hardware (psx-spx, "GPU Timings"): NTSC 263 lines of 3413 video clocks at 53.69 MHz, 59.83 Hz, the same 566,100 cycles; PAL 314 lines of 3406 at 53.20 MHz, 49.76 Hz, about 680,600 cycles. The real ratio is 1.202, so 60/50 is within 0.2%. A real console is made for one region; a game either offers both or reads the region from the BIOS; Chapter 42 returns to this. The verifier tests PAL the cheap way: its probe writes 1 to `video_mode` at the entry of `main`, before your code reads it. The display range stays 320 x 240.
+**The video mode.** `video_mode` (0 NTSC, 1 PAL) is read once at the start of `main`: `dt_scale = video_mode ? 4915 : 4096`, and `display_init_mode(pal)` calls `ResetGraph(0)`, then `SetVideoMode` (**GP1(08h)**, bit 3, the GPU's PAL flag) before it builds the display environments. PCSX-Redux follows the bit: measured, the vertical-blank period is 566,120 CPU cycles (59.83 Hz) with `video_mode` 0 and about 675,900 (50.11 Hz) with 1, and `VSync` follows. Real hardware (psx-spx, "GPU Timings"): a non-interlaced NTSC frame is 263 lines at 59.83 Hz, the same 566,100 cycles; a PAL frame is 314 lines at 49.76 Hz, about 680,600 cycles. The real ratio is 1.202, so 60/50 is within 0.2%. A real console is built for one standard and its BIOS sets the bit at start-up; a shipped game asks instead of assuming (Chapter 42). Here the verifier tests PAL the cheap way: its probe writes 1 to `video_mode` at the entry of `main`, before your code reads it. The picture stays 320 x 240 in both modes.
 
 ### 5.8 The chase camera
 
@@ -193,10 +193,10 @@ Per axis `(f * back_dist) >> 12`. **Careful with the sign:** +y is down, so **ab
 
 ## 6. Worked example
 
-The start line of track 1 (section 0): centre (23883, -639, 496), `up` (-1837, -3650, -285), `forward` (410, -522, 4042).
+The start line of track 1 (section 0): `centre` (23883, -639, 496), `up` (-1837, -3650, -285), `forward` (410, -522, 4042).
 
 - **Placement.** `up * 120 >> 12` = (-54, -107, -9), so `pos` = **(23829, -746, 487)**. `heading_angle(410, 4042)` = 66 (`yaw` = 270336) and `pitch_angle(-522)` = 83 (`pitch` = 339968).
-- **First tick, CROSS, NTSC.** `speed` = 3072. `forward` = (411, -522, 4044) (isin(66) = 415, isin(83) = 522, icos(83) = 4064), so `vel` = (308, -392, 3033) and `pos_frac` = (308, 3704, 3033) with `pos.y` falling by one, to -747: the ship has moved 0.74 units. **PAL:** `speed` = 3686, `vel` = (369, -470, 3639): 20% more.
+- **First tick, CROSS, NTSC.** `speed` = 3072. `forward` = (411, -522, 4044) (isin(66) = 415, isin(83) = 522, icos(83) = 4064), so `vel` = (308, -392, 3033) and `pos_frac` = (308, 3704, 3033) with `pos.y` one lower, at -747 (the ship climbs): it has moved 0.75 units. **PAL:** `speed` = 3686, `vel` = (369, -470, 3639): 20% more.
 - **A left turn.** From rest, LEFT for five ticks gives `yaw_vel` = -7168, -13440, -18928, -23730, -27931 (12.12 angle per tick: -1.75, -3.3, -4.6, -5.8, -6.8 units per tick, still building toward -14): each tick adds -8192 and removes an eighth of what is there.
 - **The whole route.** `example/ship_ref.py` is the exact model of this chapter; `python3 ship_ref.py` prints the scripted run (CROSS 2 s, LEFT 1 s, coast, SQUARE, RIGHT) for 60 and 50 ticks per second:
 
@@ -213,13 +213,13 @@ The start line of track 1 (section 0): centre (23883, -639, 496), `up` (-1837, -
 
 ## 7. Project: the ship on the start line
 
-### 7.1 Behaviour
+### 7.1 Behavior
 
 Chapter 36's program. In the game state the ship stands on the start line, hovering, with the chase camera behind it. **X** accelerates to the cap, **Square** brakes to a stop, **Left / Right** steer and bank, releasing everything lets it coast at constant speed. **Start** returns to the title; entering the game again puts the ship back on the start line. **Select** (wireframe), **Triangle** (subdivision outlines) and **R1** (subdivision on / off) work as before. The picture is the track with the ship in front of it.
 
 ### 7.2 The contract
 
-`starter/` is Chapter 36's `solution/` plus the ship's files; it builds, boots and shows the track from the start line with no ship. **Read `ship.h` first: it is the specification of every function.** **Given:** Chapters 33 to 36 (the `psxe` copy gained `display_init_mode` and `input_buttons`), `render_shp` with a texture-store argument, `SHIP.SHP` and `SHIP.TPK` on the disc and loaded in `main.c` (`ship_shp`, `ship_store`), `video_mode` and `dt_scale`, `measure_ticks`, the constants (`ship_cfg`), the R1 toggle, `ship_place` called on entering the game. **You write:**
+`starter/` is Chapter 36's `solution/` plus the ship's files; it builds, boots and shows the track from above the start line, with no ship. **Read `ship.h` first: it is the specification of every function.** **Given:** Chapters 33 to 36 (the `psxe` copy gained `display_init_mode` and `input_buttons`), `render_shp` with a texture-store argument, `SHIP.SHP` and `SHIP.TPK` on the disc and loaded in `main.c` (`ship_shp`, `ship_store`), `video_mode` and `dt_scale`, `measure_ticks`, the constants (`ship_cfg`), the R1 toggle, `ship_place` called on entering the game. **You write:**
 
 | File | What |
 |---|---|
@@ -280,7 +280,7 @@ parts/part-07-capstone-hoverline/ch37-ship-movement-and-physics/verify/verify.sh
 parts/part-07-capstone-hoverline/ch37-ship-movement-and-physics/verify/verify.sh --solution # the reference
 ```
 
-About one minute: a build and four emulator runs from the disc image. Three are **driven** by a script of pad presses in seconds, timed by the program's own `ship_ticks` (CROSS 2 s, LEFT 1 s, coast, SQUARE 0.9 s, RIGHT 0.6 s): the default NTSC run; the **PAL run** (`video_mode` = 1 written at the entry of `main`, the script in 50 ticks per second); and an **alt run** with every constant of `ship_cfg` patched (and the start section 37, hover 200), where the frames already take two blanks and R1 is pressed once to turn subdivision on as well (two or three). The probe records every `ship_update` call (pad, `dt`, state before and after) and, each frame, the ship and the camera; Python replays the physics from `example/ship_ref.py`, an exact integer model with `isin` ported bit for bit (Chapter 28). The fourth run is **direct calls**: `ship_update` on crafted states with the pad and the time step as arguments, `ship_forward`, `ship_matrix`, `chase_camera_update`, `heading_angle`, `pitch_angle` (about 220 cases; the seed is printed, `CH37_SEED=n` repeats a run).
+About one minute: a build and four emulator runs from the disc image. Three are **driven** by a script of pad presses in seconds, timed by the program's own `ship_ticks` (CROSS 2 s, LEFT 1 s, coast, SQUARE 0.9 s, RIGHT 0.6 s): the default NTSC run; the **PAL run** (`video_mode` = 1 written at the entry of `main`, the script in 50 ticks per second); and an **alt run** with every constant of `ship_cfg` patched (including start section 37 and hover 200), where frames already take two blanks and one press of R1 turns subdivision on as well (two or three blanks). The probe records every `ship_update` call (pad, `dt`, state before and after) and, each frame, the ship and the camera; Python replays the physics from `example/ship_ref.py`, an exact integer model with `isin` ported bit for bit (as in Chapters 24 and 28). The fourth run is **direct calls**: `ship_update` on crafted states with the pad and the time step as arguments, `ship_forward`, `ship_matrix`, `chase_camera_update`, `heading_angle`, `pitch_angle` (about 220 cases; the seed is printed, `CH37_SEED=n` repeats a run).
 
 | Check | What it means | If it fails |
 |---|---|---|
@@ -295,7 +295,7 @@ About one minute: a build and four emulator runs from the disc image. Three are 
 | `chase_camera_behind_and_above` | at every frame of all three runs: eye and target equal the formula; the eye is behind (`dot < 0`) and above (`y` smaller) | `+ cam_height`, forward sign |
 | `start_line_default_frame_rate` | in the first three seconds at most 2% of the frames take more than one blank (measured, not a goal) | subdivision on by default |
 | `ship_and_track_drawn` | in three screenshots: the track fills the picture; the ship's orange engine pods are around the projected ship position; the pods are level when straight, the **left** pod lower in the left turn, the right pod lower in the right turn | `draw_ship`, a sign of the roll |
-| `unit_*` | the direct calls: caps, brake clamp, dead zone, wraps, PAL step, patched constants; forward vector; the matrix against the model (order Ry * Rx * Rz); the camera; the angle functions | the case, the input and the first wrong field are printed |
+| `unit_*` | the direct calls: caps, brake clamp, dead zone, wraps, PAL step, patched constants; forward vector; the matrix against the model (order Ry * Rx * Rz); the camera; the angle functions | the case, its input and the first wrong field are printed |
 
 A pass ends with `CHAPTER 37: PASSED (20/20 checks)`. The untouched starter fails. So do: ignoring `dt_scale` (the `time_step` and PAL checks), swapping sin and cos in `forward`, putting the camera below the ship (`+ cam_height`), no brake clamp (the ship reverses), no speed cap, and one update per frame (`fixed_timestep`).
 

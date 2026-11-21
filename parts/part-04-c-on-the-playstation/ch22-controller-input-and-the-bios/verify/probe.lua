@@ -1,6 +1,6 @@
 -- Chapter 22 probe. The buttons themselves are pressed by the harness (`inputs=`: PCSX-Redux pad overrides);
 -- this file only observes. It records
---   st[]    once per vsync: {frame, x, y, colour, input_update calls so far}   (read from cursor_state)
+--   st[]    once per vsync: {frame, x, y, color, input_update calls so far}   (read from cursor_state)
 --   init    {n InitPAD calls, a0, a1, a2, a3 of the first call}, startpad = StartPAD calls
 --   q[]     once per frame inside [Q0, Q1]: the results of calling the reader's input_held / input_pressed /
 --           input_released DIRECTLY (twice each, for the masks below), from the entry of display_clear:

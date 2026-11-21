@@ -51,7 +51,7 @@ void subdiv_mid(const SdVert *a, const SdVert *b, SdVert *m)
 void subdiv_project(SdVert *v, int n)
 {
 	/* TODO (step 3): n = 1..3 vertices through one RTPT (the GTE already holds the view rotation, TR = 0): sxy and sz of each.
-	   Chapter 27: a memory barrier before gte_ldv3 (its asm has no "memory" clobber), and pad the unused slots with a valid vertex. */
+	   Chapter 34: a memory barrier before gte_ldv3 (its asm has no "memory" clobber); Chapter 27: pad the unused slots with a valid vertex. */
 	(void) v;
 	(void) n;
 }

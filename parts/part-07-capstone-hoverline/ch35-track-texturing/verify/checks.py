@@ -245,8 +245,8 @@ def plan_problem(layout):
             return (f"{s!r}: the tile runs past the end of its texture page (a page is 64 units x 256 lines at 4 bpp, starting on a multiple of 64 / 256)",
                     "A tile must lie inside ONE page: x % 64 + w <= 64 and y % 256 + h <= 256, or its UVs would need to be above 255.")
         if s.tpage != getTPage4(s.x, s.y):
-            return (f"{s!r}: the tpage word should be 0x{getTPage4(s.x, s.y):04X} for a 4-bpp tile at ({s.x},{s.y}) (x/64 | y/256 << 4, 4 bpp = 0, abr = 0)",
-                    "TPAGE_4BPP(x, y) builds the word.")
+            return (f"{s!r}: the tpage word is not that of a 4-bpp tile at ({s.x},{s.y}) with abr = 0",
+                    "README 5.4 has the formula; TPAGE_4BPP in vram_layout.h builds the word from the tile's own x and y.")
         if not (s.cx + 16 <= 1024 and s.cy < 512):
             return (f"{s!r}: the CLUT leaves VRAM", "A 4-bpp CLUT is 16 x 1 units.")
     rects = layout_rects(layout[:NTILE])
@@ -618,8 +618,8 @@ def _(ctx):
         raise CheckFailure(expected="a legal plan", actual=pr[0], hint=pr[1])
 
 
-@check("the loader's table: track_tex[id] = (tpage, clut, u, v, w, h) derived from the declared slot (u = x % 64 * 4, v = y % 256, 64 x 64 texels)",
-       hint="Copy the slot's words; the texel origin is the position INSIDE the page, in texels.")
+@check("the loader's table: track_tex[id] = (tpage, clut, u, v, w, h) derived from the declared slot (the tile's texel origin in its page, 64 x 64 texels)",
+       hint="Copy the slot's words; the texel origin is the position INSIDE the page, in texels (README 5.4).")
 def _(ctx):
     for name in ("main", "alt"):
         r, info, layout = check_boot(ctx, name)
@@ -629,7 +629,7 @@ def _(ctx):
         for i, s in enumerate(layout[:NTILE]):
             want = (s.tpage, s.clut, s.u0, s.v0, 64, 64)
             expect_eq(tuple(got[6 * i:6 * i + 6]), want, f"{name}: track_tex[{i}] (tpage, clut, u, v, w, h)", fmt="hex",
-                      hint=f"{s!r}: u = (x % 64) * 4, v = y % 256, w = w_units * 4.")
+                      hint=f"{s!r}: u, v, w and h are in texels, not VRAM units (README 5.4, the UV origin).")
 
 
 def check_vram(ctx, name):
@@ -714,12 +714,12 @@ def check_packets(ctx, name):
                 tp = w[4] >> 16
                 ids = [s_.id for s_ in layout[:NTILE] if s_.tpage == tp and s_.clut == (w[2] >> 16)]
                 expect_true(ids, f"{lab}: the (tpage 0x{tp:04X}, clut 0x{w[2] >> 16:04X}) pair belongs to one tile of the plan", "no tile has this pair",
-                            hint="tpage goes in the SECOND UV word (u1 v1 | tpage << 16), clut in the first (u0 v0 | clut << 16).")
+                            hint="Which UV word carries the CLUT word and which the tpage word? README 5.7 has the packet.")
                 for k in (2, 4, 6, 8):
                     u, v = w[k] & 255, (w[k] >> 8) & 255
                     inside = any(s_.u0 <= u <= s_.u0 + 63 and s_.v0 <= v <= s_.v0 + 63 for s_ in layout[:NTILE] if s_.id in ids)
                     expect_true(inside, f"{lab}: the UV ({u}, {v}) lies inside the tile {ids} (texel box u {layout[ids[0]].u0}..{layout[ids[0]].u0 + 63}, v {layout[ids[0]].v0}..{layout[ids[0]].v0 + 63})",
-                                "outside", "UVs are absolute inside the PAGE: origin of the tile + the face's 0..63 values (README 5.5). Outside the tile means other pixels, or another tile.")
+                                "outside", "UVs are absolute inside the PAGE: origin of the tile + the face's 0..63 values (README 5.6). Outside the tile means other pixels, or another tile.")
         want = [mask_packet(sl, w) for sl, w, fi, k in ref.packets]
         have = [mask_packet(sl, w) for sl, w in got]
         if sorted(have) != sorted(want):
@@ -733,8 +733,8 @@ def check_packets(ctx, name):
             more = f" (face {fi}: flags 0x{face['flags']:02X}, tex {face['tex']}, uv {face['uv']})" if face else ""
             raise CheckFailure(expected=f"{lab}: {len(want)} packets; e.g. slot {ex[0]}: {[hex(x) for x in ex[1]]}{more}",
                                actual=f"{len(have)} packets; {kind} {len(missing) if missing else len(extra)} (first: slot {ex[0]}, words {[hex(x) for x in ex[1]]})",
-                               hint="POLY_FT4: 0x2C + (128,128,128); corners v0..v3 as stored; UV = tile origin + the face's UV (mirrored in U for FLIP_H: u -> u_min + u_max - u); "
-                                    "clut in the first UV word, tpage in the second. Faces with tex 0xFF: POLY_F4 in the flag colour as in Chapter 34.")
+                               hint="Compare the words with README 5.7 (the POLY_FT4 packet: neutral color, corners v0..v3 as stored, where the two words go) and "
+                                    "README 5.6 (the UV rule and the FLIP_H mirror). Faces with tex 0xFF stay POLY_F4 in the flag color, as in Chapter 34.")
         for sl, w, fi, k in ref.packets:
             ft4 += k == "FT4"
             f4 += k == "F4"
@@ -753,7 +753,7 @@ def _(ctx):
 
 
 @check("alt disc (track 2 translated, texture indices permuted, two untextured sections): the same packets",
-       hint="The texture index is the face's own: no 'wall = tile 5'. tex = 0xFF -> POLY_F4 with the legend colour of the FLAGS (the colour field is zero here).")
+       hint="The texture index is the face's own: no 'wall = tile 5'. tex = 0xFF -> POLY_F4 with the legend color of the FLAGS (the face's color field is zero here).")
 def _(ctx):
     check_packets(ctx, "alt")
 
@@ -888,8 +888,8 @@ def check_pictures(ctx, name):
     expect_true(stats["unflip_disc_ok"] >= 0.85 * stats["unflip_disc"], f"{name}: unflipped faces are NOT mirrored ({stats['unflip_disc_ok']} of {stats['unflip_disc']})",
                 f"{stats['unflip_disc_ok']} of {stats['unflip_disc']}", "Only faces with the FLIP_H flag are mirrored.")
     if name == "alt":
-        expect_true(stats["flat_n"] >= 10 and stats["flat_ok"] >= 0.9 * stats["flat_n"], "alt: untextured faces show the legend colour of their flags",
-                    f"{stats['flat_ok']} of {stats['flat_n']}", "tex = 0xFF -> flat quad, colour from the flags.")
+        expect_true(stats["flat_n"] >= 10 and stats["flat_ok"] >= 0.9 * stats["flat_n"], "alt: untextured faces show the legend color of their flags",
+                    f"{stats['flat_ok']} of {stats['flat_n']}", "tex = 0xFF -> flat quad, color from the flags.")
 
 
 @check("main disc, pictures: the screenshot shows the tiles: sampled pixels equal the texels the packets select; flipped faces show the mirrored tile, unflipped ones do not",
@@ -898,7 +898,7 @@ def _(ctx):
     check_pictures(ctx, "main")
 
 
-@check("alt disc, pictures: the same (and untextured faces in the legend colour)",
+@check("alt disc, pictures: the same (and untextured faces in the legend color)",
        hint="Same causes; tiles of the alt disc are in another order, so a table by position fails here.")
 def _(ctx):
     check_pictures(ctx, "alt")

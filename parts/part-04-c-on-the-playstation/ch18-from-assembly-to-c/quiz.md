@@ -7,11 +7,11 @@
 It is a cross-compiler (it runs on your PC but emits code for another machine). `mipsel`: little-endian MIPS, the R3000's byte order. `none`: no operating system on the target. `elf`: the output format (`elf2x` later converts it to a PSX-EXE).
 </details>
 
-**2.** The PSX-EXE header's start address is not `main`. What runs first, and name two things it does before `main`?
+**2.** The PSX-EXE header's start address is not `main`. What runs first? Name two things it does before `main`.
 
 <details><summary>Answer</summary>
 
-`_start`, the SDK's startup code (the "crt0"). It sets `$gp`, zeroes `.bss`, initialises the heap and runs static constructors, then calls `main`.
+`_start`, the SDK's startup code (the "crt0"). It sets `$gp`, zeroes `.bss`, initializes the heap and runs static constructors, then calls `main`.
 </details>
 
 **3.** What does a linker script decide? Name one fact from `exe.ld`.
@@ -28,11 +28,11 @@ Where each section of the program goes in memory and what the entry point is. `e
 There is no `.globl rgb888_to_bgr555`, so the label is local to the file; or the `.s` file is not listed in `psn00bsdk_add_executable(...)`, so it was never assembled.
 </details>
 
-**5.** `-O0` output for `expand5` has `nop` after each `lw`; `-O2` has none and puts an `or` after `jr`. What is each, and who wrote them?
+**5.** The `-O0` output for `expand5` has a `nop` after each `lw` that reloads the argument; the `-O2` output has no `nop` and puts an `or` after `jr`. What is each, and who put it there?
 
 <details><summary>Answer</summary>
 
-The `nop` after `lw` fills the load delay slot; the `or` after `jr` is useful work in the branch delay slot, which executes before the jump lands. GCC schedules both itself, and tells gas not to reorder with `.set noreorder`.
+The `nop` after `lw` fills the load delay slot, because the next instruction uses the loaded register. The `or` after `jr` is useful work in the branch delay slot, which executes before the jump lands. GCC schedules both itself and tells gas not to reorder with `.set noreorder`.
 </details>
 
 **6.** In gas for MIPS, what does `.align 4` do? How would you ask for 4-byte alignment?
@@ -63,9 +63,9 @@ It aligns to 2^4 = 16 bytes (the argument is a power of two, not a byte count). 
 The SDK links with `-ffunction-sections -fdata-sections` and `-Wl,-gc-sections`, so the linker discards sections nothing refers to.
 </details>
 
-**10.** `rgb888_to_bgr555(0x00FF8040)` returns a 15-bit colour. Why does the project widen it again with `expand5` before calling `setRGB0`?
+**10.** `rgb888_to_bgr555(0x00FF8040)` returns a 15-bit color. Why does the project widen it again with `expand5` before calling `setRGB0`?
 
 <details><summary>Answer</summary>
 
-`setRGB0` and the GPU fill take 8 bits per channel; the 15-bit value holds 5 bits per channel. `expand5` brings each channel back to 0..255 (the GPU then keeps the top 5 bits again), so the on-screen colour is the original rounded to 15-bit precision.
+`setRGB0` and the GPU fill take 8 bits per channel; the 15-bit value holds 5 bits per channel. `expand5` brings each channel back to 0..255 (the GPU then keeps the top 5 bits again), so the on-screen color is the original rounded down to 15-bit precision.
 </details>

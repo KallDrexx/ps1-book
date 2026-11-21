@@ -1,6 +1,6 @@
 # Chapter 35 quiz
 
-**1.** VRAM is 1024 x 512. How many bytes is that, and which rectangles do the two 320 x 240 framebuffers at (0,0) and (0,240) take? Name the columns and lines that are left free for textures.
+**1.** VRAM is 1024 x 512. How many bytes is that? The two 320 x 240 framebuffers are at (0,0) and (0,240): which columns and lines are left free for textures and CLUTs?
 
 <details><summary>Answer</summary>
 
@@ -25,7 +25,7 @@ Not legal. Its page starts at x = 640, y = 256, and `700 mod 64 = 60`, so `u0 = 
 
 <details><summary>Answer</summary>
 
-The CLUT word stores `x / 16` in 6 bits, so the x of a CLUT must be a multiple of 16. At x = 70 the word can only say 64 (4 x 16): the GPU would read the palette from (64, y), the wrong colours. The rule: `clut_x mod 16 = 0`; the y is free (0..511).
+The CLUT word stores `x / 16` in 6 bits, so the x of a CLUT must be a multiple of 16. At x = 70 the word can only say 64 (4 x 16): the GPU would read the palette from (64, y), the wrong colors. The rule: `clut_x mod 16 = 0`; the y is free (0..511).
 </details>
 
 **5.** `tim_upload` and `tim_upload_at` both call `LoadImage`. What is different, and why does Chapter 35's second disc make the difference visible?

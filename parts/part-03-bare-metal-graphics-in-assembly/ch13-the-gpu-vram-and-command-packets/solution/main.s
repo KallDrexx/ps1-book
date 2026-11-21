@@ -1,4 +1,4 @@
-; Chapter 13 -- "Colour Bars" (solution)
+; Chapter 13 -- "Color Bars" (solution)
 ;
 ;   gpu_init()                       set up a 320x240 NTSC 15-bit display and the drawing area
 ;   gpu_clear(color, x, y, w, h)     GP0(02h) fill rectangle      (a0..a3, h at 16($sp))
@@ -21,7 +21,7 @@ main:
     nop
 
     la    $t0, bg_color
-    lw    $a0, 0($t0)           ; clear the whole display to the border colour
+    lw    $a0, 0($t0)           ; clear the whole display to the border color
     move  $a1, $zero
     move  $a2, $zero
     li    $a3, 320

@@ -6,7 +6,7 @@ all:
 	cmake -S . -B build -G Ninja -Wno-dev -DCMAKE_TOOLCHAIN_FILE=$(SDK)/lib/libpsn00b/cmake/sdk.cmake -DCMAKE_BUILD_TYPE=Release
 	cmake --build build
 run: all
-	$(BOOK_ROOT)/.toolchain/bin/pcsx-redux -iso build/hoverline.cue -run -fastboot
+	$(BOOK_ROOT)/.toolchain/bin/pcsx-redux -iso build/hoverline.cue -stdout -run -fastboot
 clean:
 	$(RM) -r build
 .PHONY: all run clean

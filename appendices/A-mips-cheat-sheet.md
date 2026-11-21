@@ -14,7 +14,7 @@ Hardware facts follow psx-spx ("CPU Specifications"); where a fact is not exerci
 | A.5 | Hazards: branch delay, load delay, HI/LO |
 | A.6 | Multiply and divide: results, timing, divide by zero |
 | A.7 | Coprocessor 0: registers, exceptions, `rfe` |
-| A.8 | armips directives and behaviours the book relies on |
+| A.8 | armips directives and behaviors the book relies on |
 | A.9 | Immediates and idioms |
 
 ## A.1 Registers
@@ -183,7 +183,7 @@ The R3000A in the PlayStation has **no TLB instructions** (`tlbr tlbwi tlbwr tlb
 
 ## A.4 Pseudo-instructions and what armips emits
 
-Observed by disassembling the pinned armips (Ch 6, 3, 4). **One source line is not one instruction**: any `Words = 2` row below affects counts, offsets and delay slots.
+Observed by disassembling the pinned armips (Ch 6, 3, 4). **One source line is not one instruction**: every 2-word row below affects counts, offsets and delay slots.
 
 | You write | Becomes | Words |
 |---|---|---|
@@ -195,7 +195,7 @@ Observed by disassembling the pinned armips (Ch 6, 3, 4). **One source line is n
 | `li $t,v`, `v` in -32768..-1 | `addiu $t,$zero,v` | 1 |
 | `li $t,v`, low half zero | `lui $t,v>>16` | 1 |
 | `li $t,v`, otherwise 32-bit | `lui` of the top half, then `addiu` of the low half | 2 |
-| `la $t,label` | `lui` + `addiu` (same rule as `li`) | 2 |
+| `la $t,label` | expands like `li` of the address: `lui` + `addiu`, or `lui` alone when the low half is zero (`la $t0,0x80020000`) | 1 or 2 |
 | `b L` | `beq $zero,$zero,L` | 1 |
 | `beqz $a,L` / `bnez $a,L` | `beq` / `bne $a,$zero,L` | 1 |
 | `blt $a,$b,L` | `slt $at,$a,$b` ; `bne $at,$zero,L` | 2 |
@@ -219,11 +219,11 @@ Also: a multi-word pseudo-instruction placed in a delay slot is **split**: the f
 | Load in a branch delay slot | the first instruction executed after the branch (the target, or the fall-through) is that load's delay slot and still sees the old value | Ch 7 |
 | `lwl` / `lwr` pair | an `lwl`/`lwr` may sit **directly after** the other on the same register and sees its result; anything else reading `rt` still waits one instruction | Ch 11 (psx-spx) |
 | "Old value" is not a guarantee | psx-spx: an interrupt between the load and the next instruction lets the load finish first. Never rely on the stale value; fill the slot with unrelated work. | Ch 7 |
-| `mfc0`, `mfc2`, `cfc2` | read like loads: do not use the destination in the next instruction (MIPS I; psx-spx lists the GTE moves as needing a delay) *(not checked in the book)* | |
+| `mfc0`, `mfc2`, `cfc2` | read like loads: do not use the destination in the next instruction (MIPS I; psx-spx lists the GTE moves as needing a delay). armips prints no warning for these. *(Delay not checked in the book.)* | |
 | **HI/LO read side** | `mfhi`/`mflo` **interlock**: they stall until the multiplier or divider is done, so the result is always right | Ch 7, 12 |
 | **HI/LO write side** | After `mfhi`/`mflo`, let **two instructions** pass before any `mult multu div divu mthi mtlo`. The MIPS I manuals call a violation undefined; psx-spx says only "do not touch lo/hi in the next 2 cycles or so... not yet understood". Emulators, including PCSX-Redux, do not model it, so a violation passes in the emulator. The book follows the conservative MIPS I rule, and GCC for the R3000 inserts the gap itself. | Ch 7, 12 |
 
-**armips warning.** `register t0 may not be available due to load delay` is printed when the line after a load reads the loaded register. The book's verifiers treat warnings as failures. armips compares only *consecutive lines*: it cannot see a use that reaches the load through a branch.
+**armips warning.** `register t0 may not be available due to load delay` is printed when the instruction after a load (`lb` to `lwr`) uses the loaded register; an `lwl`/`lwr` pair is exempt. It is a warning: the build still succeeds. The verifiers of Chapters 3, 4 and 7 to 16 fail on any armips warning; those of Chapters 2, 5, 6 and 17 do not look at warnings. armips compares only *consecutive instructions*: it cannot see a use that reaches the load through a branch.
 
 **Filling slots.** Safe sources: an instruction from above the branch that the branch does not test; the first instruction of the target (then branch to the second); loop bookkeeping. A slot you cannot fill is still correct with `nop` (Ch 7).
 
@@ -242,7 +242,7 @@ psx-spx values in CPU cycles; instruction fetch adds equally to every instructio
 | `div`, `divu` | **36** | fixed |
 | `mfhi`, `mflo` | 1 + stall | stalls until the unit finishes |
 
-The unit runs beside the pipeline: independent instructions between `mult` and `mflo` are free. Measured in Redux (Ch 12): a `multu`/`mflo` pair costs about 6, 9 and 13 cycles more than two plain instructions; `divu`/`mflo` about 36 more. Redux cycle counts mean something only under `-interpreter` (Appendix F).
+The unit runs beside the pipeline, so independent instructions between `mult` and `mflo` hide the wait: about one cycle each on hardware (a cached instruction), two each in PCSX-Redux, which charges every instruction 2 cycles (Ch 7, 12). Measured in Redux (Ch 12): a `multu`/`mflo` pair costs about 6, 9 and 13 cycles more than two plain instructions; `divu`/`mflo` about 36 more. Redux cycle counts mean something only under `-interpreter` (Appendix F).
 
 ### A.6.2 Results, including divide by zero
 
@@ -258,9 +258,9 @@ The R3000 **does not trap** on divide by zero or `0x80000000 / -1`. Examples fro
 | `multu 0xFFFFFFFF * 0xFFFFFFFF` | `0xFFFFFFFE` | `0x00000001` |
 | `mult -1 * -1` | 0 | 1 |
 
-psx-spx calls the signed divide-by-zero LO "total garbage" for software that does not check: test for zero yourself. For a 32-bit product `mflo` is the same for `mult` and `multu`.
+None of the divide-by-zero results is a usable quotient: test for zero yourself. For a 32-bit product `mflo` is the same for `mult` and `multu`.
 
-Strength-reduction identities used in the book: `x*320 = (x<<8)+(x<<6)`, `x*-5 = -((x<<2)+x)`, `x/10 = (x * 0xCCCCCCCD) >> 35` for unsigned 32-bit `x` (`multu`, then `mfhi`, then `srl` by 3), exact for every 32-bit `x`.
+Strength-reduction identities used in the book: `x*320 = (x<<8)+(x<<6)`, `x*-5 = -((x<<2)+x)`, `x/10 = (x * 0xCCCCCCCD) >> 35` (`multu`, then `mfhi`, then `srl` by 3), exact for every unsigned 32-bit `x`.
 
 ## A.7 Coprocessor 0 and exceptions
 
@@ -280,7 +280,7 @@ There is no MMU. COP0 holds only the exception and debug registers.
 | 14 | **EPC** | address to resume at |
 | 15 | PRID | processor ID |
 
-**SR** (psx-spx): bit 0 IEc (interrupt enable, current), 1 KUc (user mode, current), 2-3 IEp/KUp (previous), 4-5 IEo/KUo (old); bits 8-15 IM (interrupt mask; bits 8-9 software, bit 10 = the hardware interrupt line fed by `I_STAT`/`I_MASK`, Appendix B); 16 IsC (isolate cache), 17 SwC (swap caches), 22 BEV (boot exception vectors), 28-31 CU0-CU3 (coprocessor usable; CU2 = GTE). At `main` in PCSX-Redux with OpenBIOS `SR = 0x40000000` and interrupts are off (Ch 17).
+**SR** (psx-spx): bit 0 IEc (interrupt enable, current), 1 KUc (user mode, current), 2-3 IEp/KUp (previous), 4-5 IEo/KUo (old); bits 8-15 IM (interrupt mask; bits 8-9 software, bit 10 = the hardware interrupt line fed by `I_STAT`/`I_MASK`, Appendix B); 16 IsC (isolate cache), 17 SwC (swap caches), 22 BEV (boot exception vectors), 28-31 CU0-CU3 (coprocessor usable; CU2 = GTE). At `main` in the book's PCSX-Redux (OpenBIOS, fast boot) `SR = 0x40000000`: only CU2 set, interrupts off (measured; Ch 17).
 
 **CAUSE**: bits 2-6 ExcCode; bits 8-15 IP (pending interrupts; bit 10 = hardware IRQ); bits 28-29 CE (coprocessor number); bit 31 BD (the exception happened in a branch delay slot: `EPC` then points at the **branch**).
 
@@ -297,11 +297,11 @@ There is no MMU. COP0 holds only the exception and debug registers.
 | 11 | CpU | coprocessor unusable (e.g. a GTE instruction with CU2 clear) |
 | 12 | Ovf | `add`/`addi`/`sub` overflow |
 
-**Vectors.** Reset `0xBFC00000`. General exception `0x80000080` (BEV = 0) or `0xBFC00180` (BEV = 1); breakpoint `0x80000040`. The BIOS installs its handler at `0x80000080`; once it runs, a homebrew program has no recovery from an address error or overflow (Ch 3, 11). BIOS function tables: call `A0h`/`B0h`/`C0h` with the function number in `$t1` (Appendix B).
+**Vectors.** Reset `0xBFC00000`. General exception `0x80000080` (BEV = 0) or `0xBFC00180` (BEV = 1), which the `break` instruction also uses; COP0 debug breakpoints (BPC/BDA) use `0x80000040` *(not checked in the book)*. The BIOS installs its handler at `0x80000080`; once it runs, a homebrew program has no recovery from an address error or overflow (Ch 3, 11). BIOS function tables: call `A0h`/`B0h`/`C0h` with the function number in `$t1` (Appendix B).
 
 **`rfe`** pops the mode stack: `SR[3:0] = SR[5:2]` (the old/previous bits shift down; the old bits stay). It is normally the instruction in the delay slot of the `jr` that leaves the handler.
 
-## A.8 armips: directives and behaviour
+## A.8 armips: directives and behavior
 
 The book assembles Parts I to III with armips (`.psx` selects the R3000 instruction set). `-sym` writes the symbol file the harness reads.
 
@@ -323,7 +323,7 @@ The book assembles Parts I to III with armips (`.psx` selects the R3000 instruct
 | Comments | `;` to end of line (`//` also works) | |
 | Expressions | `label >> 16`, `label & 0xFFFF`, `1+2`, usable wherever a number is | |
 
-**Behaviour the book depends on.**
+**Behavior the book depends on.**
 
 | Fact | Consequence |
 |---|---|
@@ -331,8 +331,8 @@ The book assembles Parts I to III with armips (`.psx` selects the R3000 instruct
 | `.psx` writes no header | The PSX-EXE header (Appendix E.1, Ch 5) is emitted by `common/psxexe.inc`; the file must be a multiple of 0x800 bytes, so end with `.align 0x800`. |
 | `.word`, `.halfword` after a `.byte` | emitted at the very next address, misaligned, **without a warning**; the crash comes at the first `lw` (Ch 11). Put `.align` yourself. |
 | Pseudo-instructions expand silently | see A.4; `bne` followed by `li $t6,0x12345678` assembles without complaint. |
-| Load-delay warning is a warning, not an error | The build still succeeds; the verifiers fail on any warning. |
-| Mnemonics not accepted | `mul`/`div` with three operands (Ch 12). |
+| Load-delay warning is a warning, not an error | The build still succeeds; most assembly-chapter verifiers fail on any warning (A.5). |
+| Mnemonics not accepted | `mul` (`Invalid MIPS opcode`) and three-operand `div` (Ch 12). |
 | Data is just bytes | Never place data in the run path; the program loops at `done:` so a table after it is never executed (Ch 3). |
 
 ## A.9 Immediates and idioms

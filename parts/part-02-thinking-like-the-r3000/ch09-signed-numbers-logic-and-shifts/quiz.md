@@ -30,12 +30,12 @@ Only the low 5 bits of the amount are used: 33 & 31 = 1, so it shifts left by 1.
 `sll $v0, $a0, 20` then `sra $v0, $v0, 20` (20 = 32 - 12). The first moves the field's top bit to bit 31, the second copies it back down.
 </details>
 
-**7. Pack the colour `0x00FF8040` (R=255, G=128, B=64) into BGR555.**
+**7. Pack the color `0x00FF8040` (R=255, G=128, B=64) into BGR555.**
 <details><summary>Answer</summary>
 R: 255 >> 3 = 31, G: 128 >> 3 = 16, B: 64 >> 3 = 8. Result: `(8 << 10) | (16 << 5) | 31` = `0x221F`. Bit 15 is 0.
 </details>
 
-**8. Why does unpacking with just `c5 << 3` make white slightly grey? What does the replicate formula do instead?**
+**8. Why does unpacking with just `c5 << 3` make white slightly gray? What does the replicate formula do instead?**
 <details><summary>Answer</summary>
 31 << 3 = 248, not 255, because the low three bits are zero. `(c5 << 3) | (c5 >> 2)` copies the top three bits into the bottom, so 31 becomes 255 and 0 stays 0.
 </details>

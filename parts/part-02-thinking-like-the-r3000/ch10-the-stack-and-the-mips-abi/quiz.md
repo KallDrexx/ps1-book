@@ -35,12 +35,12 @@ Space the caller reserves at the bottom of its frame (`0..15($sp)` at the call),
 Save the old `$s0` in its frame in the prologue and restore it in the epilogue on every return path. The caller sees `$s0` unchanged across the call, so it can keep live values there.
 </details>
 
-**8. `factorial` works for n up to 5 and returns garbage above that. A likely cause?**
+**8. Under the verifier, `factorial` is right for n = 0 and 1 and fails from n = 2 up. A likely cause?**
 <details><summary>Answer</summary>
-A saved value in `0..15($sp)`: the callee's home area, which a callee may overwrite. Or a missing epilogue path leaving `$sp` wrong. Either shows only once the recursion is deep enough or the callee uses the space.
+A saved value in `0..15($sp)`: the callee's home area, which any callee may overwrite. The verifier overwrites it on every re-entry, so the bug shows as soon as the routine recurses. Without that it could stay hidden until a callee that really uses its home area comes along.
 </details>
 
 **9. Roughly how deep can a 24-byte-frame recursion go on the PS1, and what happens at the limit?**
 <details><summary>Answer</summary>
-About 2 MB / 24 bytes, on the order of 80,000 frames, less because of the program and data. There is no check: the stack runs into your data and code and corrupts them silently (and eventually into the kernel area at `0x80000000`).
+About 2 MB / 24 bytes: over 80,000 frames, a little less than the full quotient because of the kernel area, program and data. There is no check: the stack runs into your data and code and corrupts them silently (and eventually into the kernel area at `0x80000000`).
 </details>

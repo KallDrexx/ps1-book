@@ -21,18 +21,18 @@ The GPU scans VRAM out continuously. The viewer sees the clear and each primitiv
 `PutDispEnv` writes the GP1 registers at once, so it must be placed right after `VSync` and after the frame is finished. `PutDrawEnv` is queued behind earlier work and runs when the GPU is free, so it can be issued early in the frame.
 </details>
 
-**4.** Give the order of the five steps at the end of a frame and say what goes wrong if `VSync(0)` is removed.
+**4.** Give the order of a frame's five steps after the clear, and say what goes wrong if `VSync(0)` is removed.
 
 <details><summary>Answer</summary>
 
 Draw, `DrawSync(0)`, `VSync(0)`, `PutDispEnv` of the buffer just drawn, swap the back-buffer index. Without `VSync` the display start changes mid-scan (tearing) and the loop runs as fast as it can instead of at the frame rate.
 </details>
 
-**5.** Why must the colour be set with `setRGB0` before `PutDrawEnv`?
+**5.** Why must the color be set with `setRGB0` before `PutDrawEnv`?
 
 <details><summary>Answer</summary>
 
-`PutDrawEnv` builds and queues the setup/fill packet from the structure's current contents. Changing the colour afterwards only affects the next `PutDrawEnv`, one frame late.
+`PutDrawEnv` builds and queues the setup/fill packet from the structure's current contents. Changing the color afterwards only affects that environment's next `PutDrawEnv`, which with two buffers is two frames later.
 </details>
 
 **6.** Both buffers use the same drawing code to draw a rectangle at y = 104. How does it land in buffer 1 (VRAM y = 240)?
@@ -49,16 +49,16 @@ Draw, `DrawSync(0)`, `VSync(0)`, `PutDispEnv` of the buffer just drawn, swap the
 `DrawPrim` first waits for the drawing queue to empty and the GPU to go idle (like `DrawSync(0)`), so the queued environment, including the `isbg` clear, completes before the rectangle's packet is sent. It then only starts the DMA and returns, which is why the `TILE` must be `static`.
 </details>
 
-**8.** A frame takes 1.5 VBlanks to draw. What frame rate results, and where does the time go?
+**8.** A frame takes 1.5 frame periods to draw. What frame rate results, and where does the time go?
 
 <details><summary>Answer</summary>
 
-30 fps (NTSC). `VSync(0)` waits for the next VBlank after the work is done, so each frame takes two VBlanks, with half a frame idle inside `VSync`.
+30 fps (NTSC). `VSync(0)` waits for the next VBlank after the work is done, so each frame takes two frame periods, with half a period idle inside `VSync`.
 </details>
 
 **9.** What does the verifier see if both environments are placed at VRAM y = 0, and which check catches it?
 
 <details><summary>Answer</summary>
 
-The probe sees GP1 05h always with y = 0, so "display start alternates" fails. The screenshot checks usually fail too: right after the swap the program clears and redraws the next frame into the only buffer, so the screen no longer shows the colour of the frame that was just "shown".
+The probe sees GP1 05h always with y = 0, so "display start alternates" fails. The screenshot checks usually fail too: right after the swap the program clears and redraws the next frame into the only buffer, so the screen no longer shows the color of the frame that was just "shown".
 </details>

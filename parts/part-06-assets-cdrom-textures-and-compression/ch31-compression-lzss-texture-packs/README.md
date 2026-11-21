@@ -6,7 +6,7 @@
 
 ## 2. Why it matters
 
-A CD holds about 650 MB, but the drive delivers only **150 KB/s** at single speed and **300 KB/s** at double speed, and every file costs a seek. Loading is slow, and a game that streams track data while you drive has a hard bandwidth budget. Compression attacks both: fewer sectors to read, and (for a game that fills a disc) fewer discs. The price is CPU time: the R3000 at 33.8688 MHz must rebuild every byte. This chapter's pack shrinks from 16,896 to about 5,300 bytes, saving 11.5 KB of disc reads (38 ms at 300 KB/s) for about 16 ms of decoding. Real PS1 games did exactly this with LZ-family schemes, and the book's capstone loads all its textures this way.
+A CD holds about 650 MB, but the drive delivers only **150 KB/s** at single speed and **300 KB/s** at double speed, and every file costs a seek. Compression means fewer sectors to read and, for a game that fills a disc, fewer discs. The price is CPU time: the R3000 at 33.8688 MHz must rebuild every byte. This chapter's pack shrinks from 16,896 to about 5,400 bytes, which saves about 38 ms of disc reading at 300 KB/s for about 16 ms of decoding. Commercial PS1 games used LZ-family schemes the same way, and the book's capstone loads all its textures like this.
 
 ## 3. Learning objectives
 
@@ -29,18 +29,18 @@ After this chapter you can:
 
 | | Raw | Packed |
 |---|---|---|
-| Bytes to read from disc | 16,896 | about 5,300 |
+| Bytes to read from disc | 16,896 | about 5,400 |
 | Time at 300 KB/s | 56 ms | 18 ms |
 | CPU time to rebuild | none | about 16 ms (557,000 cycles) |
-| RAM while loading | 16,896 | 5,300 (file) + 16,896 (rebuilt), then the file is freed |
+| RAM while loading | 16,896 | 6,144 (the file, in whole sectors) + 16,896 (rebuilt); the file is freed after decoding |
 
-On a console where the CPU would otherwise wait for the drive, trading CPU for bandwidth wins. The next chapters load a `.SHP` model and a `.TRK` track through the same machinery.
+On a console where the CPU would otherwise wait for the drive, trading CPU time for bandwidth wins.
 
 ### 5.2 A family of schemes
 
-| Scheme | Idea | Weakness |
+| Scheme | Idea | Weakness or note |
 |---|---|---|
-| **RLE** (run-length encoding) | Store "byte, count" for runs | Only helps on runs (flat colour) |
+| **RLE** (run-length encoding) | Store "byte, count" for runs | Only helps on runs (flat color) |
 | **LZ77** | Slide a window over the output; each token is (distance, length, next byte) | Spends bits on a "next byte" even when no match exists |
 | **LZSS** | LZ77, but a flag bit says literal *or* reference, and a reference is used only when it saves bytes | The one the book uses; simple to decode |
 | **LZ78 / LZW** | Build an explicit dictionary of phrases as you go | Needs dictionary memory and a growing table (GIF uses LZW) |
@@ -92,7 +92,7 @@ flag 01 = 00000001b:  a literal then a reference
   ee f8  -> pos = 4078, len = 8 + 3 = 11                               -> copies ABRACADABRA
 ```
 
-The second reference starts at the same slot as the first: the stored value is where the text *is* in the ring, not how far back it is. (Run `python example/trace.py "your text"` to see any string tokenised.)
+The second reference starts at the same slot as the first: the stored value is where the text *is* in the ring, not how far back it is.
 
 **A decoder** therefore needs: a zeroed 4096-byte ring; a cursor at 4078; a loop that reads a flag byte and walks 8 bits (stopping the moment `out_size` bytes are out); a literal path; a reference path that copies byte by byte (a reference may read bytes it has just written: that is how `AAAA...` works). Because a file from a disc may be damaged, the book's decoder also **never trusts the stream**: it checks that the input has the bytes it is about to read, that a reference fits in what remains of the output, and that no input is left over at the end. Section 5.7 turns that into requirements.
 
@@ -112,9 +112,9 @@ What the encoder must get right:
 - Pretend the 4096 zero bytes come **before** your data. A match found `d` bytes back (1 <= d <= 4095) at data index `i - d` lives at ring slot `(4078 + i - d) & 4095`. That slot number is what goes into the reference.
 - The match may overlap the bytes it is creating (a run of one byte): source and destination can touch.
 - Flag bits are collected eight at a time into a byte that you emit *before* its eight items; the last flag byte may cover fewer than 8 items (leave the unused high bits 0).
-- A match of length 2 is not allowed (it would not save a byte); length 18 is the maximum.
+- The shortest match is 3 bytes (a 2-byte reference to 2 bytes would save nothing) and the longest is 18.
 
-**Speed.** A brute-force search tries every earlier position: 4095 comparisons for every byte. In Python that is minutes for 17 KB. Cheaper: let a C-speed built-in do the search (`bytes.rfind` finds the nearest occurrence of a substring inside a range), or keep a dictionary from every 3-byte string to the positions where it occurred. Take the *longest* match, not the first one you find: extending the nearest 3-byte match loses about 15% and lands right at the verifier's limit. A smarter parse ("lazy matching": check whether waiting one byte gives a longer match) squeezes a few percent more; the reference packer is plain greedy.
+**Speed.** A brute-force search tries every earlier position: 4095 comparisons for every byte. In pure Python that takes tens of seconds for 17 KB. Cheaper: let a C-speed built-in do the search (`bytes.rfind` finds the nearest occurrence of a substring inside a range), or keep a dictionary from every 3-byte string to the positions where it occurred. Take the *longest* match, not the first one you find: extending only the nearest 3-byte match costs about 15% of the compression ratio and lands right at the verifier's limit. A smarter parse ("lazy matching": check whether waiting one byte gives a longer match) squeezes a few percent more; the reference packer is plain greedy.
 
 **Compression ratio is not part of the format.** Any stream the decoder accepts and that reproduces the data is valid: an all-literal stream (every flag 1) is legal, just 12.5% *bigger* than the input. Your packer need not produce the reference's bytes; the verifier requires only a stream the reference decoder accepts *and* at least 85% of the reference's compression ratio on the shipped textures, so that you really emit references.
 
@@ -138,7 +138,7 @@ A `.TPK` holds many TIMs compressed *together* (concatenated first, then one str
 
 Texture **id** = its position in the size table. After decompression, texture `i` is the complete TIM at byte offset `sizes[0] + ... + sizes[i-1]` of the blob; it still names its own VRAM rectangle in its header (the packer never edits TIM bytes), so uploading it is exactly Chapter 30.
 
-**CRC-32** is a 32-bit checksum that changes if any bit of the data changes. It guards against a bad read or a decoder bug: the decompressed blob must have the header's CRC. It is the zlib/PNG one: process bytes through the reflected polynomial `0xEDB88320`, start with `0xFFFFFFFF`, finish by complementing. Python has `zlib.crc32`; in C you write it, a bit at a time:
+**CRC-32** is a 32-bit checksum that changes if any bit of the data changes. It guards against a bad read or a decoder bug: the decompressed blob must have the header's CRC. It is the CRC-32 of gzip, PNG and zlib's `crc32` function: process bytes through the reflected polynomial `0xEDB88320`, start with `0xFFFFFFFF`, finish by complementing. Python has `zlib.crc32`; in C you write it, a bit at a time:
 
 ```
 crc = 0xFFFFFFFF
@@ -146,7 +146,7 @@ for each byte b:  crc ^= b;  repeat 8 times:  crc = (crc >> 1) ^ (0xEDB88320 if 
 result = ~crc
 ```
 
-(A 256-entry table makes it 8 times faster: a stretch goal.) The check value: the CRC-32 of the nine ASCII characters `123456789` is `0xCBF43926`. Do not checksum the compressed bytes; the decoder's job is to produce the right *raw* bytes.
+(A 256-entry table handles a byte per step instead of a bit: a stretch goal.) The check value: the CRC-32 of the nine ASCII characters `123456789` is `0xCBF43926`. Do not checksum the compressed bytes; the decoder's job is to produce the right *raw* bytes.
 
 ### 5.6 Packing a folder
 
@@ -174,7 +174,7 @@ result = ~crc
 
 ### 5.8 The texture store
 
-A polygon needs four things from a texture: tpage word, CLUT word, and the UV rectangle. `Tex` (Chapter 30) holds them; `TpkTextures` is the book's **texture store**: `tex[id]` for id `0..count-1`, plus the raw blob and its size. Everything above this layer asks for a texture by id and never sees a file or a VRAM coordinate. (Chapter 32 indexes it the same way: a model's primitive says "texture 5".)
+A polygon needs three things from a texture: its tpage word, its CLUT word and its UV rectangle. `Tex` (Chapter 30) holds them; `TpkTextures` is the book's **texture store**: `tex[id]` for id `0..count-1`, plus the raw blob and its size. Everything above this layer asks for a texture by id and never sees a file or a VRAM coordinate. (Chapter 32 indexes it the same way: a model's primitive says "texture 5".)
 
 ## 6. Worked example
 
@@ -182,7 +182,7 @@ A polygon needs four things from a texture: tpage word, CLUT word, and the UV re
 
 ## 7. Project: "Eight Textures, One File"
 
-### 7.1 Behaviour
+### 7.1 Behavior
 
 `make` in `starter/` builds a disc whose `\DATA\TEXTURES.TPK` is made by **your** `tpkpack.py` from a folder of eight TIM files (the book's track tiles, `00.tim` to `07.tim`). The game loads it with `tpk_load`, uploads the eight textures, and draws them as a 4 x 2 grid of quads. If anything fails the screen is red.
 
@@ -190,18 +190,18 @@ A polygon needs four things from a texture: tpage word, CLUT word, and the UV re
 
 `starter/` builds and boots, but the packer writes a placeholder and the loader fails. Given: `CMakeLists.txt` (which runs your packer: `python tpkpack.py build/tiles -o build/assets/TEXTURES.TPK`), `iso.xml`, `cdrom.c` and `tim.c` (Chapters 29 and 30, finished), `psxe/`, `tpk.h`, `main.c` (the frame loop and the grid drawing), `tpkpack.py`'s `main()` and `tpk.c`'s `tpk_free_raw`. You write `read_tims`, `compress` and `build_tpk` in `tpkpack.py`, the other five functions of `tpk.c` (the decoder included), and one line of `main.c`.
 
-**`tpkpack.py FOLDER -o OUT.TPK`** (the starter's `main()` is given; you fill three functions):
+**`tpkpack.py FOLDER -o OUT.TPK`**:
 
 | Rule | |
 |---|---|
-| Input | every file directly inside `FOLDER` whose name ends in `.tim` or `.TIM` (any case), **in plain string order of the names** (`sorted`). Other files and subfolders are ignored |
+| Input | every file directly inside `FOLDER` whose name ends in `.tim` or `.TIM`, **in plain string order of the names** (`sorted`). Other files and subfolders are ignored |
 | Output | the `.TPK` of Appendix E.6: your LZSS stream, the CRC-32 of the raw blob, the size table of the TIM sizes, zero padding to a multiple of 4. TIM bytes are copied verbatim |
 | Success | exit status 0, one line on stdout |
 | Errors | status **1**, a message on stderr, **no output file**: `FOLDER` missing or not a folder; no `.tim` files; more than 255; a file that is not a TIM (does not start `10 00 00 00`, size not a multiple of 4, or under 20 bytes) |
 | Compression | at least 85% of the reference packer's compression ratio on the shipped textures (see 5.4) |
 | Time | the verifier allows 90 s per run; a sensible compressor takes under a second |
 
-**`tpk.h`** is the contract for the C side: read it, it is short and carries the exact behaviour, error codes and check order of `tpk_crc32`, `lzss_decode`, `tpk_parse`, `tpk_unpack`, `tpk_load` and `tpk_free_raw`. In brief:
+**`tpk.h`** is the contract for the C side: read it, it is short and carries the exact behavior, error codes and check order of `tpk_crc32`, `lzss_decode`, `tpk_parse`, `tpk_unpack`, `tpk_load` and `tpk_free_raw`. In brief:
 
 | Function | Contract |
 |---|---|
@@ -211,7 +211,7 @@ A polygon needs four things from a texture: tpage word, CLUT word, and the UV re
 | `int tpk_unpack(file, size, dst, dst_size)` | parse; `TPK_ERR_SPACE` if `dst_size < raw_size` (nothing written); decode; `TPK_ERR_CRC` on mismatch |
 | `int tpk_load(path, TpkTextures *out)` | read, parse, `malloc(raw_size)`, unpack, free the file, then `tim_parse` / `tim_upload` / `tex_from_tim` for each texture into `out->tex[id]`. Any failure: its negative code, `out->count = 0`, `out->raw = NULL`, `out->raw_size = 0`, nothing leaked |
 
-**The grid.** Given in `main.c`: texture id `i` is drawn in cell `(i % 4, i / 4)`, stretched over a 64 x 64 square whose top-left corner is `(col * 80 + 8, row * 120 + 28)`, corners in Z order, UVs at the texture's first and last texels, colour `(128, 128, 128)`.
+**The grid.** Given in `main.c`: texture id `i` is drawn in cell `(i % 4, i / 4)`, stretched over a 64 x 64 square whose top-left corner is `(col * 80 + 8, row * 120 + 28)`, corners in Z order, UVs at the texture's first and last texels, color `(128, 128, 128)`.
 
 **State the verifier reads** (names, types and order are fixed; `main()` keeps them linked):
 
@@ -225,15 +225,15 @@ A polygon needs four things from a texture: tpage word, CLUT word, and the UV re
 ### 7.3 Steps
 
 1. Run `make` in `starter/` (`make run` boots it): a red screen.
-2. In `tpkpack.py`, `build_tpk` with an **all-literal** `compress` first (valid!). Check your output with `python tools/assets/tpkpack_ref.py verify OUT.TPK`.
-3. `read_tims`: order, filtering and the error cases of 7.2. Try them by hand.
-4. The real `compress`. Compare your size with the reference's: `tpkpack_ref.py pack` on the same folder.
+2. In `tpkpack.py`, write `read_tims`: order, filtering and the error cases of 7.2. Try them by hand.
+3. Write `build_tpk` with an **all-literal** `compress` first (a valid stream), then delete the placeholder fallback in `main()`. Check your output with the reference tool: `python tools/assets/tpkpack_ref.py verify OUT.TPK` (path from the book root).
+4. Write the real `compress`. Compare your size with the reference's: `tpkpack_ref.py pack OUT.TPK FOLDER` on the same folder.
 5. In `tpk.c`: `tpk_crc32` (check `123456789`), `tpk_parse`, then `lzss_decode`, `tpk_unpack`, finally `tpk_load`.
 6. In `main.c`, replace the placeholder in `load_textures()` by the call to `tpk_load`. Run `verify.sh`.
 
 ### 7.4 Rules
 
-- The textures come from the disc as a compressed pack; the packer, not a script of yours, decides the bytes.
+- The textures come from the disc as a compressed pack that the build makes with your `tpkpack.py`; do not compile them into the program.
 - Never edit TIM bytes. Read multi-byte header fields byte by byte.
 - `lzss_decode` and `tpk_parse` never read or write outside their buffers, whatever the input.
 - Do not hard-code texture counts, sizes or VRAM positions: the verifier boots a second disc with another pack.
@@ -246,7 +246,7 @@ A polygon needs four things from a texture: tpage word, CLUT word, and the UV re
 - C: make the ring `static` (4 KB) and `memset` it at the start of every call; a second call must start from zeros again.
 - C: `if (len > dst_size - o)` rather than `o + len > dst_size` (no overflow).
 - C: compare your decoder against the worked example of 5.3 (`7f 41 42 ...`) on paper before you run.
-- `tpk_unpack` may parse the header again; the cost is negligible.
+- C: `tpk_load` needs `raw_size` before it can `malloc`, so it calls `tpk_parse` itself and `tpk_unpack` parses again; the cost is negligible.
 
 ### 7.6 Stretch goals
 
@@ -277,7 +277,7 @@ It takes about 30 seconds. The build runs **your** packer (so a broken packer is
 | `boots from the disc; the pack unpacks ...` | `load_status` 0; the CRC-32 and bytes of the blob at `tpk_raw` equal the TIMs' concatenation; `store.tex[i]` has the tpage, CLUT, `u, v, w, h` of E.3.4 | The message gives the first differing byte or the error code of `tpk_load` |
 | `VRAM holds each texture's CLUT and image ...` | VRAM rectangles equal the TIM blocks, byte for byte | A texture not uploaded, or in the wrong order of offsets |
 | `an alternative disc ...`, `alt run ...` | The same for a reference-packed pack of 4, 8 and 16-bpp textures elsewhere in VRAM; polygons and picture | An unpacker that only works on your packer's output; hard-coded textures |
-| `polygons ...`, `picture ...` | Eight `POLY_FT4`, one per cell, with the right words and UVs; each cell shows its texture (90% of sample points within a texel and a colour tolerance) | Wrong ids or `tex[]` entries |
+| `polygons ...`, `picture ...` | Eight `POLY_FT4`, one per cell, with the right words and UVs; each cell shows its texture (90% of sample points within a texel and a color tolerance) | Wrong ids or `tex[]` entries |
 | `performance ...` | `lzss_decode` cycles at most 2x the reference | A call per byte, `%`, a per-item `memset` |
 | `lzss_decode: valid streams ...` / `damaged streams ...` | The worked example, all literals, zeros, 5000 random bytes, a pattern past the wrap, runs, the real textures; then truncated, truncated inside a reference, an extra byte, an overrun, too-short and too-long outputs, each with guard bytes | An out-of-bounds write; "reads the byte after `src_size`" |
 | `tpk_crc32`, `tpk_parse`, `tpk_unpack`, `tpk_load` | The cases of `tpk.h`: padding 0..3, 13 damaged headers, a buffer one byte short, a bad CRC, a missing file, a second load | A missing check, or an error code that differs from `tpk.h` |
@@ -287,7 +287,7 @@ A pass ends with `CHAPTER 31: PASSED (23/23 checks)`. The untouched starter fail
 ## 9. Common pitfalls
 
 - **Position vs distance.** The reference stores the absolute ring slot, `(4078 + i - d) & 4095`; storing the distance `d` is the most common bug, and the data looks almost right.
-- **Cursor at 0, or 4077.** The ring starts at slot 4078 so the first literal is at `0xFEE`.
+- **Cursor at 0, or 4077.** The cursor starts at slot 4078, so the first literal is at `0xFEE`.
 - **Flag bits MSB first.** The book reads them LSB first.
 - **A dirty ring.** The ring must be zeros at every call; a `static` array zeroed once breaks the second load.
 - **A reference past the end.** Check `len` against what remains of the output *before* the copy loop.
@@ -297,8 +297,7 @@ A pass ends with `CHAPTER 31: PASSED (23/23 checks)`. The untouched starter fail
 - **Size table of the VRAM sizes.** It lists TIM *file* sizes.
 - **Forgetting padding.** The file is a multiple of 4; the padding is zeros and is not part of `comp_size`.
 - **Writing the pack before success.** A failed run must leave no file.
-- **`u = w` instead of `w - 1`** (from Chapter 30) when you reuse `tex_from_tim`'s output for the quad UVs.
-- **Freeing the blob before the upload is done.** The TIMs live in the decompressed blob, not the file: free the file as soon as it is decoded, but free the blob only after `DrawSync` (`LoadImage` reads it asynchronously).
+- **Freeing the blob before the upload is done.** The TIMs live in the decompressed blob, not the file: free the file as soon as it is decoded, but free the blob only after every `tim_upload` has returned (`LoadImage` only queues the transfer; `tim_upload` waits for it with `DrawSync`).
 
 ## 10. Quiz
 
@@ -306,8 +305,8 @@ A pass ends with `CHAPTER 31: PASSED (23/23 checks)`. The untouched starter fail
 
 ## 11. Further reading
 
-- Haruhiko Okumura's original `LZSS.C` (1989): the 4096-byte ring, `F = 18`, `N - F` start, and the flag-byte layout this chapter inherits.
+- Haruhiko Okumura's original `LZSS.C` (1989): the 4096-byte ring, `F = 18`, the cursor starting at `N - F`, and the flag-byte and reference layout this chapter inherits (Okumura fills the ring with spaces; the book uses zeros).
 - psx-spx (nocash PSX specs): "CDROM Drive" (speeds and sector timing), "File Formats: TIM".
-- RFC 1950 / 1952 (zlib, gzip) and the PNG specification for CRC-32; Python's `zlib` and `binascii` modules.
+- RFC 1952 (gzip) and the PNG specification for CRC-32 (both include sample code); Python's `zlib` and `binascii` modules.
 - [Appendix E.5 and E.6](../../../appendices/E-file-formats.md); `tools/assets/lzss.py` and `tpkpack_ref.py` for the reference compressor and packer; `tools/assets/README.md`.
 - Next: Chapter 32 reads a `.SHP` model whose primitives name their textures by the ids you built here.

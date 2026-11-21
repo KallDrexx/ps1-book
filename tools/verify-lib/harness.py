@@ -384,8 +384,9 @@ class RunResult:
             raise CheckFailure(
                 expected="program reaches its end point and PCSX-Redux exits",
                 actual=f"emulator did not finish within the {getattr(self, 'timeout', DEFAULT_TIMEOUT):g}s hard timeout",
-                hint="Infinite loop before the `done` label? A branch with a missing delay slot? "
-                     "Run with -v to see the emulator log.")
+                hint=("Infinite loop before the `%s` label? " % self.cfg.break_at
+                      if isinstance(self.cfg.break_at, str) else "Infinite loop? ")
+                     + "A branch with a missing delay slot? Run with -v to see the emulator log.")
         if not self.finished:
             raise CheckFailure(expected="emulator produced results.json",
                                actual="no results (emulator crashed or probe failed)",
@@ -619,9 +620,11 @@ class Context:
         """Fail the check with a list of missing symbols."""
         miss = self.symbols.require(*names)
         if miss:
-            raise CheckFailure(expected="symbols defined: " + ", ".join(names),
-                               actual="missing: " + ", ".join(miss),
-                               hint=hint or "Keep the labels the starter declares; the harness finds your code through them.")
+            f = CheckFailure(expected="symbols defined: " + ", ".join(names),
+                             actual="missing: " + ", ".join(miss), hint=hint)
+            # used only when neither this call nor the check's decorator gives a hint
+            f.fallback_hint = "Keep the labels the starter declares; the harness finds your code through them."
+            raise f
 
     def source_files(self, pattern="**/*.s"):
         """Reader's source files (project dir), excluding build output."""
@@ -792,7 +795,7 @@ def _main(a, chapter_dir, project, work, tag):
                 print(f"        expected: {f.expected}")
             if f.actual is not None:
                 print(f"        actual:   {f.actual}")
-            hint = f.hint or ck.hint
+            hint = f.hint or ck.hint or getattr(f, "fallback_hint", "")
             if hint:
                 print(f"        hint:     {hint}")
 
@@ -821,7 +824,7 @@ def _main(a, chapter_dir, project, work, tag):
             if miss:
                 f = CheckFailure(expected=f"label `{miss[0]}` exists in your program",
                                  actual="not found in the symbol table",
-                                 hint="Keep the labels declared by the starter (`done:`, `results:`).")
+                                 hint=f"Keep the labels declared by the starter (`{miss[0]}:`).")
                 results.append((ck, False, f))
                 print(f"  FAIL  {ck.name}\n        expected: {f.expected}\n        actual:   {f.actual}\n        hint:     {f.hint}")
             else:

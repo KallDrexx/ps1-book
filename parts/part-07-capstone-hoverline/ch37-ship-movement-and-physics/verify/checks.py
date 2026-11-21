@@ -306,7 +306,7 @@ def _(ctx):
     last_l = max(i for i, c in enumerate(cs) if c["pad"] & LEFT)
     for k in (60,):
         a = cs[min(len(cs) - 1, last_l + k)]["after"]
-        expect_true(a[13] == 0 and abs(a[12]) < 8 * 4096, "yaw damping and roll smoothing decay to ~0 within a second of letting go", f"yaw_vel {a[13]}, roll {a[12] >> 12} units", "yaw_vel -= fx_mul(yaw_vel, yaw_damp * dt).")
+        expect_true(a[13] == 0 and abs(a[12]) < 8 * 4096, "yaw damping and roll smoothing decay to ~0 within a second of letting go", f"yaw_vel {a[13]}, roll {a[12] >> 12} units", "The damping and the dead zone of README 5.5, step 2; the roll smoothing of step 4.")
 
 
 @check("heading_and_velocity", hint="The velocity points along the ship's nose: (sin yaw cos pitch, -sin pitch, cos yaw cos pitch) * speed (checked against math.sin / math.cos).")
@@ -380,7 +380,7 @@ def _(ctx):
         expect_eq(rows[-1]["sticks"] - rows[0]["sticks"], s, f"ship_ticks counts the ticks run ({name})")
     alt = rows_of(run_of(ctx, "alt"))
     expect_true(alt[0]["subdiv"] == 0 and alt[-1]["subdiv"] == 1 and sum(1 for a, b in zip(alt, alt[1:]) if a["subdiv"] != b["subdiv"]) == 1,
-                "R1 toggles subdiv_enabled exactly once (edge-triggered; it was held for 6 frames)", f"{alt[0]['subdiv']} .. {alt[-1]['subdiv']}", "input_pressed(INPUT_R1) ^= 1.")
+                "R1 toggles subdiv_enabled exactly once (edge-triggered; it was held for 6 frames)", f"{alt[0]['subdiv']} .. {alt[-1]['subdiv']}", "The R1 toggle in game_update is given: keep it edge-triggered (input_pressed).")
     slow = [row["ticks"] for row in alt if row["subdiv"] == 1]
     expect_true(slow and sorted(slow)[len(slow) // 2] >= 2, "with subdivision on the frames take 2+ blanks, so 2+ ticks run per frame", f"median {sorted(slow)[len(slow) // 2] if slow else None}",
                 "Physics must not depend on how long a frame takes.")
@@ -462,7 +462,7 @@ def _(ctx):
         near = [p for p in em if abs(p[0] - sx) <= 80 and abs(p[1] - sy) <= 70]
         expect_true(len(near) >= 25, f"{sh['name']}: engine-pod pixels around the ship's screen position ({sx:.0f}, {sy:.0f})", f"{len(near)} pixels",
                     "draw_ship: ship_matrix, d = ship.pos - cam_eye as the translation, CompMatrixLV with the view ROTATION, then render_shp(&ship_shp, &ship_store).")
-        expect_true(len(near) >= 0.8 * len(em), f"{sh['name']}: no ship-coloured pixels elsewhere", f"{len(near)} of {len(em)} near the ship", "")
+        expect_true(len(near) >= 0.8 * len(em), f"{sh['name']}: no ship-colored pixels elsewhere", f"{len(near)} of {len(em)} near the ship", "")
         mx = sum(p[0] for p in near) / len(near)
         lp = [p[1] for p in near if p[0] < mx]
         rp = [p[1] for p in near if p[0] >= mx]
@@ -641,7 +641,7 @@ def _(ctx):
         expect_true(err <= 24, f"{case['tag']}: the view's forward row points from the eye to the target", f"{fwd} vs {[round(c / n * 4096) for c in d]}", "Call camera_look_at(&cam_eye, &cam_target, &cam_up) with cam_up = (0, -4096, 0).")
 
 
-@check("unit_angles", hint="heading_angle(x, z): among the angles with isin(a) x + icos(a) z > 0, the one that minimises |isin(a) z - icos(a) x|; pitch_angle(y): minimises |isin(p) + y|, -1024..1024.")
+@check("unit_angles", hint="heading_angle(x, z): among the angles with isin(a) x + icos(a) z > 0, the one that minimizes |isin(a) z - icos(a) x|; pitch_angle(y): minimizes |isin(p) + y|, -1024..1024.")
 def _(ctx):
     for case, rec in kind_cases(ctx, "heading"):
         want = M.heading_angle(case["a0"], case["a1"])

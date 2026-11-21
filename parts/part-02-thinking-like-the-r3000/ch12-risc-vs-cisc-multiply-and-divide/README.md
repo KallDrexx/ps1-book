@@ -6,16 +6,16 @@ The R3000 is a RISC: every instruction is simple, regular and cheap, and anythin
 
 ## 2. Why it matters
 
-Every pixel address on the PS1 is `y * 1024 + x` or `y * 320 + x`. Every vertex goes through multiplies; every `memcpy` of a texture or display list moves kilobytes. A 36-cycle divide inside a per-pixel loop, or a byte-at-a-time copy, can cost more than the drawing. Knowing what each instruction costs is how you decide what to write.
+A pixel's address in VRAM is `y * 1024 + x`; in a 320-wide buffer it is `y * 320 + x`. Every vertex goes through multiplies, and every copy of a texture or display list moves kilobytes. A 36-cycle divide in a per-pixel loop, or a byte-at-a-time copy, can cost more than the drawing itself. Knowing what each instruction costs tells you what to write.
 
 ## 3. Learning objectives
 
 After this chapter you can:
 
-- explain, fairly, what RISC and CISC trade off, and where MIPS sits;
+- explain what RISC and CISC trade off, and where MIPS sits;
 - use `mult`, `multu`, `div`, `divu`, `mfhi`, `mflo`, `mthi`, `mtlo` and predict HI/LO, including for divide by zero;
-- state the R3000A latencies and what a `mfhi`/`mflo` interlock does to your schedule;
-- state the `mfhi`/`mflo` to `mult`/`div` spacing rule and write code that respects it;
+- state what multiply and divide cost on the R3000A, and use the `mfhi`/`mflo` interlock to hide that cost;
+- state the spacing rule between `mfhi`/`mflo` and a following `mult`/`div`, and write code that respects it;
 - turn a constant multiply into shifts and adds (or subtracts), and a divide by a constant into a multiply by a reciprocal;
 - write word-at-a-time `memcpy`, `memset` and `strlen` that are correct for any alignment and length.
 
@@ -70,31 +70,31 @@ psx-spx timings, in CPU cycles. (Instruction fetch from RAM and the cache add to
 | `div`, `divu` | **36** | fixed |
 | `mfhi`, `mflo` | 1 + **stall** | waits for the multiplier or divider to finish |
 
-`multu` by `rs`: 6 cycles for `rs` in `0..0x7FF`, 9 for `0x800..0xFFFFF`, 13 for bigger. `mult` is the same on the magnitude: 6 cycles when `rs` is in `-0x800..0x7FF`, 9 when in `-0x100000..0xFFFFF`, 13 otherwise. Put the smaller operand in `rs`.
+`multu` by `rs`: 6 cycles for `rs` in `0..0x7FF`, 9 for `0x800..0xFFFFF`, 13 above that. `mult` reads `rs` as signed: 6 cycles for `-0x800..0x7FF`, 9 for `-0x100000..0xFFFFF`, 13 otherwise. Put the smaller operand in `rs`.
 
-The unit runs **in parallel**. `mult` issues and the next instructions keep executing. If you reach `mfhi`/`mflo` too early the CPU **interlocks** (stops) until the result is ready, so the answer is always right; you only lose cycles. Useful work placed between the two is free:
+The unit runs **in parallel** with the pipeline: after `mult`, the following instructions keep executing. If you reach `mfhi`/`mflo` before the result is ready, the CPU **interlocks** (stalls) until it is, so the answer is always right; you only lose cycles. Independent work placed between the two hides the wait:
 
 ```
-   multu a0, a1        <- starts, takes 13 cycles
-   ...6 independent instructions...   <- run meanwhile
-   mflo  v0            <- almost no stall
+   multu a0, a1                             <- starts; 6 cycles for a small rs
+   ...up to 6 independent instructions...   <- run meanwhile
+   mflo  v0                                 <- little or no stall
 ```
 
-Measured in PCSX-Redux (this chapter's scratch test): a `multu`/`mflo` pair costs about 6, 9 and 13 cycles more than two plain instructions for small, medium and large `rs`, and `divu`/`mflo` about 36 more. Putting six `nop`s between them hides all but one cycle of the 13.
+Measured in PCSX-Redux: a `multu`/`mflo` pair costs 6, 9 and 13 cycles more than two plain instructions for small, medium and large `rs`, and `divu`/`mflo` 36 more. Redux charges every instruction 2 cycles, so there six `nop`s hide 12 of the 13. On hardware a cached instruction takes about one cycle, so count on one hidden cycle per instruction.
 
-### 5.4 The hazard on the other side
+### 5.4 The hazard after `mfhi`/`mflo`
 
-Chapter 7 mentioned it; here is exactly what is known.
+Chapter 7 mentioned it; here is what is known.
 
-- **MIPS I architecture (R2000/R3000 manuals):** if either of the two instructions after an `mfhi`/`mflo` writes the register it read (`mult`, `multu`, `div`, `divu`, or `mthi`/`mtlo`), the value the `mfhi`/`mflo` read is *undefined*.
+- **MIPS I architecture (R2000/R3000 manuals):** if either of the two instructions after an `mfhi`/`mflo` writes the register it read (`mult`, `multu`, `div` and `divu` write both HI and LO; `mthi` and `mtlo` write one), the value the `mfhi`/`mflo` read is *undefined*.
 - **psx-spx** says only: "After accessing the lo/hi registers, there seems to be a strange rule that one should not touch the lo/hi registers in the next 2 cycles or so... not yet understood if/when/how that rule applies...?" It names no instructions and reports no observed corruption.
 - **Emulators:** most, including PCSX-Redux, do not model it. Code that breaks the rule still passes in the emulator.
 
-So nobody has pinned down what the PS1 actually needs. This chapter's rule is the **conservative** one, the MIPS I rule: after `mfhi`/`mflo`, let two instructions pass before any `mult`/`div` (or `mthi`/`mtlo`). It costs nothing, and GCC for the R3000 inserts the same gap itself; in assembly it is your job. `verify.sh` checks it on the instructions `udiv10` actually executes, and the reference solution to Chapter 7 follows it too.
+So nobody has pinned down what the PS1 actually needs. This book follows the **conservative** MIPS I rule: after `mfhi`/`mflo`, let two instructions pass before any `mult`/`div` (or `mthi`/`mtlo`). It rarely costs anything, and GCC for the R3000 inserts the same gap itself (as `nop`s); in assembly it is your job. `verify.sh` checks it on the instructions `udiv10` actually executes.
 
 ### 5.5 Divide by zero and overflow
 
-The R3000 does **not trap** on divide by zero (or on `0x80000000 / -1`). It leaves a defined, odd result. `example/` prints them:
+The R3000 does **not trap** on divide by zero (or on `0x80000000 / -1`). It leaves a defined, odd result. `example/` produces these:
 
 | Operation | HI | LO |
 |---|---|---|
@@ -104,7 +104,7 @@ The R3000 does **not trap** on divide by zero (or on `0x80000000 / -1`). It leav
 | `div 0x80000000 / -1` | 0 | `0x80000000` |
 | `div -7 / 2` | -1 | -3 (truncates toward zero) |
 
-psx-spx calls the signed divide-by-zero LO "total garbage" and notes that real software must check for zero itself. So must you: there is no exception to catch.
+psx-spx calls the signed divide-by-zero results "total garbage". Test the divisor yourself: there is no exception to catch.
 
 ### 5.6 Strength reduction
 
@@ -127,7 +127,7 @@ Rules of thumb:
 - Write the constant in binary. Count the 1 bits; a run of ones (`0b0111_1000`) is cheaper as `2^7 - 2^3`.
 - Shift-and-add is exact modulo 2^32 for signed and unsigned `x` alike. Overflow behaves exactly like `mult`.
 - For a negative constant, build the positive product and negate with `subu rd, $zero, rt`.
-- It is only worth it while the shift/add count stays small. With 2 to 4 terms you beat the multiplier (6 to 13 cycles plus a stall) comfortably; at 6 or more, use `multu`.
+- It is only worth it while the shift/add count stays small. With 2 to 4 terms you beat the multiplier (6 to 13 cycles) comfortably; at 6 or more, use `multu`.
 
 ### 5.7 Dividing by a constant: multiply by the reciprocal
 
@@ -138,9 +138,9 @@ A divide costs 36 cycles. Dividing by a **constant** can use one multiply instea
              \_____ multu ____/  \ HI >> 3
 ```
 
-`0xCCCCCCCD` is `ceil(2^35 / 10)`. `multu` leaves the 64-bit product in HI:LO; HI is already the product `>> 32`, so one more `srl` by 3 finishes. The remainder is `x - q * 10`, and `q * 10 = (q << 3) + (q << 1)`. This is exact for **every** 32-bit `x` (checked here on millions of values, including both ends of the range). The compiler does the same transformation for you in C.
+`0xCCCCCCCD` is `ceil(2^35 / 10)`. `multu` leaves the 64-bit product in HI:LO; HI is already the product `>> 32`, so one more `srl` by 3 finishes. The remainder is `x - q * 10`, and `q * 10 = (q << 3) + (q << 1)`. This is exact for **every** 32-bit `x`.
 
-**Who may use what in this chapter's project:** `my_memcpy`, `my_memset`, `my_strlen` and the `mulK` routines use no multiplier or divider instructions at all. `udiv10` may use `multu` and `mfhi` (that is the point), but not `div`/`divu`. A shifts-and-adds approximation is also accepted if it stays within the instruction budget.
+Do not count on the compiler here. This book's GCC turns a constant multiply in C into shifts and adds, but it leaves `x / 10` as a `divu`; in hot C code, write the reciprocal multiply yourself.
 
 ### 5.8 Word-at-a-time
 
@@ -162,7 +162,7 @@ Zero-byte test for `strlen`: a 32-bit word `w` contains a zero byte exactly when
   (w - 0x01010101) & ~w & 0x80808080   != 0
 ```
 
-It is exact for every byte value, `0x80` to `0xFF` included (that is what the `& ~w` is for; section 9). An aligned word that contains the terminator lies inside one 4-byte block, so it cannot run past the end of RAM or into another memory region; that is why the contract lets `my_strlen` **read** (never write) up to 3 bytes past the 0.
+It is exact for every byte value, `0x80` to `0xFF` included; the `& ~w` sees to that (section 9). An aligned word load stays inside one 4-byte block, so the load that finds the terminator cannot reach past the end of RAM or into another memory region. That is why the contract lets `my_strlen` **read** (never write) up to 3 bytes past the 0.
 
 ## 6. Worked example
 
@@ -175,7 +175,7 @@ make run       # then look at `table` in the debugger's memory view (Chapter 6)
 
 Rows: `divu 7/0`, `div 7/0`, `div -7/0`, `div 0x80000000/-1`, `div -7/2`, `multu 0xFFFFFFFF * 0xFFFFFFFF`, `mult -1 * -1`, `multu 0x10000 * 0x10000`. It is not checked by `verify.sh`.
 
-## 7. Project
+## 7. Project: Fast Routines
 
 Work in `starter/main.s`. The driver is given. You write eleven routines. All are leaf routines (`$t`, `$a`, `$v` only) and may assume nothing about alignment.
 
@@ -198,22 +198,20 @@ The starter also ships `bytes_memcpy`, `bytes_memset`, `bytes_strlen`: the plain
 3. **`my_memset`**: build the 32-bit pattern from one byte with two shift-OR steps, then head, words, tail.
 4. **`my_memcpy`**: head, words, tail when `src` and `dst` agree mod 4; bytes otherwise.
 5. **`my_strlen`**: byte head, the zero-byte test per word, then find the zero in the last word.
-6. Run `example/` and compare with 5.5.
 
 ### 7.3 Rules
 
 - Keep the starter's labels and their order. Do not edit the driver, the baselines or the data.
 - **`my_memcpy`, `my_memset`, `my_strlen` and every `mulK`: none of `mult multu div divu mfhi mflo mthi mtlo`.**
-- **`udiv10`: no `div`/`divu`/`mthi`/`mtlo`.** `multu` and `mfhi` are allowed, with a two-instruction gap after `mfhi`/`mflo`.
+- **`udiv10`: no `div`/`divu`/`mthi`/`mtlo`.** `multu` and `mfhi` are allowed, with a two-instruction gap between `mfhi`/`mflo` and any later `mult`/`div`. A shifts-and-adds version with no multiplier also passes if it fits the budget.
 - Callee-saved registers untouched; write only the bytes the contract names (the verifier puts guard bytes around every buffer).
 - Instruction budgets are in section 8.
 
 ### 7.4 Hints
 
-- `addu`/`subu` after shifts on different temporaries: you never need to move `$a0`.
-- In the word loop put the pointer bump in the branch delay slot (Chapter 7). Test against an *end pointer* so you need no counter.
-- Compute the end pointer as `dst + (n & ~3) - 4` and compare before the bump, so the bump can live in the delay slot.
-- A head only runs when `n >= 8` (otherwise just do bytes): then it can never use up all of `n`.
+- For the multiplies, shift `$a0` into temporaries and combine those; `$a0` itself never needs to change.
+- In a word loop, test against an *end pointer* so you need no counter. With the end pointer at `dst + (n & ~3) - 4`, you compare before the bump, and the bump fits in the branch delay slot (Chapter 7).
+- Take the word path only when `n >= 8` (otherwise just do bytes): then the head can never use up all of `n`, and the word loop always has at least one word.
 - For `strlen`, after the zero-test fires, step the pointer back one word and finish with a byte loop.
 
 ### 7.5 Stretch goals
@@ -237,6 +235,7 @@ Checks `starter/` by default; pass a path for a copy, `-v` for the log, `--solut
 | `program defines main, done, every routine ...` | Labels and order. | A label was deleted or moved. |
 | `no mult/.../mtlo in the shift-based routines` | Scans the machine code from `my_memcpy` up to `udiv10`. | Message names the instruction and address. |
 | `udiv10 does not use div/divu` | The 36-cycle divider is out. | `div`/`divu`/`mthi`/`mtlo` in `udiv10`. |
+| `program reaches done`, `no CPU exception while the routines run` | The program ran to the end without an exception. | A loop that never ends, or `lw`/`sw` on a misaligned address (code 4 = load, 5 = store). |
 | `the data is as shipped`, `the driver calls the routines`, `armips reports no warnings` | As in earlier chapters. | |
 | `my_memcpy copies ...`, `my_memset fills ...`, `my_strlen measures ...` | Byte-for-byte vs. Python: all 16 source/destination alignment pairs, lengths 0 to 257, bytes `0x01 0x7F 0x80 0xFF`, high garbage in the `memset` value. | The message shows the first wrong byte and the call's alignments. |
 | `memcpy/memset write only inside the destination` | Guard bytes and source untouched. | Word loop overrun, head or tail miscount. |
@@ -251,21 +250,21 @@ Checks `starter/` by default; pass a path for a copy, `-v` for the log, `--solut
 | `each mulK routine takes at most 8 instructions, udiv10 at most 24` | No loops. | A loop in a multiply. |
 | `driver: the results ...`, `the routines are actually entered` | The real program ran and wrote the right values. | Labels or driver edited. |
 
-The budgets only count for correct code, and are fixed numbers (the baselines are checked still to cost what they cost). Mismatched `src`/`dst` alignment is judged on correctness only. Alternative designs are welcome: any structure that is correct and within budget passes. The mul budget rules out a shift-and-add *loop*, and the contract's "read up to 3 bytes past the 0" is not policed (reading further is harmless here, but stay within it).
+A budget counts only once the routine is correct. The budgets are fixed numbers, and the verifier also checks that the baselines still cost what they did. Mismatched `src`/`dst` alignment is judged on correctness only. Any design that is correct and within budget passes. The `mulK` budget rules out a shift-and-add *loop*. The "read up to 3 bytes past the 0" limit is not checked, but stay within it.
 
 A pass ends with `CHAPTER 12: PASSED (24/24 checks)`.
 
 ## 9. Common pitfalls
 
-- **`mult` where a shift will do.** It works, it is just slower, and in this chapter it is rejected.
-- **`mfhi` straight after `mult` in a tight loop, then `mult` again.** Two instructions of gap, always.
+- **`mult` where a shift will do.** It works but is slower, and this chapter's verifier rejects it.
+- **A `mult` right after `mfhi`/`mflo`, typically in a tight loop.** Leave two instructions between them (5.4).
 - **Forgetting the divide-by-zero case.** There is no exception; you get garbage and keep running.
 - **Wrong operand in `rs`.** The multiplier's time depends on `rs`. Put the small value there.
 - **`lw` on an unaligned address.** The loop must see an aligned pointer: byte-head first, and decide the case from `(src ^ dst) & 3`.
-- **`srl` vs `sra` on a signed value.** Fine for `udiv10`; do not use `srl` to halve a negative number.
-- **Counting a `memset` value as 32 bits.** Only the low byte counts; mask it before replicating.
-- **A zero-byte test that fails on `0x80`.** Using `(w - 0x01010101) & 0x80808080` alone gives false positives; you need `& ~w` as well.
-- **Using `bne` on the pointer *after* the bump** and running one word too far: compare before bumping, or use an end pointer.
+- **`srl` on a signed value.** `udiv10` is unsigned, so `srl` is right there; shifting a negative number right needs `sra` (Chapter 9).
+- **Treating the `memset` value as 32 bits.** Only the low byte counts; mask it before replicating.
+- **A zero-byte test that fires on `0x81` to `0xFF`.** `(w - 0x01010101) & 0x80808080` alone gives a false positive for those bytes; you need `& ~w` as well.
+- **Comparing the pointer *after* the bump** and running one word too far. Compare before bumping, against the address of the last word.
 
 ## 10. Quiz
 
@@ -275,5 +274,5 @@ A pass ends with `CHAPTER 12: PASSED (24/24 checks)`.
 
 - psx-spx, "CPU Specifications": multiply/divide timing, divide by zero, the HI/LO note: <https://psx-spx.consoledev.net/>
 - *See MIPS Run* (Sweetman): the chapters on the integer multiply/divide unit and on hazards.
-- Hacker's Delight (Warren): chapter 10, integer division by constants (where `0xCCCCCCCD` comes from).
+- *Hacker's Delight* (Warren): chapter 10, integer division by constants (where `0xCCCCCCCD` comes from).
 - Patterson and Hennessy, *Computer Organization and Design*: the RISC design principles.

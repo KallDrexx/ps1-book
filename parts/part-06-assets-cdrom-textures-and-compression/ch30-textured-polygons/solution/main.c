@@ -43,7 +43,7 @@ int32_t load_status;                 /* 0 = all three loaded; otherwise 1 + the 
 
 SVECTOR rot      = { 200, 300, 0, 0 };   /* angles about X, Y, Z: 4096 = one turn */
 SVECTOR rot_step = {  16,  28, 0, 0 };   /* added to rot every frame */
-int32_t cam_z    = 4 * 4096;             /* z of the cube's centre, in the units of cube[] */
+int32_t cam_z    = 4 * 4096;             /* z of the cube's center, in the units of cube[] */
 int32_t proj_h   = 256;                  /* projection distance h, in pixels */
 
 MATRIX  mtx;                         /* the matrix uploaded to the GTE this frame */
@@ -132,7 +132,7 @@ static void draw_faces(void)
 		if (!p)
 			break;
 		setPolyFT4(p);
-		setRGB0(p, 128, 128, 128);                     /* neutral: the texel's own colour */
+		setRGB0(p, 128, 128, 128);                     /* neutral: the texel's own color */
 		setXY4(p, (int16_t) screen_xy[a], screen_xy[a] >> 16, (int16_t) screen_xy[b], screen_xy[b] >> 16,
 		          (int16_t) screen_xy[c], screen_xy[c] >> 16, (int16_t) screen_xy[d], screen_xy[d] >> 16);
 		setUV4(p, t->u, t->v, u1, t->v, t->u, v1, u1, v1);   /* top-left, top-right, bottom-left, bottom-right */

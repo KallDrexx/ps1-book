@@ -47,7 +47,7 @@ done:
     nop
 
 .align 4
-packets:                            ; colour (BBGGRR), (y << 16) | x, (h << 16) | w
+packets:                            ; color (BBGGRR), (y << 16) | x, (h << 16) | w
     .word 0x02FFFF00, (20 << 16) | 8,   (20 << 16) | 20     ; fill, cyan
     .word 0x6000FF00, (60 << 16) | 8,   (20 << 16) | 20     ; rect, green
     .word 0x600000FF, (100 << 16) | 290, (20 << 16) | 20    ; rect, red

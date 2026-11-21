@@ -7,7 +7,7 @@ vertex or face table (the model must come from the disc).
 DYNAMIC (probe.lua, boots hoverline.cue, 500 frames): no CPU exception, load_status 0; CdSearchFile/CdRead were entered and the
 CD controller's registers written; the buffer cd_load_file returned holds the disc file's bytes; model_info equals MODEL.BIN.json
 (counts and first/last vertex); every frame the matrix is a rotation about the model's origin at (0, 0, cam_z), the angles advance
-by rot_step; the picture's silhouette is the hull of the projected vertices and every front face shows its colour at its centre;
+by rot_step; the picture's silhouette is the hull of the projected vertices and every front face shows its color at its center;
 the polygons found by walking the ordering table are exactly the front faces (triangles as POLY_F3, quads as POLY_F4).
 A second disc (a pyramid: 5 vertices, 4 triangles and 1 quad) is built here with the same exe and must show up the same way:
 a program that hard-codes the ship, its counts or its file size fails.
@@ -37,7 +37,7 @@ BG = (16, 16, 32)
 MAX_FRAMES = 500
 SHOT_FRAMES = (12, 70)
 AREA_MARGIN = 250                 # |NCLIP| below this: nearly edge-on, not judged
-MIN_FACE_AREA = 500               # a face must be this large (NCLIP units) for its centre colour to be checked
+MIN_FACE_AREA = 500               # a face must be this large (NCLIP units) for its center color to be checked
 BBOX_TOL = 5
 
 config(
@@ -262,7 +262,7 @@ def check_info(ctx, name, data):
     r, rows = observe(ctx, name)
     want = expected_info(data)
     got = r.record("info")
-    expect_eq(got[:2], want[:2], f"{name}: [vertex_count, face_count]", hint="Counts are big-endian (Appendix E.7): (b[4]<<24)|(b[5]<<16)|(b[6]<<8)|b[7].")
+    expect_eq(got[:2], want[:2], f"{name}: [vertex_count, face_count]", hint="Counts are big-endian (Appendix E.7): assemble them from single bytes, most significant first.")
     expect_eq(got[2:5], want[2:5], f"{name}: first vertex", hint="Vertices are little-endian s16 at 0x08, 8 bytes each.")
     expect_eq(got[5:8], want[5:8], f"{name}: last vertex", hint="The last vertex is at 8 + 8 * (vertex_count - 1).")
 
@@ -361,15 +361,15 @@ def _(ctx):
     expect_true(max(abs(a[4 + i] - b[4 + i]) for i in range(9)) > 150, "the matrix changes between frames 12 and 70", "identical")
 
 
-@check("picture: the ship's silhouette, front faces and flat colours",
-       hint="Compare with the projected vertices; each front face shows its own colour from the file.")
+@check("picture: the ship's silhouette, front faces and flat colors",
+       hint="Compare with the projected vertices; each front face shows its own color from the file.")
 def _(ctx):
     r, rows = observe(ctx, "main")
     check_picture(r, rows, ship_bytes(), "ship")
 
 
 @check("a different MODEL.BIN on the disc (a pyramid) is loaded, parsed and drawn",
-       hint="Nothing about the ship may be built into the program: counts, sizes, colours and faces all come from the file.")
+       hint="Nothing about the ship may be built into the program: counts, sizes, colors and faces all come from the file.")
 def _(ctx):
     data = pyramid_bytes()
     alt_disc(ctx)

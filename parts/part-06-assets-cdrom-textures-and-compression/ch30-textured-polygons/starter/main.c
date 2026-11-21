@@ -43,7 +43,7 @@ int32_t load_status;                 /* 0 = all three loaded; otherwise 1 + the 
 
 SVECTOR rot      = { 200, 300, 0, 0 };   /* angles about X, Y, Z: 4096 = one turn */
 SVECTOR rot_step = {  16,  28, 0, 0 };   /* added to rot every frame */
-int32_t cam_z    = 4 * 4096;             /* z of the cube's centre, in the units of cube[] */
+int32_t cam_z    = 4 * 4096;             /* z of the cube's center, in the units of cube[] */
 int32_t proj_h   = 256;                  /* projection distance h, in pixels */
 
 MATRIX  mtx;                         /* the matrix uploaded to the GTE this frame */
@@ -92,7 +92,7 @@ static void transform_corners(void)
    Chapter 29's load_model() is the model. */
 static void load_textures(void)
 {
-	load_status = 1;                 /* placeholder: the screen stays red until your loader works; remove this line */
+	load_status = 1;                 /* placeholder: keeps the screen red until your loader works; remove this line */
 	if (!cd_init()) {
 		load_status = 100;
 		return;
@@ -100,7 +100,7 @@ static void load_textures(void)
 }
 
 /* Given: Chapter 25's culling and sorting. TODO (README 7.2): replace the last part with a textured quad: allocate a POLY_FT4,
-   neutral colour, corners faces[f][0..3] in that order, the face's texture: UVs, clut and tpage; link it at slot otz >> OTZ_SHIFT. */
+   neutral color, corners faces[f][0..3] in that order, the face's texture: UVs, clut and tpage; link it at slot otz >> OTZ_SHIFT. */
 static void draw_faces(void)
 {
 	prims_submitted = 0;

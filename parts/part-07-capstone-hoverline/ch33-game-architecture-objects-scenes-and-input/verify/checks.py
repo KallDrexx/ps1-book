@@ -306,7 +306,7 @@ def _(ctx):
 
 
 @static_check("the disc holds LOGO.TIM, PROPS.TPK, the three shapes and SCENE.BIN in \\DATA; the scene and the models are read at run time, not compiled in",
-              hint="iso.xml lists the files of README 7.1; the CMake rule runs tools/assets/mkassets.py.")
+              hint="iso.xml lists the files of README 5.1; the CMake rule runs tools/assets/mkassets.py.")
 def _(ctx):
     iso = Iso(ctx.build.build_dir / "hoverline.bin")
     for n in ("LOGO.TIM", "PROPS.TPK", "PYLON.SHP", "ARCH.SHP", "TOWER.SHP", "SCENE.BIN"):
@@ -343,7 +343,7 @@ def check_list(ctx, name, m):
         seen.add(n["addr"])
         expect_eq(n["shape"], o["shape"], f"{label}: shape index", fmt="dec", hint="The list is in the FILE's order: node i is object entry i (append at the tail).")
         expect_eq(n["flags"], o["flags"], f"{label}: flags", fmt="dec")
-        expect_eq(n["pos"], o["pos"], f"{label}: position", fmt="dec", hint="s32 x, y, z at offsets 0x10.. of the object entry (Appendix E.9).")
+        expect_eq(n["pos"], o["pos"], f"{label}: position", fmt="dec", hint="s32 x, y, z at offsets +0x04.. of the object entry (Appendix E.9).")
         expect_eq(n["rot"], o["rot"], f"{label}: rotation", fmt="dec", hint="s16 values: sign-extend them.")
         expect_eq(n["scale"], o["scale"], f"{label}: scale", fmt="dec")
         expect_eq(n["radius"], m.radius(o), f"{label}: radius = the table's radius * scale >> 12", fmt="dec",

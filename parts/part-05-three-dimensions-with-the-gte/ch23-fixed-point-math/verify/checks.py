@@ -268,7 +268,7 @@ def _(ctx):
 
 
 @check("fx_mul: exact, 64-bit product, shifted right 12 (rounds toward -infinity)",
-       hint="((int64_t)a * b) >> 12. A 32-bit product overflows when a*b >= 2^31: 100.0 * 100.0 is 1.6e11. Casting AFTER the multiply is too late.")
+       hint="((int64_t)a * b) >> 12. A 32-bit product overflows when a*b >= 2^31: 100.0 * 100.0 is 1.7e11. Casting AFTER the multiply is too late.")
 def _(ctx):
     compare(ctx, OP["mul"], "fx_mul", "Widen BEFORE multiplying, then shift right with >> (an arithmetic shift), not / 4096.")
 

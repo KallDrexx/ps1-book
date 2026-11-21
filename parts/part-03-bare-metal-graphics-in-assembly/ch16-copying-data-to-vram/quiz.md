@@ -17,12 +17,12 @@ The left one (the lower x). The right pixel is in the high half. Pixels are sent
 
 **4. You send one data word too few. What happens to your next packet?**
 <details><summary>Answer</summary>
-The GPU is still in the data phase, so the first word of the next packet is taken as pixel data and written to VRAM; the packet is lost, and the following words are shifted: everything after it goes wrong.
+The GPU still expects data, so it takes the first word of the next packet as pixels and writes it to VRAM. That packet has lost its command word: its remaining words are read as commands, and everything after may go wrong.
 </details>
 
-**5. Why does `while (!(GPUSTAT & (1 << 26)));` before each data word hang?**
+**5. Why does a routine that waits for GPUSTAT bit 26 before each data word hang?**
 <details><summary>Answer</summary>
-During the data phase of a transfer bit 26 ("ready for a command word") is 0: the GPU wants data, not a command. It becomes 1 again only after the last data word. Wait once, before the first header word.
+From the first header word on, bit 26 ("ready for a command word") is 0: the GPU wants parameters or data, not a command. It becomes 1 again only after the last data word. Wait once, before the first header word.
 </details>
 
 **6. How wide, in 16-bit units, is a 320-pixel line in 24-bit mode? How many units are 2 pixels?**
@@ -40,7 +40,7 @@ R, G, B (red at the lowest address). As little-endian 16-bit units, unit 0 is `G
 `px + (px >> 1)` (valid when `px` is even, so the result is whole): `srl t, a0, 1` then `addu v0, a0, t`.
 </details>
 
-**9. Which instruction chooses 24-bit display, and which bits of its value do you keep for a 320x240 NTSC screen?**
+**9. Which command selects the 24-bit display, and what are its bits for a 320x240 NTSC screen?**
 <details><summary>Answer</summary>
-GP1 `08h`: `0x08000011`. Bits 0-1 = 1 (320 wide), bit 2 = 0 (240 high), bit 3 = 0 (NTSC), bit 4 = 1 (24-bit colour).
+GP1 `08h`: `0x08000011`. Bits 0-1 = 1 (320 wide), bit 2 = 0 (240 high), bit 3 = 0 (NTSC), bit 4 = 1 (24-bit color).
 </details>

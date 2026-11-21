@@ -4,14 +4,14 @@
 
 <details><summary>Answer</summary>
 
-The speed settles where one tick changes nothing: `v = (v + 0.75) * (1 - 1/64)`, so `v / 64 = 0.75 * 63 / 64`, `v = 0.75 * 63 = 47.25`. A force that is proportional to the speed grows until it cancels the constant one, so the speed approaches a limit by itself; the cap is only a safety limit above it (a boost pad pushes the ship over 47.25 for a moment, and the drag then pulls it back). The verifier's ship settles at 47.2 to 47.3 because `fx_mul` floors.
+The speed settles where one tick changes nothing: `v = (v + 0.75) * (1 - 1/64)`, so `v / 64 = 0.75 * 63 / 64`, `v = 0.75 * 63 = 47.25`. A force that is proportional to the speed grows until it cancels the constant one, so the speed approaches a limit by itself; the cap is only a safety limit above it (a boost pad pushes the ship over 47.25 for a moment, and the drag then pulls it back). The integer model reaches exactly 47.25 (193536) within 2,000 ticks of full thrust.
 </details>
 
 **2.** The ship moves at `vel = (0, 0, 163840)` (40.0 straight ahead). Its facing now points 30 degrees to the right, so `forward * speed` is `target = (81920, 0, 141876)`. With `grip` = 1024 (1/4) and NTSC `dt`, what is `vel` after one tick, and how far off the facing does the velocity point?
 
 <details><summary>Answer</summary>
 
-`vel[i] += fx_mul(target[i] - vel[i], 1024)`, a quarter of the gap per axis: `x = 0 + 81920 / 4 = 20480`, `z = 163840 + (-21964 * 1024 >> 12) = 163840 - 5491 = 158349`. The velocity points `atan(20480 / 158349)` = 7.4 degrees to the right while the nose points 30: the ship is travelling 22.6 degrees away from where it looks, which is a skid. The gap closes by a quarter each tick, so after four ticks about 68% of it is gone and after ten ticks 94%: the *time constant* of the slide is `1 / grip` ticks (4 ticks, about 67 ms).
+`vel[i] += fx_mul(target[i] - vel[i], 1024)`, a quarter of the gap per axis: `x = 0 + 81920 / 4 = 20480`, `z = 163840 + (-21964 * 1024 >> 12) = 163840 - 5491 = 158349`. The velocity points `atan(20480 / 158349)` = 7.4 degrees to the right while the nose points 30: the ship is traveling 22.6 degrees away from where it looks, which is a skid. The gap closes by a quarter each tick, so after four ticks about 68% of it is gone and after ten ticks 94%: the *time constant* of the slide is `1 / grip` ticks (4 ticks, about 67 ms).
 </details>
 
 **3.** Why does `handling_skid` clamp the fraction to 4096 *after* multiplying it by `dt`? What would `grip` = 8192 (2.0) do without the clamp?
@@ -25,7 +25,7 @@ A fraction above 1 does not close the gap, it overshoots it. With `g = 2.0`, `ve
 
 <details><summary>Answer</summary>
 
-The function runs on every tick, and a scan costs tens of thousands of instructions (the verifier's limit is 2,500 for the whole call). On -256..256 (the limit is 22.5 degrees, far more than any road climbs) `isin` rises strictly: every step is at least 5 units, so `isin(p) + y` crosses zero exactly once and a binary search finds the crossing. 513 candidates need `ceil(log2(513))` = 10 evaluations, plus two to compare the neighbours (the answer is the first angle with a non-negative value, or the one before it if that is closer; on a tie the smaller angle). Over the whole -1024..1024 range this would not work: `isin` is flat near the peak, several angles share a value, and "the first of them" would need a scan back. Choosing the domain so that an algorithm is valid is part of the design.
+The function runs on every tick, and a scan costs tens of thousands of instructions (the verifier's limit is 2,500 for the whole call). On -256..256 (the limit is 22.5 degrees, far more than any road climbs) `isin` rises strictly: every step is at least 5 units, so `isin(p) + y` crosses zero exactly once and a binary search finds the crossing. 513 candidates need `ceil(log2(513))` = 10 evaluations, plus two to compare the neighbors (the answer is the first angle with a non-negative value, or the one before it if that is closer; on a tie the smaller angle). Over Chapter 37's whole -1024..1024 range this would not work: `isin` is flat near the peak, several angles share a value, and "the first of them" would need a scan back. Choosing the domain so that an algorithm is valid is part of the design.
 </details>
 
 **5.** Section 0 of track 1 has `up = (-1837, -3650, -285)`: the road is banked (`up.x`) and climbs (`up.z`). The ship heads along +z (`yaw` 0). Then it heads along +x. Which components of `up` decide the pitch target in each case?
@@ -46,7 +46,7 @@ One. The lap is counted when `progress` reaches 112; the back-and-forth around t
 
 <details><summary>Answer</summary>
 
-49: gap 1, no warning. 48: gap 2, **warning**. Forward to 49: gap 1, the warning clears; 50: gap 0. Comparing with the previous tick would flicker the warning on for one tick whenever a section is crossed backwards (a ship that slides 10 units over a ring while it rotates, or the wall response turning it) and off at the next tick; comparing with the *furthest point* means that the player has to go a real distance backwards before they are told, and has to come back by the same distance before the warning goes, a hysteresis of two sections.
+49: gap 1, no warning. 48: gap 2, **warning**. Forward to 49: gap 1, the warning clears; 50: gap 0. Comparing with the previous tick would flash the warning for one tick whenever a section is crossed backward (a ship that slides 10 units back over a ring while it rotates, or the wall response turning it). Comparing with the *furthest point* gives a dead band: the player has to go a real distance backward (two sections) before they are told, and the first section regained clears the warning.
 </details>
 
 **8.** 3725 ticks have passed in the race. What does the timer show at 60 Hz and at 50 Hz? Why does the program count ticks and convert only when it prints?
@@ -60,12 +60,12 @@ One. The lap is counted when `progress` reaches 112; the back-and-forth around t
 
 <details><summary>Answer</summary>
 
-`input_pressed` is true only on the frame the button *goes down* (Chapter 22). With `input_held`, the results screen would be left on the very frame the race ended, because the throttle button is still down, and the player would never see their time. The edge-triggered test needs a fresh press, so the player has to let go and press again, which also means that START and CROSS on the results act once, not once per frame. (Holding the button for a *minimum time* before accepting input is the other half of the polish: stretch goal.)
+`input_pressed` is true only on the frame the button *goes down* (Chapter 22). With `input_held`, the results screen would be left on the frame after the race ended, because the throttle button is still down, and the player would never see their time. The edge-triggered test needs a fresh press, so the player has to let go and press again, which also means that START and CROSS on the results act once, not once per frame. (Ignoring input for a *minimum time* on the results screen is the other half of the polish: a stretch goal.)
 </details>
 
 **10.** The countdown starts when `set_state(STATE_COUNTDOWN)` runs; `race_countdown_tick` beeps when `cd_ticks % hz == 0` before incrementing and answers GO when `cd_ticks >= count_from * hz` after it. At 60 Hz with `count_from` 3, on which countdown ticks do the beeps and GO sound, and at which times?
 
 <details><summary>Answer</summary>
 
-Beeps on ticks 0, 60 and 120 (the first at once, then one per second); GO on tick 179, the 180th tick (`cd_ticks` has just become 180). The three beeps are at 0 s, 1 s and 2 s and GO is three seconds after the countdown began, so the player hears "3, 2, 1, GO" at equal intervals; the first beep belongs to tick 0, not to tick 1, because the test happens before the increment. The race clock starts at zero on the *next* tick: the time the countdown took is never part of a lap.
+Beeps on ticks 0, 60 and 120 (the first at once, then one per second); GO on tick 179, the 180th tick (`cd_ticks` has just become 180). The three beeps are at 0 s, 1 s and 2 s; GO comes at the end of tick 179, three seconds after the countdown began, so the player hears "3, 2, 1, GO" at equal intervals; the first beep belongs to tick 0, not to tick 1, because the test happens before the increment. The race clock starts at zero on the *next* tick: the time the countdown took is never part of a lap.
 </details>

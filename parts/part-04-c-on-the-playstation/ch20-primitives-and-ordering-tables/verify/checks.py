@@ -1,10 +1,10 @@
 """Chapter 20 checks: Primitives and Ordering Tables.
 Build: CMake + PSn00bSDK. Four emulator runs: the shipped scene, two scenes the verifier patches into `scene` (new depths AND a
-permutation of the colours) and `depth_step`, and an overflow run with `copies` patched to 20 (320 quads against room for 85).
+permutation of the colors) and `depth_step`, and an overflow run with `copies` patched to 20 (320 quads against room for 85).
 probe.lua breaks on ClearOTagR and DrawOTag (arguments recorded), WALKS the DMA linked list from DrawOTag's argument exactly as
 the DMA would (so the order in which the GPU receives the packets is observed, not inferred) and watches the guard bytes after both
 primitive buffers. Checks: the list holds the 16 quads farthest-first, the head is the last entry of a ClearOTagR table, the two
-frames alternate, the packets are bump-allocated, screenshots show the nearest quad's colour at every sampled point (all
+frames alternate, the packets are bump-allocated, screenshots show the nearest quad's color at every sampled point (all
 pairwise overlaps included), and the overflow run neither crashes nor writes past a buffer."""
 import itertools
 import struct
@@ -33,8 +33,8 @@ def pack(rows):
     return b"".join(struct.pack("<4h4Bi", x, y, w, h, r, g, b, 0, d) for x, y, w, h, r, g, b, d in rows)
 
 
-def recolour(shift, depths):
-    """Same geometry, colours rotated by `shift` positions, new depths."""
+def recolor(shift, depths):
+    """Same geometry, colors rotated by `shift` positions, new depths."""
     return [(x, y, w, h, *SHIPPED[(i + shift) % NQ][4:7], depths[i]) for i, (x, y, w, h, *_rest) in enumerate(SHIPPED)]
 
 
@@ -42,10 +42,10 @@ D1 = [(i * 37 + 5) % OT_LENGTH for i in range(NQ)]          # 37 is odd: all dis
 D2 = [63 - 4 * ((i * 5) % NQ) for i in range(NQ)]            # 63..3, distinct, spans the whole range
 STATES = {
     "base": None,
-    "p1": {"scene": pack(recolour(5, D1)), "depth_step": 7},
-    "p2": {"scene": pack(recolour(11, D2)), "depth_step": 3},
+    "p1": {"scene": pack(recolor(5, D1)), "depth_step": 7},
+    "p2": {"scene": pack(recolor(11, D2)), "depth_step": 3},
 }
-TABLES = {"base": SHIPPED, "p1": recolour(5, D1), "p2": recolour(11, D2)}
+TABLES = {"base": SHIPPED, "p1": recolor(5, D1), "p2": recolor(11, D2)}
 STEPS = {"base": 1, "p1": 7, "p2": 3}
 assert len(set(D1)) == NQ and len(set(D2)) == NQ
 
@@ -137,7 +137,8 @@ def _(ctx):
 @static_check("ClearOTagR and DrawOTag are linked in",
               hint="ot_begin_frame() must call ClearOTagR and ot_draw() must call DrawOTag (the linker drops the SDK routines otherwise).")
 def _(ctx):
-    ctx.require_symbols("ClearOTagR", "DrawOTag")
+    ctx.require_symbols("ClearOTagR", "DrawOTag",
+                        hint="ot_begin_frame() must call ClearOTagR and ot_draw() must call DrawOTag (the linker drops unused SDK routines).")
 
 
 @static_check("data layout as shipped", hint="Do not edit the scene table, copies, depth_step or the OtFrame layout in ot.h.")
@@ -160,7 +161,7 @@ def _(ctx):
 
 # ---- dynamic checks ------------------------------------------------------------------------
 @check("ClearOTagR builds a 64-entry table each frame, the two frames alternate, DrawOTag starts at its LAST entry",
-       hint="ot_begin_frame: ClearOTagR(ot_frames[cur].ot, OT_LENGTH). ot_draw: DrawOTag(&ot[OT_LENGTH-1]) then switch frames.")
+       hint="ot_begin_frame clears the current frame's table, all OT_LENGTH slots; ot_draw starts DrawOTag at that table's last entry, then switches frames.")
 def _(ctx):
     r = run(ctx, "base")
     cl, dw = r.record("cl") or [], draws(r)
@@ -204,7 +205,7 @@ def _(ctx):
             order = sorted(range(NQ), key=lambda i: -depths[i])
             want = [tuple(tab[i][4:7]) for i in order]
             got = [(p[3], p[4], p[5]) for p in pk]
-            expect_eq(got, want, f"packet colours in DMA order {ctx_s}",
+            expect_eq(got, want, f"packet colors in DMA order {ctx_s}",
                       hint="Far to near: the quad with the largest depth first. A reversed or submission-order list fails here.")
             slots = [(p[6] - (head - 4 * (OT_LENGTH - 1))) // 4 for p in pk]
             expect_eq(slots, [depths[i] for i in order], f"table slot of each packet = its quad's depth {ctx_s}",
@@ -257,7 +258,7 @@ def shown_frame(ev, k):
     return c[-1][1] if c else None
 
 
-@check("screenshots: at every sampled point the colour of the nearest quad (all overlaps, three scenes)",
+@check("screenshots: at every sampled point the color of the nearest quad (all overlaps, three scenes)",
        hint="Nearest = smallest depth = last in the DMA list. Each sample is far from any quad edge.")
 def _(ctx):
     expect_true(all(p is not None for p in PAIRS.values()), "every overlapping pair has a sample point", "geometry bug in checks.py")

@@ -53,10 +53,10 @@ The vertices (the unit cube) are shared by all objects. Only the matrix differs.
 | Call | Effect | Note |
 |---|---|---|
 | `RotMatrix(&rot, &m)` | `m` = rotation from three angles (4096 per turn), `Rx * Ry * Rz` | Chapter 25 |
-| `ScaleMatrix(&m, &s)` | multiplies **column** `j` of `m` by `s.v[j] / 4096` | a `VECTOR`; `4096` leaves it unchanged |
+| `ScaleMatrix(&m, &s)` | multiplies **column** `j` of `m` by component `j` of `s` (4.12) | `s` is a `VECTOR`; 4096 leaves a column unchanged |
 | `TransMatrix(&m, &pos)` | sets `m.t` | plain integer units, not 4.12 |
 
-Scaling the columns scales the *model* before it is rotated, so a unit cube with corners at +-4096 becomes a cube with corners at +-`size` when `s = (size, size, size)`. Matrix entries are `int16`, so `size` must stay below 32768. One shared model, three sizes: no vertex data is copied.
+Scaling the columns scales the *model* before it is rotated, so a unit cube with corners at +-4096 becomes a cube with corners at +-`size` when `s = (size, size, size)`. Matrix entries and scale factors are 16-bit in the GTE, so `size` must stay below 32768. One shared model, three sizes: no vertex data is copied.
 
 ### 5.3 Composing with the world: `CompMatrixLV`
 
@@ -67,9 +67,9 @@ Objects live in the **world**; the camera sits somewhere in it. The GTE needs *o
   out.T = a.R * b.T + a.T                 a = camera (world to view), b = object (model to world)
 ```
 
-(It does this on the GTE, so it leaves `a` loaded in `RT`/`TR` as a side effect: upload `out` yourself afterwards. `b.T` passes through 16-bit GTE registers, so each component must stay within +-32767.)
+It does this on the GTE, so it leaves `a` loaded in `RT`/`TR` as a side effect: upload `out` yourself afterwards. Both `b.T` and the resulting `out.T` pass through the GTE's 16-bit `IR` registers, so every component of each must stay within +-32767.
 
-This chapter's camera is a **fixed translation**: `cam_mtx` has an identity rotation (4096 on the diagonal) and `T = cam`, so `out.T` is the object's world position plus `cam`. The call looks like overkill now. In Chapter 28 `cam_mtx` gets a real rotation and the same call does all the work.
+This chapter's camera is a **fixed translation**: `cam_mtx` has an identity rotation (4096 on the diagonal) and `T = cam`, so `out.T` is the object's world position plus `cam`. The call looks like overkill now, but in Chapter 28 `cam_mtx` gets a real rotation and the same call does all the work.
 
 ```
   model (+-4096) --ScaleMatrix/RotMatrix--> object axes --TransMatrix--> world --cam_mtx--> view --RTPS--> screen
@@ -91,11 +91,11 @@ This chapter re-uploads: every object's matrix is built into its own local `MATR
 
 ### 5.5 Motion in fixed point
 
-All motion is along **y**, which points **down** (Chapter 24). Positions and velocities use Chapter 23's **20.12** format: 4096 means one world unit (per frame, for velocity).
+All motion is along **y**, which points **down** (Chapter 24). `y` and `vy` use Chapter 23's **20.12** format: 4096 means one world unit (per frame, for velocity).
 
 | Quantity | Format | Meaning |
 |---|---|---|
-| `y` | 20.12 | the cube's centre; `y >> 12` is the world unit used for drawing |
+| `y` | 20.12 | the cube's center; `y >> 12` is the world unit used for drawing |
 | `vy` | 20.12 | units per frame, positive = falling |
 | `gravity` | 20.12 | units per frame per frame (4 units = 16384) |
 | `bounce` | 4.12 | restitution: the fraction of speed kept (3277 = 0.80) |
@@ -105,7 +105,7 @@ All motion is along **y**, which points **down** (Chapter 24). Positions and vel
 ```
   vy += gravity
   y  += vy
-  limit = (floor_y - radius) << 12          the lowest centre allowed
+  limit = (floor_y - radius) << 12          the lowest center allowed
   if y > limit:
       y  = limit                              sit exactly on the floor
       vy = -fx_mul(vy, bounce)                reverse, lose some speed
@@ -123,21 +123,21 @@ The result is a parabola for each hop, and each hop is lower than the last by th
    |  /   \     .-.                 speed after the bounce = bounce * speed before
    | /     \   /   \    .-.
    |/       \ /     \  /   \  .-.
- --+---------V-------V-/-----V/---V----> frame
-   0       floor     contacts
+ --+---------V-------V-------V---V----> frame
+   0          (each V: a floor contact)
 ```
 
 **Integration error.** Real physics is continuous; the loop is not. A cube falling from rest for `n` frames drops `g * n * (n + 1) / 2`, not `g * n^2 / 2`: the sum of `n` steps, not the area under a line. And when it lands, the part of the last step that went *below* the floor is thrown away, so each bounce loses a little more energy than `bounce` says. Both effects are small at this size and speed. The only requirement is that every run of the same numbers gives the same frames, which exact integer arithmetic guarantees.
 
-**At rest.** With a low `bounce` the hops shrink until the speed kept is less than one frame of gravity. From then on the test fires *every* frame: `y` stays clamped at `limit`, `vy` settles near `gravity * 4096 / (4096 + bounce)` going in and minus that times `bounce / 4096` going out, and `bounces` grows by one per frame. That is part of the model; the verifier's patched run contains a cube that does it. (The "rest" stretch goal changes this, so keep it out of the build you verify.)
+**At rest.** With a low `bounce` the hops shrink until the speed kept is less than one frame of gravity. From then on the test fires *every* frame: `y` stays clamped at `limit`, `vy` settles near `gravity * 4096 / (4096 + bounce)` before the bounce and minus that times `bounce / 4096` after it, and `bounces` grows by one per frame. That is part of the model, and one cube in the verifier's patched run does it. (The "rest" stretch goal changes this, so keep it out of the build you verify.)
 
-`vy * bounce` exceeds 32 bits at these speeds (900,000 x 3,500 > 2^31). `fx_mul` multiplies in 64 bits and then shifts; the C expression `vy * bounce >> 12` on `int32_t` overflows.
+**Overflow.** `vy * bounce` exceeds 32 bits at these speeds (900,000 x 3,500 > 2^31), so the C expression `vy * bounce >> 12` on `int32_t` overflows. `fx_mul` multiplies in 64 bits and then shifts.
 
-**Collision with a plane** is one comparison, as above. A cube is not a sphere, so `radius` is a **bounding radius** (centre to floor at rest): this chapter uses `5/4` of the half-edge. A flat cube then hovers a little above the floor, and a tilted one sinks a corner into it. Exact contact would transform the corners first (stretch goal).
+**Collision with a plane** is one comparison, as above. A cube is not a sphere, so `radius` is only a **collision radius**, the height of the center above the floor at rest: this chapter uses 5/4 of the half-edge. A flat cube then hovers a little above the floor, and a tilted one sinks a corner into it. Exact contact would transform the corners first (stretch goal).
 
 ### 5.6 The floor: a grid of quads
 
-A **checkerboard** of 8 x 6 tiles, each 2048 units wide, in the plane `y = floor_y`, centred on x = 0, z = 0. Corner `(c, r)` of the grid, with `0 <= c <= 8` and `0 <= r <= 6`:
+A **checkerboard** of 8 x 6 tiles, each 2048 units wide, in the plane `y = floor_y`, centered on x = 0, z = 0. Corner `(c, r)` of the grid, with `0 <= c <= 8` and `0 <= r <= 6`:
 
 ```
   x = (c - 4) * 2048        y = floor_y        z = (r - 3) * 2048
@@ -151,7 +151,7 @@ A **checkerboard** of 8 x 6 tiles, each 2048 units wide, in the plane `y = floor
       near     c=0                  c=8                (Z order, seen from above)
 ```
 
-Transform the 9 x 7 = 63 grid corners **once**, not 4 per tile: neighbouring tiles share them. Tile `(c, r)` gets colour `(c + r) & 1` of the two floor colours. Seen from above in Z order the corners run clockwise, so `NCLIP` is positive (Chapter 25's rule: look at the face from outside).
+Transform the 9 x 7 = 63 grid corners **once**, not 4 per tile: neighboring tiles share them. Tile `(c, r)` gets color `(c + r) & 1` of the two floor colors. Seen from above in Z order the corners run clockwise, so `NCLIP` is positive (Chapter 25's rule: look at the face from outside).
 
 The floor's matrix is the camera's own: an identity rotation and `T = cam`. The floor is "object zero" of the scene.
 
@@ -162,7 +162,7 @@ Chapter 25 sorted by the average depth of each face. Do that for the cube faces.
 - floor tiles never overlap each other, so their order among themselves does not matter;
 - every cube is above the floor, so the floor is always the farthest thing.
 
-Put every floor quad in the **farthest slot** (`OT_LENGTH - 1`, 63). A cube face's slot is `OTZ >> 7` with the camera at 14336 units: about 23 to 31, always nearer. Cubes then draw over the floor, with no per-tile sorting. Per-face sorting still decides which of the three cubes is in front where they overlap on screen. It is a painter's-algorithm approximation (Chapter 25): good for objects that do not interpenetrate.
+Put every floor quad in the **farthest slot**, `OT_LENGTH - 1` = 63. A cube face's slot is `OTZ >> 7` with the camera at 14336 units: about 23 to 31, always nearer. Cubes then draw over the floor, with no per-tile sorting. Per-face sorting still decides which of the three cubes is in front where they overlap on screen. It is a painter's-algorithm approximation (Chapter 25): good for objects that do not interpenetrate.
 
 **Budget.** The primitive buffer holds 2048 bytes: 85 `POLY_F4`s (24 bytes each). The scene needs at most 48 floor quads + 9 cube faces (3 per cube) = 57.
 
@@ -180,15 +180,15 @@ Try each of these:
 
 1. Run it as shipped (`FORGET_UPLOAD 1`). Where is the green card? (Exactly where the red one is, with the same spin: it was transformed with the red card's matrix. You see only red, because in one OT slot the quad added last is drawn first.)
 2. Set `FORGET_UPLOAD` to 0. Both cards turn independently. Which line made the difference?
-3. Swap the order: draw the green card first. Which card is "wrong" now?
+3. Set it back to 1 and swap the two `draw_card` calls. Which color do you see now, and why?
 
 ## 7. Project: "Bouncing Cubes"
 
 Three cubes of different sizes bounce on a checkerboard floor, each spinning about a different axis.
 
-### 7.1 Behaviour
+### 7.1 Behavior
 
-Dark-blue background (`display_clear(24, 24, 48)`), an 8 x 6 floor of two greys, a red, a green and a blue cube falling, bouncing with decreasing height, and turning. Cubes are always drawn over the floor and the visible faces are shaded.
+Dark-blue background (`display_clear(24, 24, 48)`), an 8 x 6 floor of two grays, a red, a green and a blue cube falling, bouncing with decreasing height, and turning. Cubes are always drawn over the floor and the visible faces are shaded.
 
 ### 7.2 The contract
 
@@ -198,9 +198,9 @@ Dark-blue background (`display_clear(24, 24, 48)`), an 8 x 6 floor of two greys,
 
 | # | Field | Meaning |
 |---|---|---|
-| 0 | `x` | world x of the centre (units) |
-| 1 | `y` | world y of the centre, **20.12**; grows downward |
-| 2 | `z` | world z of the centre (units) |
+| 0 | `x` | world x of the center (units) |
+| 1 | `y` | world y of the center, **20.12**; grows downward |
+| 2 | `z` | world z of the center (units) |
 | 3 | `vy` | vertical velocity, 20.12 units per frame |
 | 4-6 | `ax`, `ay`, `az` | angles about X, Y, Z, kept in 0..4095 |
 | 7-9 | `sx`, `sy`, `sz` | added to the angles every frame (may be negative) |
@@ -229,10 +229,10 @@ Other state:
 | `gravity` | `int32_t` | 16384 | 20.12 units per frame squared (4.0) |
 | `floor_y` | `int32_t` | 4096 | the floor's world y (units); the eye is at y = 0 |
 | `cam` | `VECTOR` | (0, 0, 14336) | the fixed camera translation |
-| `proj_h` | `int32_t` | 256 | projection distance; offset (160, 120) |
+| `proj_h` | `int32_t` | 256 | projection distance `h`; the screen offset is (160, 120) |
 | `cube[8]`, `faces[6][4]` | | Chapter 25's tables, +-4096 | the shared model |
-| `face_shade[6]` | `uint16_t` | 256, 208, 176, 232, 192, 160 | face `f` colour = channel `* shade >> 8` |
-| `floor_colors[2][3]` | `uint8_t` | (72, 72, 96), (168, 168, 190) | tile colour `(c + r) & 1` |
+| `face_shade[6]` | `uint16_t` | 256, 208, 176, 232, 192, 160 | each channel of face `f` = `channel * face_shade[f] >> 8` |
+| `floor_colors[2][3]` | `uint8_t` | (72, 72, 96), (168, 168, 190) | tile color `(c + r) & 1` |
 | `cam_mtx` | `MATRIX` | you build it | identity rotation, translation `cam` |
 | `frame_no` | `int32_t` | 0 | frames completed (the given loop increments it) |
 
@@ -244,8 +244,8 @@ What each step must leave behind:
 |---|---|
 | `init_world` | `cam_mtx` built once |
 | `update_objects` | the update of 5.5 for each of the three objects |
-| `draw_floor` | 48 `POLY_F4` in slot 63: corners from the 9 x 7 grid, colour `(c + r) & 1`, culled by `NCLIP` |
-| `draw_object` | its own matrix uploaded; one `POLY_F4` per face with positive `NCLIP`, colour from `colour` and `face_shade`, slot `AVSZ4 >> 7` |
+| `draw_floor` | 48 `POLY_F4` in slot 63: corners from the 9 x 7 grid, color `(c + r) & 1`, culled by `NCLIP` |
+| `draw_object` | its own matrix uploaded; one `POLY_F4` per face with positive `NCLIP`, color from `colour` and `face_shade`, slot `AVSZ4 >> 7` |
 
 The object's matrix: `RotMatrix` of its angles, `ScaleMatrix` by `(size, size, size)`, `TransMatrix` to `(x, y >> 12, z)`, `CompMatrixLV` with `cam_mtx`.
 
@@ -261,9 +261,9 @@ The object's matrix: `RotMatrix` of its angles, `ScaleMatrix` by `(size, size, s
 
 - **Use the GTE** for transforms, culling and depth; the verifier looks for `RTPS`/`RTPT`, `NCLIP` and `AVSZ3`/`AVSZ4` in your own objects.
 - **No `float`/`double`**: the physics is integer.
-- Read every number from the symbols above; the verifier patches positions, velocities, gravity, restitution, floor height, sizes, spins, colours, the camera and the lens, and expects the same exact physics and a matching picture.
+- Read every number from the symbols above; the verifier patches positions, velocities, gravity, restitution, floor height, sizes, spins, colors, the camera and the lens, and expects the same exact physics and a matching picture.
 - Keep the keep-alive line in `main` and the three marker functions. Do not write to `cam`, `gravity`, `floor_y`, `proj_h`, or the model tables.
-- Frame budget: at most 59,500 CPU cycles between `render_begin()` and `render_end()`: twice the reference solution's frame (about 29,750). Transform each vertex once and build each matrix once.
+- Frame budget: at most 59,500 CPU cycles between `render_begin()` and `render_end()`, twice what the reference solution needs (about 29,750). Transform each vertex once and build each matrix once.
 
 ### 7.5 Hints
 
@@ -291,7 +291,7 @@ parts/part-05-three-dimensions-with-the-gte/ch26-multiple-objects-and-simple-mot
 parts/part-05-three-dimensions-with-the-gte/ch26-multiple-objects-and-simple-motion/verify/verify.sh --solution # the reference
 ```
 
-Each time the program calls `frame_done()`, the probe records `objects[]` and walks the ordering table handed to `DrawOTag` (slot, colour, corners of every quad). Python replays the integer model and the projection, and compares **exactly** for physics and within 2 px for geometry.
+Each time the program calls `frame_done()`, the probe records `objects[]` and walks the ordering table handed to `DrawOTag` (slot, color, corners of every quad). Python replays the integer model and the projection, and compares **exactly** for physics and within 2 px for geometry.
 
 | Check | What it means | If it fails |
 |---|---|---|
@@ -302,13 +302,13 @@ Each time the program calls `frame_done()`, the probe records `objects[]` and wa
 | `floor: no cube ... below floor_y` | `y + radius` never exceeds the floor | Contact test missing or late |
 | `spin ...` | Each axis' angle advances by its own step, wraps at 4096, in shipped and patched runs | Shared angle, no `& 4095` |
 | `patched start state, gravity ...` | A run with every number changed matches the model | A hard-coded trajectory |
-| `each cube has its own matrix` | Visible faces' quads have the reference corners, colours and slots; hidden faces are absent | No per-object upload; wrong composition |
+| `each cube has its own matrix` | Visible faces' quads have the reference corners, colors and slots; hidden faces are absent | No per-object upload; wrong composition |
 | `... camera and lens patched ... frozen scene` | Same, with a different camera, lens and a still scene | Constants in place of `cam`, `proj_h` |
-| `floor: 8 x 6 quads` | 48 quads at slot 63, corners and colours match | Wrong grid, wrong slot, no checker |
-| `picture` | Tile centres show the checker colours, face centres the cube colours; cubes over the floor | Floor drawn in front |
+| `floor: 8 x 6 quads` | 48 quads at slot 63, corners and colors match | Wrong grid, wrong slot, no checker |
+| `picture` | Tile centers show the checker colors, face centers the cube colors; cubes over the floor | Floor drawn in front |
 | `frame time` | At most 59,500 cycles between the markers | Rebuilding matrices per face |
 
-A pass ends with `CHAPTER 26: PASSED (13/13 checks)`. The shipped run is 300 frames (about 8 s of wall time); this chapter sets `timeout=40` in `checks.py` (a harness option, default 20 s) so that a slow machine does not fail it.
+A pass ends with `CHAPTER 26: PASSED (13/13 checks)`. The runs are long (300 frames for the shipped one), so `checks.py` raises the emulator timeout from the default 20 s to 40 s.
 
 ## 9. Common pitfalls
 
@@ -320,8 +320,8 @@ A pass ends with `CHAPTER 26: PASSED (13/13 checks)`. The shipped run is 300 fra
 - **32-bit products**: `vy * bounce` overflows `int32_t`; use `fx_mul` (64-bit).
 - **Update order**: velocity first, then position (5.5).
 - **Scaling the wrong thing**: `ScaleMatrix` takes 4.12 factors: `size` as given means a cube of half-edge `size`, not `size * 4096`.
-- **Forgetting `& 4095`** on a negative step: the angle goes negative and leaves the 0..4095 range the `scene` layout promises and the verifier checks. (`isin`/`RotMatrix` themselves accept any angle: only its low 12 bits count.)
-- **Floor in the middle of the table**: cubes below it are hidden by tiles that are nearer in depth.
+- **Forgetting `& 4095`** on a negative step: the angle goes negative and leaves the 0..4095 range that the contract (7.2) promises and the verifier checks. (`isin`/`RotMatrix` themselves accept any angle: only its low 12 bits count.)
+- **Floor in the middle of the table**: cube faces in farther slots are drawn first, and the tiles paint over them.
 - **Counting the buffer**: 2048 bytes is 85 `POLY_F4`s; a bigger floor needs a different plan.
 
 ## 10. Quiz

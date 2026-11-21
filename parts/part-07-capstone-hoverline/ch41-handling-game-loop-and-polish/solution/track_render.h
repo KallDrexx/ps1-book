@@ -34,7 +34,7 @@ extern int32_t  trk_sz[TRK_MAX_VERTICES];      /* the projected view-space depth
 extern uint8_t  trk_vstate[TRK_MAX_VERTICES];  /* VS_UNSEEN / VS_OK / VS_FAR */
 
 /* Where every face of the last track_draw went: each face of the range is in exactly ONE of the counters below
-   (faces_seen = the sum of the other seven). The verifier reads these 8 words in this order. */
+   (faces_seen = the sum of the other six). The verifier reads these 8 words in this order. */
 typedef struct {
 	int32_t faces_seen;              /* faces of the drawn sections */
 	int32_t faces_far;               /* some vertex is VS_FAR */

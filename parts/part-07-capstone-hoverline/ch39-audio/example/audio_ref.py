@@ -6,7 +6,7 @@ As a library (what verify/checks.py imports):
   sfx_pitch(rate)                                    rate * 4096 // 44100
   lateral(section, pos), section_boost(trk, i), nearest(secs, pos), events_for(...)   the event rules of README 5.6
   replay(log)                                        a list of register-store strings -> Replay (every voice register, key-ons, key-offs, CD commands)
-  spd_ram(data)                                      the SPU RAM image inside a PCSX-Redux SPU dump (README 7.2)
+  spd_ram(data)                                      the SPU RAM image inside a PCSX-Redux SPU dump (README 5.9)
 
 As a command line:
   audio_ref.py pitch [RATE]            a table of speed -> pitch for the default constants
@@ -159,7 +159,7 @@ def replay(log):
 
 # ---------------------------------------------------------------- SPU RAM from a PCSX-Redux SPU dump
 SPD_MAGIC = b"PSXSPUDUMPv1r1"
-SPD_RAM_AT_1000 = 0x44        # file offset of SPU RAM address 0x1000 in the dumps of this PCSX-Redux build (README 7.2)
+SPD_RAM_AT_1000 = 0x44        # file offset of SPU RAM address 0x1000 in the dumps of this PCSX-Redux build (README 5.9)
 SDK_DUMMY = bytes([0, 5]) + bytes(14)   # the block SpuInit writes at 0x1000
 
 

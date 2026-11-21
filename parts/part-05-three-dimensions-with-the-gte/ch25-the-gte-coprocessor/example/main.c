@@ -1,6 +1,6 @@
 /* Chapter 25 worked example: a card that turns around. One flat quad, spinning about the Y axis, drawn through the GTE.
- * Its front is green, its back red. The program does NOT cull: it asks NCLIP which side faces you and picks the colour.
- * Watch the colour change at the moment the card is edge-on, which is where NCLIP crosses zero. */
+ * Its front is green, its back red. The program does NOT cull: it asks NCLIP which side faces you and picks the color.
+ * Watch the color change at the moment the card is edge-on, which is where NCLIP crosses zero. */
 #include <stdint.h>
 #include <psxgpu.h>
 #include <psxgte.h>

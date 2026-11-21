@@ -79,7 +79,7 @@ main:
     sw    $ra, 24($sp)          ; (NOT 20: that is where h goes)
     jal   gpu_init
     nop
-    li    $a0, 0x202030         ; clear to dark grey
+    li    $a0, 0x202030         ; clear to dark gray
     move  $a1, $zero
     move  $a2, $zero
     li    $a3, 320
@@ -142,7 +142,7 @@ gi_wait:
     jr    $ra
     nop
 
-gpu_clear:                      ; fill rectangle: GP0(02h), the colour is 0x00RRGGBB; h is the 5th argument, 16($sp)
+gpu_clear:                      ; fill rectangle: GP0(02h), the color is 0x00RRGGBB; h is the 5th argument, 16($sp)
     lui   $t0, 0x1F80
     lw    $t3, 16($sp)          ; h
 gc_wait:

@@ -86,7 +86,8 @@ All 42 chapters and appendices A to G are available.
 ## Prerequisites
 
 * You can program (loops, functions, conditionals). No assembly, console, or 3D experience needed.
-* Linux (primary), macOS or Windows (WSL recommended). x86-64 for the prebuilt tools; other CPUs can use Docker.
+* Linux on x86-64 (Windows: WSL 2). `tools/setup.sh` installs Linux x86-64 binaries only, so on macOS, or on any
+  non-x86 machine, use the Docker image described under Setup.
 * Installed on the host: `git`, `curl`, `python3` (3.10+, with `venv`), `cmake` (3.21+), `make`, and a C++ compiler
   (`build-essential`) because armips is built from source.
   On Debian/Ubuntu: `sudo apt install build-essential cmake git curl python3 python3-venv`.
@@ -103,8 +104,10 @@ tools/doctor.sh     # re-run any time: prints OK / MISSING per tool, exits non-z
 `setup.sh` is idempotent (`--force` reinstalls). Versions are pinned in [`tools/versions.txt`](tools/versions.txt).
 To put the tools on your `PATH` in a shell: `source tools/env.sh`.
 
-Prefer a container? `docker build -f tools/Dockerfile -t ps1-book .` then
+Prefer a container, or not on x86-64 Linux? `docker build -f tools/Dockerfile -t ps1-book .` then
 `docker run --rm -it --user "$(id -u):$(id -g)" -v "$PWD":/book ps1-book bash`.
+The image holds the same Linux x86-64 toolchain, so on an ARM host (Apple silicon) add `--platform linux/amd64`
+to both commands; the tools then run under emulation, so expect them to be slower. The verifier needs no display.
 
 ## Working through a chapter
 
@@ -122,20 +125,22 @@ Prefer a container? `docker build -f tools/Dockerfile -t ps1-book .` then
    `CHAPTER NN: PASSED (k/k checks)` when you are done (exit code 0).
 4. Take the `quiz.md`. Stuck? Peek at `solution/` only after you have tried (`verify.sh --solution` proves it passes).
 
-A hung program or infinite loop before the chapter's `done:` label simply fails the check after a 20-second timeout.
-Something not working? [Appendix F: Troubleshooting](appendices/F-troubleshooting.md) lists symptoms and fixes. Exit codes: `0` passed, `1` build or check failed, `2` tooling problem.
+A program that hangs before the chapter's end point (the `done:` label in the assembly chapters) fails the check
+after a 20-second timeout. Exit codes: `0` passed, `1` build or check failed, `2` tooling problem.
+Something not working? [Appendix F: Troubleshooting](appendices/F-troubleshooting.md) lists symptoms and fixes.
 
 ## Repository layout
 
 ```
 Summary.md              curriculum and authoring conventions
 README.md               this file
-common/                 shared starter code handed to the reader (psxexe.inc, the PSX-EXE header macro; psxe/, the C engine library from Chapter 21, copied into each chapter that uses it)
+common/                 shared code: psxexe.inc (the PSX-EXE header for Parts I-III) and psxe/ (the C engine
+                        library from Chapter 21, copied into each later chapter that uses it)
 tools/
   setup.sh doctor.sh env.sh versions.txt requirements.txt Dockerfile
   ci.sh                 proves every chapter: solution passes, untouched starter fails
   verify-lib/           the verification harness (see its README.md for the chapter-author API)
-  assets/               asset generators and their selftest (img2tim.py, shpgen.py, trkgen.py, wav2vag.py, mkassets.py, ...; see its README)
+  assets/               asset generators and their selftest (see its README.md)
 appendices/             reference material A-G (MIPS, memory map, GPU, GTE, file formats, troubleshooting, PsyQ name map)
 parts/part-NN-slug/README.md                part intro
 parts/part-NN-slug/chNN-slug/{README.md, starter/, solution/, verify/, quiz.md}   README.md = chapter text

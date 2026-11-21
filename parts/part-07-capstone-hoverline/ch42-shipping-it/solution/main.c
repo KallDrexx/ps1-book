@@ -110,7 +110,7 @@ static void load_assets(void)
 
 int main(void)
 {
-	ResetGraph(0);                       /* the GPU reports its video standard after a reset (README 5.4) */
+	ResetGraph(0);                       /* the SDK's first ResetGraph reads the console's video standard (README 5.4) */
 	video_mode = (GetVideoMode() == MODE_PAL);
 	dt_scale = video_mode ? DT_PAL : DT_NTSC;
 	display_init_mode(video_mode != 0);

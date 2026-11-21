@@ -26,7 +26,7 @@ int16_t projected[8][2];            /* screen x, y of each corner, written every
 
 int32_t angle_x = 128, angle_y = 256;   /* current angles, 4096 = one turn, kept in 0..4095 */
 int32_t step_x = 24, step_y = 40;       /* added every frame */
-int32_t cam_z = 6 * 4096;               /* distance from the camera to the cube's centre, 20.12 */
+int32_t cam_z = 6 * 4096;               /* distance from the camera to the cube's center, 20.12 */
 int32_t proj_h = 256;                   /* projection distance h, in pixels */
 int32_t frame_no;                       /* frames completed */
 
@@ -43,7 +43,7 @@ static void update_angles(void)
 static void project_cube(void)
 {
 	/* TODO (README 7.3, step 2): for each corner: rotate about X, then about Y, move it away from the
-	   camera by cam_z, divide by z, scale by proj_h, add the screen centre; store it in projected[i]. */
+	   camera by cam_z, divide by z, scale by proj_h, add the screen center; store it in projected[i]. */
 }
 
 static void draw_edges(void)

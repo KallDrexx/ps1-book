@@ -8,12 +8,12 @@
 
 | # | Chapter | You build |
 |---|---|---|
-| 1 | The PlayStation and Your Workbench | A working toolchain and a "hello, VRAM" screen fill in your own color |
-| 2 | Memory, the Memory Map, and Endianness | "Memory Cartographer": bytes, halfwords and words written to exact addresses |
-| 3 | Registers, Loads, Stores, and Arithmetic | "Register Calculator" |
-| 4 | Control Flow: Branches and Jumps | "Loop Lab": sums, min/max, array fills |
-| 5 | Anatomy of an Executable: The PSX-EXE Format | "Anatomy Lab": `exeinfo.py` and a hand-written EXE header |
-| 6 | Emulation and Debugging | "Bug Hunt": locate three bugs with the debugger, fix them, and write a Lua trace script |
+| 1 | [The PlayStation and Your Workbench](ch01-workbench/README.md) | A working toolchain and a "hello, VRAM" screen fill in your own color |
+| 2 | [Memory, the Memory Map, and Endianness](ch02-memory-map-and-endianness/README.md) | "Memory Cartographer": bytes, halfwords and words written to exact addresses |
+| 3 | [Registers, Loads, Stores, and Arithmetic](ch03-registers-loads-stores-arithmetic/README.md) | "Register Calculator" |
+| 4 | [Control Flow: Branches and Jumps](ch04-control-flow-branches-and-jumps/README.md) | "Loop Lab": sums, min/max, array fills |
+| 5 | [Anatomy of an Executable: The PSX-EXE Format](ch05-anatomy-of-an-executable/README.md) | "Anatomy Lab": `exeinfo.py` and a hand-written EXE header |
+| 6 | [Emulation and Debugging](ch06-emulation-and-debugging/README.md) | "Bug Hunt": locate three bugs with the debugger, fix them, and write a Lua trace script |
 
 ## How the part flows
 

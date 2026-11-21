@@ -43,7 +43,7 @@ typedef struct {
 } SubdivStats;
 extern SubdivStats subdiv_stats;
 
-extern int32_t subdiv_debug;        /* 1 = every quad drawn gets an outline in the colour of its depth (toggled in game_update) */
+extern int32_t subdiv_debug;        /* 1 = every quad drawn gets an outline in the color of its depth (toggled in game_update) */
 extern int32_t subdiv_reserve;      /* the budget rule's reserve in bytes; starts as SUBDIV_RESERVE; the verifier may patch it */
 
 /* One vertex of a subdivided face. */

@@ -12,8 +12,8 @@
 #define TRK_MAX_W     1023           /* a face wider than this many pixels is skipped: the GPU would drop it ... */
 #define TRK_MAX_H     511            /* ... and taller than this */
 
-/* The legend: the colour a face is drawn in, as a GPU word (r | g << 8 | b << 16). */
-#define COL_FLOOR   0x00504846       /* ( 70,  72,  80)  grey */
+/* The legend: the color a face is drawn in, as a GPU word (r | g << 8 | b << 16). */
+#define COL_FLOOR   0x00504846       /* ( 70,  72,  80)  gray */
 #define COL_WALL    0x00783C28       /* ( 40,  60, 120)  blue */
 #define COL_BOOST   0x00FFC800       /* (  0, 200, 255)  cyan */
 #define COL_START   0x00F0F0F0       /* (240, 240, 240)  white */
@@ -33,7 +33,7 @@ extern int32_t  trk_sz[TRK_MAX_VERTICES];      /* the projected view-space depth
 extern uint8_t  trk_vstate[TRK_MAX_VERTICES];  /* VS_UNSEEN / VS_OK / VS_FAR */
 
 /* Where every face of the last track_draw went: each face of the range is in exactly ONE of the counters below
-   (faces_seen = the sum of the other seven). The verifier reads these 8 words in this order. */
+   (faces_seen = the sum of the six that follow it; wire_prims counts packets, not faces). The verifier reads these 8 words in this order. */
 typedef struct {
 	int32_t faces_seen;              /* faces of the drawn sections */
 	int32_t faces_far;               /* some vertex is VS_FAR */
@@ -48,7 +48,7 @@ extern TrackStats track_stats;
 
 extern int32_t wire_mode;            /* 0 = filled faces only, 1 = with the wireframe overlay (toggled in game_update) */
 
-/* The colour of a face with these flags (a GPU word): START, else BOOST, else WALL, else FLOOR, else COL_OTHER. */
+/* The color of a face with these flags (a GPU word): START, else BOOST, else WALL, else FLOOR, else COL_OTHER. */
 uint32_t track_colour(uint16_t flags);
 
 /* Draw `count` consecutive sections starting at `first` (indices wrap modulo section_count; count above section_count

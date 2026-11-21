@@ -8,7 +8,7 @@ LOST = 4000
 
 
 def d2(centre, pos):
-    """The metric: squared 3D distance between the ship and a section centre (Python integers: no overflow)."""
+    """The metric: squared 3D distance between the ship and a section center (Python integers: no overflow)."""
     return sum((p - c) * (p - c) for p, c in zip(pos, centre))
 
 

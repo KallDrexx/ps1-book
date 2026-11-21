@@ -1,6 +1,7 @@
 ; Chapter 3 -- "Register Calculator"
 ; Read the operands from `inputs`, compute the values listed in the chapter
-; (section 7) and store them into `results`. Then fall through to `done`.
+; (section 7) and store them into `results`, then swap a and b in `inputs`.
+; Execution falls through to `done`.
 
 .psx
 .create "main.ps-exe", 0x8000F800

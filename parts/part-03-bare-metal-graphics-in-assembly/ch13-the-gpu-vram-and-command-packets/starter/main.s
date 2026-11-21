@@ -1,4 +1,4 @@
-; Chapter 13 -- "Colour Bars" (starter)
+; Chapter 13 -- "Color Bars" (starter)
 ;
 ;   gpu_init()                       set up a 320x240 NTSC 15-bit display and the drawing area
 ;   gpu_clear(color, x, y, w, h)     GP0(02h) fill rectangle       color=$a0 x=$a1 y=$a2 w=$a3, h at 16($sp)
@@ -19,7 +19,7 @@
 main:
     ; TODO: make room on the stack (arguments for the callee + saved $ra), then
     ;   gpu_init, gpu_clear(bg_color, 0, 0, 320, 240), and a loop of 8 gpu_rect calls
-    ;   reading the colours from bar_colors.
+    ;   reading the colors from bar_colors.
 
 done:
     j     done                      ; the verifier stops here

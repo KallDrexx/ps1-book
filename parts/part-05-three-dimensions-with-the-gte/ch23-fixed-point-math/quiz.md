@@ -4,10 +4,10 @@
 
 <details><summary>Answer</summary>
 
-A call to `__mulsf3` in libgcc (soft-float), which unpacks the sign, exponent and mantissa, multiplies the mantissas, normalises, rounds and repacks, all in integer instructions. A float multiply plus a float add cost about 177 instructions per iteration of this chapter's loop; the fixed-point equivalent (`fx_mul` plus an add) costs about 14.
+A call to `__mulsf3` in libgcc (soft-float), which unpacks the sign, exponent and mantissa, multiplies the mantissas, normalizes, rounds and repacks, all in integer instructions. A float multiply plus a float add cost about 177 instructions per iteration of this chapter's loop; the fixed-point equivalent (`fx_mul` plus an add) costs about 14.
 </details>
 
-**2.** In 4.12 format, what are the raw values of 1.0, 0.25, -2.5, and the largest and smallest representable numbers? What is the step between neighbouring values?
+**2.** In 4.12 format, what are the raw values of 1.0, 0.25, -2.5, and the largest and smallest representable numbers? What is the step between neighboring values?
 
 <details><summary>Answer</summary>
 

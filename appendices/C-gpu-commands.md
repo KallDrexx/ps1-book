@@ -4,7 +4,7 @@ Every GP0 drawing/VRAM command and GP1 display command the book uses, with word-
 
 | Section | Contents |
 |---|---|
-| C.1 | Writing to the GPU: GP0 / GP1, colour and vertex words, waiting |
+| C.1 | Writing to the GPU: GP0 / GP1, color and vertex words, waiting |
 | C.2 | GP0 command map and packet sizes |
 | C.3 | Polygons |
 | C.4 | Lines and polylines |
@@ -24,11 +24,11 @@ Every GP0 drawing/VRAM command and GP1 display command the book uses, with word-
 | GP0 | `0x1F801810` | drawing commands, parameters and VRAM data | GPUREAD (readback) |
 | GP1 | `0x1F801814` | display control | GPUSTAT |
 
-Both ports take a **word**: use `sw`. A GP0 word is the first word of a packet (command byte on top, usually a colour below) followed by parameter words. A GP1 word is `cc pppppp`: command in bits 31-24, parameter in the low 24 bits.
+Both ports take a **word**: use `sw`. A GP0 word is the first word of a packet (command byte on top, usually a color below) followed by parameter words. A GP1 word is `cc pppppp`: command in bits 31-24, parameter in the low 24 bits.
 
 **Waiting (Ch 13, 15, 16).** Poll GPUSTAT bit 26 until it is 1 **once before the first word of a packet**, and never between the words of a packet or inside a data phase: bit 26 is **clear while the GPU wants parameters or data** (or is busy), so such a wait never ends (verified in PCSX-Redux). The command FIFO holds 16 words. Redux reports ready almost always, so a missing wait appears on hardware, not there. See Appendix B.7.
 
-**Colour in a command word** is `BBGGRR` in the low 24 bits: blue in bits 16-23, red in bits 0-7, **the reverse of the usual `0xRRGGBB`**. The first word of a packet is `cc BBGGRR` (command on top). Extra colour words in Gouraud packets have `00` on top. Each channel is 8 bits; VRAM keeps only the top 5, so a colour read back differs slightly (Ch 1).
+**Color in a command word** is `BBGGRR` in the low 24 bits: blue in bits 16-23, red in bits 0-7, **the reverse of the usual `0xRRGGBB`**. The first word of a packet is `cc BBGGRR` (command on top). Extra color words in Gouraud packets have `00` on top. Each channel is 8 bits; VRAM keeps only the top 5, so a color read back differs slightly (Ch 1).
 
 **Vertex word** (Ch 14): `word = (y << 16) | (x & 0xFFFF)`; each coordinate is a **signed 11-bit** number, -1024..1023: the GPU uses the low 11 bits and sign-extends. Mask a negative `x` to 16 bits before OR-ing it with `y << 16`, or its upper bits destroy `y`. The **drawing offset** (`E5h`) is added to every vertex of a drawing command afterwards.
 
@@ -54,7 +54,7 @@ Both ports take a **word**: use `sw`. A GP0 word is the first word of a packet (
 | `E5h` | drawing offset | 1 | C.7 |
 | `E6h` | mask-bit setting | 1 | C.7 |
 
-Only the command byte of a packet is examined; for `A0h`-style commands "the rest of word 1 is ignored".
+The top byte of word 1 selects the command. The fill, polygon, line and rectangle commands take a color in the low 24 bits; the copy commands (`80h`-`DFh`) ignore them.
 
 ## C.3 Polygons: `20h`-`3Fh`
 
@@ -64,11 +64,11 @@ Only the command byte of a packet is examined; for `A0h`-style commands "the res
 
 | Bit | Value | Meaning when set |
 |---|---|---|
-| 4 | `+10h` | **Gouraud**: a colour per vertex |
+| 4 | `+10h` | **Gouraud**: a color per vertex |
 | 3 | `+08h` | **quad** (4 vertices) instead of triangle |
 | 2 | `+04h` | **textured** |
 | 1 | `+02h` | **semi-transparent** (blend mode from `E1h` bits 5-6, C.9) |
-| 0 | `+01h` | **raw texture**: textured polygons skip the colour modulation (C.8.4) |
+| 0 | `+01h` | **raw texture**: textured polygons skip the color modulation (C.8.4) |
 
 | Command | Polygon | Words |
 |---|---|---|
@@ -81,7 +81,7 @@ Only the command byte of a packet is examined; for `A0h`-style commands "the res
 | `34h` | Gouraud textured triangle | 9 |
 | `3Ch` | Gouraud textured quad | 12 |
 
-Add `02h` for semi-transparent (`22h 2Ah 32h 3Ah 26h 2Eh 36h 3Eh`). For textured polygons, `+01h` selects raw texture (`2Dh` skips modulation; the book uses `2Ch` with colour 128).
+Add `02h` for semi-transparent (`22h 2Ah 32h 3Ah 26h 2Eh 36h 3Eh`). For textured polygons, `+01h` selects raw texture (`2Dh` skips modulation; the book uses `2Ch` with color 128).
 
 ### C.3.2 Untextured packet layouts
 
@@ -135,9 +135,9 @@ Gouraud textured triangle 34h     Gouraud textured quad 3Ch
 | Topic | Rule (Ch 14) |
 |---|---|
 | **Z order** | vertices are sent `v1 v2 v3 v4` and the quad is the triangles `v1 v2 v3` and `v2 v3 v4`, sharing the diagonal `v2-v3`. Sending the outline order (`v1 v2 v4 v3`) makes a bow tie. (Appendix E numbers the same vertices `v0..v3`: triangles `(v0,v1,v2)` and `(v1,v3,v2)`.) |
-| Winding | does **not** matter: the GPU draws clockwise and anticlockwise triangles alike (verified in PCSX-Redux). There is no hardware back-face culling; engines cull in software with `NCLIP` (Ch 25). |
-| Gouraud | each pixel is a barycentric mix of the three vertex colours, linear along every line. In a quad each of the two triangles interpolates **its own three** colours, so a Gouraud quad can show a faint seam along the diagonal; the four corner colours are exact. |
-| Dither | `E1h` bit 9 adds an ordered dither pattern before colours are cut to 5 bits; the book keeps it **off** (`E1h = 0x400`). With dither on, Gouraud pixels shift by a few levels. |
+| Winding | does **not** matter: the GPU draws clockwise and counterclockwise triangles alike (verified in PCSX-Redux). There is no hardware back-face culling; engines cull in software with `NCLIP` (Ch 25). |
+| Gouraud | each pixel is a barycentric mix of the three vertex colors, linear along every line. In a quad each of the two triangles interpolates **its own three** colors, so a Gouraud quad can show a faint seam along the diagonal; the four corner colors are exact. |
+| Dither | `E1h` bit 9 adds an ordered dither pattern before colors are cut to 5 bits; the book keeps it **off** (`E1h = 0x400`). With dither on, Gouraud pixels shift by a few levels. |
 | Affine texturing | UVs are interpolated linearly in screen space, with no perspective correction: large textured polygons warp (Ch 30, 36) |
 
 ## C.4 Lines and polylines: `40h`-`5Fh`
@@ -170,7 +170,7 @@ Add `02h` for semi-transparent, `01h` for raw texture (textured only).
 
 ```
 Monochrome rectangle 60h          Textured rectangle 64h
- 1  60 BB GG RR                    1  64 BB GG RR        (modulation colour)
+ 1  60 BB GG RR                    1  64 BB GG RR        (modulation color)
  2  y | x    (top-left)            2  y | x
  3  h<<16 | w                      3  clut<<16 | v<<8 | u
                                    4  h<<16 | w
@@ -197,17 +197,17 @@ This is a VRAM operation, not a drawing operation:
 | Granularity | blocks of 16 pixels horizontally: **`x` is rounded down to a multiple of 16 and `w` is rounded up to a multiple of 16**. `x = 20, w = 20` paints columns 16 to 47. Heights are exact. psx-spx: `x & 0x3F0`, `w = ((w & 0x3FF) + 0xF) & ~0xF`. |
 | Clipping | **ignores the drawing area** (`E3h/E4h`; the verifier tests it) |
 | Drawing offset | **ignores `E5h`** (PCSX-Redux shows it): give absolute VRAM coordinates, e.g. `(0, 240)` for the second buffer |
-| Colour | 8 bits per channel in the packet; the fill keeps the top 5 and drops the low 3 (Ch 18) |
+| Color | 8 bits per channel in the packet; the fill keeps the top 5 and drops the low 3 (Ch 18) |
 | Use | fast clear of a large area; a full 320 x 240 clear is exact. It cannot draw 40-pixel bars: use `60h` |
 
 ### C.6.2 VRAM to VRAM, `80h`
 
-Four words: `80 00 00 00`, source `y<<16 | x`, destination `y<<16 | x`, size `h<<16 | w` *(not used in the book)*.
+Four words: `0x80000000`, source `y<<16 | x`, destination `y<<16 | x`, size `h<<16 | w` *(not used in the book)*.
 
 ### C.6.3 CPU to VRAM, `A0h` (Ch 16)
 
 ```
- word 1   A0 00 00 00                 command byte A0h (the rest is ignored)
+ word 1   0xA0000000                  command A0h in bits 31-24 (the low 24 bits are ignored)
  word 2   y(31..16) | x(15..0)        destination: top-left unit in VRAM
  word 3   h(31..16) | w(15..0)        size in units
  word 4.. pixel data, two units per word: low half = LEFT unit, high half = right
@@ -225,16 +225,16 @@ Data is the rectangle row by row, no gaps between rows. The GPU needs `ceil(w*h 
 | Waiting | wait for bit 26 once before word 1; send header and data back to back (C.1). Small CPU uploads are common; large ones go by DMA channel 2 (Appendix B.5), paced by the GPU's DMA request |
 | Alignment | the source pointer is read with `lw`: word-aligned |
 
-### C.6.4 24-bit colour
+### C.6.4 24-bit color
 
-GP1 `08h` bit 4 selects 24 bits per displayed pixel. VRAM is then read as **3 bytes per pixel in the order R, G, B** (low address first). psx-spx gives red in bits 0-7, green 8-15, blue 16-23 of the 24-bit value; little-endian that puts red at the lowest address. Verified in PCSX-Redux (Ch 16): random R, G, B bytes uploaded and compared with a 24-bit screenshot pixel by pixel. The 15-bit format is the opposite way round: red is the *low* bits of a unit.
+GP1 `08h` bit 4 selects 24 bits per displayed pixel. VRAM is then read as **3 bytes per pixel in the order R, G, B** (low address first). psx-spx gives red in bits 0-7, green 8-15, blue 16-23 of the 24-bit value; little-endian that puts red at the lowest address. Verified in PCSX-Redux (Ch 16): random R, G, B bytes uploaded and compared with a 24-bit screenshot pixel by pixel. The 15-bit format has the same order: red is the *low* 5 bits of a unit. Both are the reverse of the usual `0xRRGGBB`.
 
 ```
  bytes:      R0 G0 B0 | R1 G1 B1 | R2 G2 B2 | R3 G3 B3
  as units:   unit0 = G0:R0   unit1 = R1:B0   unit2 = B1:G1   unit3 = G2:R2 ...      (3 units hold 2 pixels)
 ```
 
-A pixel is 1.5 units wide: line width in units `= px * 3 / 2 = px + (px >> 1)`; a 320-pixel line takes **480 units** and the 320 x 240 picture is a 480 x 240 rectangle. The transfer knows nothing about colour depth: you send an `A0h` rectangle with `w` in **units**. Keep pixel x offsets and widths even. Only the **display** reads this way; drawing commands still work in 15-bit.
+A pixel is 1.5 units wide: line width in units `= px * 3 / 2 = px + (px >> 1)`; a 320-pixel line takes **480 units** and the 320 x 240 picture is a 480 x 240 rectangle. The transfer knows nothing about color depth: you send an `A0h` rectangle with `w` in **units**. Keep pixel x offsets and widths even. Only the **display** reads this way; drawing commands still work in 15-bit.
 
 ### C.6.5 VRAM to CPU, `C0h`
 
@@ -249,7 +249,7 @@ Same three words as `A0h` (source rectangle); then read the pixels from GPUREAD 
 | 0-3 | texture page X base, in units of 64 (`x = N * 64`, N = 0..15) |
 | 4 | texture page Y base: 0 = line 0, 1 = line 256 |
 | 5-6 | semi-transparency mode (C.9) |
-| 7-8 | texture colour depth: 0 = 4 bpp, 1 = 8 bpp, 2 = 15 bpp |
+| 7-8 | texture color depth: 0 = 4 bpp, 1 = 8 bpp, 2 = 15 bpp |
 | 9 | dither 24 to 15 bit (1 = on) |
 | 10 | **drawing to the display area allowed** (the book always sets it: `0x400`) |
 | 11 | texture disable (needs GP1 `09h`) *(not used)* |
@@ -290,7 +290,7 @@ A **texture page** is a 256 x 256 *texel* window into VRAM. It starts on a multi
 |---|---|---|---|
 | 4 bpp | 4 (a 4-bit palette index) | 64 x 256 | `4 x offset` |
 | 8 bpp | 2 (an 8-bit index) | 128 x 256 | `2 x offset` |
-| 15/16 bpp | 1 (a colour) | 256 x 256 | `offset` |
+| 15/16 bpp | 1 (a color) | 256 x 256 | `offset` |
 
 UVs are **8-bit texel coordinates inside the page**, `0..255`, `(0,0)` its top-left. So a texture is at most 256 x 256, must not cross the edge of its page, and a polygon can use only one page. The crate (8 bpp, image at x = 704) is in page column 11 at `u0 = 0`; the panel (4 bpp, x = 736) is in column 11 at `u0 = (736 mod 64) x 4 = 128`. A texture is placed by its **image block** (the page word comes from the image rectangle, the CLUT word from the CLUT rectangle).
 
@@ -312,23 +312,23 @@ CLUT word (16 bits, upper half of the FIRST UV word)
 +--+---------------------+-----------+
 ```
 
-Worked example (Ch 30): crate, 8 bpp, image at (704, 0), CLUT at (0, 496): tpage = `704/64 | (1 << 7)` = `0x8B`; CLUT = `496 << 6` = `0x7C00`. SDK macros: `getTPage(tp, abr, x, y)`, `getClut(x, y)`. Bits above 8 of the tpage word stay 0. A CLUT row is 16 colours (4 bpp) or 256 (8 bpp) of 15-bit colours stored in VRAM like any image; its `x` is a multiple of 16.
+Worked example (Ch 30): crate, 8 bpp, image at (704, 0), CLUT at (0, 496): tpage = `704/64 | (1 << 7)` = `0x8B`; CLUT = `496 << 6` = `0x7C00`. SDK macros: `getTPage(tp, abr, x, y)`, `getClut(x, y)`. Bits above 8 of the tpage word stay 0. A CLUT row is 16 colors (4 bpp) or 256 (8 bpp) of 15-bit colors stored in VRAM like any image; its `x` is a multiple of 16.
 
 ### C.8.3 Transparency and the mask bit
 
 | Rule | Detail |
 |---|---|
-| A texel of colour `0x0000` | **transparent** (not drawn). The colour value counts, not the index: the CLUT entry the index selects, or the texel itself at 16 bpp |
+| A texel of color `0x0000` | **transparent** (not drawn). The color value counts, not the index: the CLUT entry the index selects, or the texel itself at 16 bpp |
 | Opaque black | store `0x0421` (the book's `img2tim.py` does); `0x8000` (STP set) is also opaque black on an opaque polygon |
 | Bit 15 of a texel (STP) | matters only for semi-transparent polygons: STP = 1 texels are blended, STP = 0 texels stay opaque |
 
 ### C.8.4 Modulation
 
-The polygon colour `(r, g, b)` multiplies the texel: `out = texel x colour / 128` per channel, so **128 (`0x80`) is neutral**, 255 brightens up to almost 2x and 0 gives black. Command bit 0 (raw texture, e.g. `2Dh`) skips it. The book uses `2Ch` with colour 128, which is the texture as stored.
+The polygon color `(r, g, b)` multiplies the texel: `out = texel x color / 128` per channel, so **128 (`0x80`) is neutral**, 255 brightens up to almost 2x and 0 gives black. Command bit 0 (raw texture, e.g. `2Dh`) skips it. The book uses `2Ch` with color 128, which is the texture as stored.
 
 ## C.9 Semi-transparency
 
-Two things are needed: the **command bit 1** (`22h 2Ah 32h 3Ah`, textured `+02h`), and the mode in `E1h` bits 5-6 (or the tpage word's `abr` for textured polygons). *B* is the pixel already in VRAM, *F* the polygon's colour (Ch 14):
+Two things are needed: the **command bit 1** (`22h 2Ah 32h 3Ah`, textured `+02h`), and the mode in `E1h` bits 5-6 (or the tpage word's `abr` for textured polygons). *B* is the pixel already in VRAM, *F* the polygon's color (Ch 14):
 
 | `E1h` bits 5-6 | Result | Meaning |
 |---|---|---|
@@ -362,7 +362,7 @@ The mode is state: it persists until the next `E1h` and applies to every later c
 | 0-1 | horizontal resolution: 0 = 256, 1 = 320, 2 = 512, 3 = 640 | 1 |
 | 2 | vertical resolution: 0 = 240, 1 = 480 (480 needs interlace) | 0 |
 | 3 | video mode: 0 = **NTSC**, 1 = **PAL** | 0 |
-| 4 | colour depth: 0 = 15-bit, 1 = 24-bit | 0 (1 in Ch 16 part 2) |
+| 4 | color depth: 0 = 15-bit, 1 = 24-bit | 0 (1 in Ch 16 part 2) |
 | 5 | interlace: 0 = off, 1 = on | 0 |
 | 6 | horizontal resolution 368 (overrides bits 0-1) | 0 |
 | 7 | reverse flag | 0 |
@@ -377,8 +377,9 @@ GPUSTAT bits 16-22 echo the mode word and bit 23 echoes GP1(03h). In the SDK, `S
 
 ### Display start, ranges
 
-* **Display area** (what part of VRAM) is set by `05h` plus the mode; the **display range** (where on the TV it lands) by `06h`/`07h`. They are independent. A range smaller than the picture crops it; larger gives black borders.
-* Each pixel of a 320-wide picture takes 8 GPU clocks, so 320 pixels need `x2 - x1 = 2560`; the usual values are `0x260` to `0xC60`. A 240-line picture needs `y2 - y1 = 240`.
+* `05h` sets where in VRAM the display **starts**. The **display ranges** (`06h`/`07h`) set where on the TV it lands *and* how much is shown: `y2 - y1` lines and `(x2 - x1) / clocks-per-pixel` pixels (psx-spx rounds the pixel count to a multiple of 4). The horizontal resolution in `08h` sets only the pixel width: 10, 8, 7, 5 or 4 GPU clocks for 256, 320, 368, 512 or 640.
+* A shorter range shows less of the picture; a longer one shows **more of VRAM** (whatever lies right of or below your buffer), not a black border (Ch 13, from psx-spx).
+* 320 pixels at 8 clocks need `x2 - x1 = 2560`; the usual values are `0x260` to `0xC60`. A 240-line picture needs `y2 - y1 = 240`.
 * Double buffering (Ch 17): two 320 x 240 buffers at `(0,0)` and `(0,240)`; draw into one while `05h` shows the other; **one `05h` write per frame**, after waiting for the GPU (GPUSTAT bit 26); a fill into a buffer needs absolute coordinates because it ignores the offset.
 
 ### NTSC and PAL (Ch 13)
@@ -389,7 +390,7 @@ GPUSTAT bits 16-22 echo the mode word and bit 23 echoes GP1(03h). In the SDK, `S
 | Scanlines per frame (non-interlaced) | 263 | 314 |
 | GPU clocks per scanline | 3413 | 3406 |
 | Visible lines | up to 240 (about 224 on most TVs) | up to 288 |
-| Vertical centre line (psx-spx) | `0x88` = 136 | `0xA3` = 163 |
+| Vertical center line (psx-spx) | `0x88` = 136 | `0xA3` = 163 |
 | 240-line vertical range | 16 to 256 | about 43 to 283 |
 | CPU cycles per vertical blank | 566,120 (Redux, measured) | about 675,900 (Redux); about 680,600 on hardware |
 

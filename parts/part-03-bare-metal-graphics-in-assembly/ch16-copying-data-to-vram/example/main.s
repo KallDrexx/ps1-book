@@ -34,7 +34,7 @@ ex_row:
 ex_cell:
     srl   $t4, $t2, 2               ; cell row = row / 4
     addu  $t4, $t4, $t3
-    andi  $t4, $t4, 1               ; checker colour
+    andi  $t4, $t4, 1               ; checker color
     beqz  $t4, ex_white
     move  $t1, $t6
     move  $t1, $t7
@@ -85,7 +85,7 @@ gi_wait:
     jr    $ra
     nop
 
-gpu_clear:                      ; fill rectangle: GP0(02h), the colour is 0x00RRGGBB; h is the 5th argument, 16($sp)
+gpu_clear:                      ; fill rectangle: GP0(02h), the color is 0x00RRGGBB; h is the 5th argument, 16($sp)
     lui   $t0, 0x1F80
     lw    $t3, 16($sp)          ; h
 gc_wait:

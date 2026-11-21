@@ -2,12 +2,12 @@
 
 **1. Why does the book's verifier start PCSX-Redux with `-interpreter`?**
 <details><summary>Answer</summary>
-Breakpoints need the interpreter, which can check for them before every instruction. A dynarec runs translated blocks of host code with no per-instruction hook point; in the pinned Redux an exec breakpoint never fires under the dynarec, which is Redux's default CPU.
+Breakpoints need the interpreter, which can check for them before every instruction. A dynarec runs translated blocks of host code with no check between instructions; in the pinned Redux an exec breakpoint never fires under the dynarec, which is Redux's default CPU.
 </details>
 
 **2. What do you gain, and what do you pay, for a more accurate emulator?**
 <details><summary>Answer</summary>
-You gain behaviour closer to a real console (timing, DMA and bus behaviour, GPU details), so programs that race the hardware are tested honestly. You pay in speed, and sometimes in features aimed at players such as upscaling. Programs that only compute behave the same on all of them.
+You gain behavior closer to a real console (timing, DMA and bus behavior, GPU details), so programs that depend on hardware timing are tested properly. You pay in speed. Programs that only compute behave the same on all emulators.
 </details>
 
 **3. You want to know which instruction overwrites a variable called `score`. Which breakpoint type do you set, and on what?**
@@ -37,10 +37,10 @@ In the disassembly (Assembly window), not the source. A pseudo-instruction betwe
 
 **8. Your Lua script's breakpoint works for a few hits and then stops printing. A likely cause?**
 <details><summary>Answer</summary>
-The object returned by `PCSX.addBreakpoint` was not stored in a global (or any live variable), so Lua's garbage collector deleted it and the breakpoint was removed.
+The object returned by `PCSX.addBreakpoint` was not stored in a global, so Lua's garbage collector deleted it and the breakpoint was removed.
 </details>
 
 **9. You insert a `nop` near the top of a program to test something and your `findings.txt` addresses are suddenly "wrong". Why?**
 <details><summary>Answer</summary>
-Every instruction after the new one moves up by four bytes, and so do all later labels. Record addresses from an unmodified build, or recompute them from the new `.sym` file.
+Every instruction after the new one moves up by four bytes, and so do all later labels. `findings.txt` must hold addresses from the unmodified build, which is what the verifier compares against.
 </details>

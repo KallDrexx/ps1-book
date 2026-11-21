@@ -29,7 +29,7 @@ static int32_t out;
 #define ALU4 ALU2 ALU2
 #define ALU8 ALU4 ALU4
 
-/* name, the k instructions, the command (empty string = no command) */
+/* name, the command (empty string = no command), the k instructions */
 #define ROW(name, cmd, ops)                                                                     \
 	static uint32_t name(void)                                                                  \
 	{                                                                                           \

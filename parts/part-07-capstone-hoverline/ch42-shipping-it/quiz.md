@@ -11,7 +11,7 @@ Times are minutes:seconds:frames with 75 frames (sectors) per second. `INDEX 01`
 
 <details><summary>Answer</summary>
 
-Dates: the volume descriptor (sector 16) holds the volume's creation and modification time, and every directory record holds the file's date. A sector also ends in error-detection and error-correction bytes computed from its contents, so patching a date means recomputing them; it is easier and safer to give the dates in the project file so the tool writes the right ones in the first place. (And the tool must be one that understands the attributes: the SDK's bundled mkpsxiso ignores the dates of files and directories without a word.)
+Dates: the volume descriptor (sector 16) holds the volume's creation and modification time, and every directory record (the root directory, `DATA\`) holds its file's date. A sector also ends in error-detection and error-correction bytes computed from its contents, so patching a date means recomputing them; it is easier and safer to give the dates in the project file so the tool writes the right ones in the first place. (And the tool must be one that understands the attributes: the SDK's bundled mkpsxiso ignores the dates of files and directories without a word.)
 </details>
 
 **3.** The release folder has `MANIFEST.txt` and `SHA256SUMS`. What does each one describe, and why do you need both?
@@ -32,7 +32,7 @@ Bit 20 of the GPU status register (`0x1F801814`): 0 = NTSC, 1 = PAL. PSn00bSDK's
 
 <details><summary>Answer</summary>
 
-A release build may remove *tools* (keys, readouts, logging) but not *behaviour*: everything you verified, played and measured was done with the development build's rules, so a release with different rules is an untested game. The switch should be the single `HOVERLINE_RELEASE` guard around things the player never uses, and the verifier's play-through of the release disc (the countdown ticks, the ship accelerating) exists to catch accidental differences.
+A release build may remove *tools* (keys, readouts, logging) but not *behavior*: everything you verified, played and measured was done with the development build's rules, so a release with different rules is an untested game. The switch should be the single `HOVERLINE_RELEASE` guard around things the player never uses, and the verifier's play-through of the release disc (the countdown ticks, the ship accelerating) exists to catch accidental differences.
 </details>
 
 **6.** Why does `NOTICES.TXT` go on the disc, with the volume's copyright identifier naming it, as well as in the release folder?
@@ -46,5 +46,5 @@ The folder is separated from the image the first time somebody copies only the `
 
 <details><summary>Answer</summary>
 
-It tests that the program **asks the console** which standard it is on: the verifier sets the GPU to PAL just before `main`, so `video_mode`, `dt_scale` and the countdown length (150 ticks) change only if the program reads the status bit and uses it. It does not test the PAL frame period (the emulator keeps its own clock), the picture on a 288-line display, or any PAL BIOS: a console report, not a PAL machine.
+It tests that the program **asks the console** which standard it is on: the verifier sets the GPU to PAL just before `main`, so `video_mode`, `dt_scale` and the countdown length (150 ticks) change only if the program reads the status bit and uses it. It does not test the length of a PAL frame (ticks are counted, not cycles), the picture on a PAL display, or any PAL BIOS: it checks what the program reads, not a PAL machine.
 </details>

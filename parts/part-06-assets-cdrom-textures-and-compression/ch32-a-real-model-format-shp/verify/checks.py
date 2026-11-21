@@ -7,9 +7,9 @@ ordering table DrawOTag was given. Checks against the generator's manifest and t
   TPK's textures with the tpage/clut/u/v/w/h of Appendix E.3.4;
   geometry: mtx is the SDK's RotMatrix of the angles with translation (0, 0, cam_z); screen_xy / screen_z follow a float projection of the file's vertices;
   packets: for every record the verifier derives the expected packet from the FILE and from the program's own screen_xy/screen_z (integer NCLIP, culling rule,
-  double-sided flag, AVSZ3/AVSZ4 slot rule, per-type kind, colours, absolute UVs, tpage and clut from the manifest's tsb/cba, the semi-transparency bit) and the
+  double-sided flag, AVSZ3/AVSZ4 slot rule, per-type kind, colors, absolute UVs, tpage and clut from the manifest's tsb/cba, the semi-transparency bit) and the
   multiset of packets in the table must be exactly that, in both modes;
-  picture: the screenshot's silhouette matches the projected vertices; sample points of the top-most polygons have the colour the packet
+  picture: the screenshot's silhouette matches the projected vertices; sample points of the top-most polygons have the color the packet
   (and, for textures, the TIM) says; the perceptual hash (dHash 16x16) is within a tolerance of a reference render of the solution (verify/ref/*.png).
 ALT RUN: a second disc: SHIP.SHP is the alternate ship (shpgen --variant 1: other counts, no canopy, two more GT4) and SHIP.TPK holds the same three textures
 at other VRAM places (one in a different page, one 8 bpp): everything above again except the hash. Hard-coded counts or TSB/CBA fail here.
@@ -445,17 +445,17 @@ def check_packets(ctx, name):
             if extra:
                 what.append(f"{len(extra)} unexpected packet(s), e.g. {by(extra, got)}")
             raise CheckFailure(expected=f"{tag}: {len(exp)} packets: every front-facing (or double-sided) record, built as its own type"
-                               + (" (flat fallback: FT -> F, GT -> G, colours as stored)" if not s["mode"] else " with tpage/clut/UVs from the store"),
+                               + (" (flat fallback: FT -> F, GT -> G, colors as stored)" if not s["mode"] else " with tpage/clut/UVs from the store"),
                                actual="; ".join(what),
                                hint="Culling: skip area <= 0 unless double-sided (then only area == 0). Kind: the record's type (textured only in render_mode 1). "
-                                    "UV: texture-local + the texture's (u, v). tpage/clut: from store.tex[tex]. Colours as stored. Quads: v0 v1 v2 v3 as stored.")
+                                    "UV: texture-local + the texture's (u, v). tpage/clut: from store.tex[tex]. Colors as stored. Quads: v0 v1 v2 v3 as stored.")
         for k, slots in ek.items():
             expect_eq(sorted(gk[k]), sorted(slots), f"{tag}: ordering-table slot of {k[0]} at {k[2][0]}", fmt="dec",
-                      hint="slot = OTZ >> 3, OTZ from AVSZ3 (triangles) or AVSZ4 (quads) of the vertices' screen_z (README 6).")
+                      hint="slot = OTZ >> 3, OTZ from AVSZ3 (triangles) or AVSZ4 (quads) of the vertices' screen_z (README 7.2).")
     return sc
 
 
-@check("the packets: for every record the right primitive type, colours, absolute UVs, tpage/clut, semi-transparency bit, culling and OT slot, in both modes at 3 poses",
+@check("the packets: for every record the right primitive type, colors, absolute UVs, tpage/clut, semi-transparency bit, culling and OT slot, in both modes at 3 poses",
        hint="Per record: shp_decode, NCLIP cull, AVSZ slot, shp_packet_size + shp_fill with the store's Tex (mode 1) or NULL (mode 0).")
 def _(ctx):
     check_packets(ctx, "main")
@@ -523,7 +523,7 @@ def close(a, b, tol):
 
 
 def texels_near(tims, idx, lu, lv, r=2):
-    """The opaque texels of texture idx within r texels of local (lu, lv): the rasteriser's exact pick is one of them."""
+    """The opaque texels of texture idx within r texels of local (lu, lv): the rasterizer's exact pick is one of them."""
     w, h, px = T.decode_rgba(T.parse(tims[idx]))
     out = []
     for dv in range(-r, r + 1):
@@ -563,7 +563,7 @@ def check_picture(ctx, name):
         by0, by1 = min(p[1] for p in nb), max(p[1] for p in nb)
         expect_true(abs(bx0 - min(xs)) <= 4 and abs(bx1 - max(xs)) <= 4 and abs(by0 - min(ys)) <= 4 and abs(by1 - max(ys)) <= 4,
                     f"{tag}: silhouette bounding box equals the projected polygons'", f"picture x {bx0}..{bx1}, y {by0}..{by1} vs projected x {min(xs)}..{max(xs)}, y {min(ys)}..{max(ys)}",
-                    hint="Wrong vertices, a polygon missing, or the whole thing off-centre?")
+                    hint="Wrong vertices, a polygon missing, or the whole thing off-center?")
         # sample points of the top-most polygons
         ok = bad = tex_ok_here = 0
         first_bad = None
@@ -603,8 +603,8 @@ def check_picture(ctx, name):
                 bad += 1
                 first_bad = first_bad or f"{describe_pk(pk)}: picture at ({c[0]:.0f}, {c[1]:.0f}) is {fmt_rgb(px)}, expected about {fmt_rgb(want)}"
         expect_true(ok >= 4, f"{tag}: enough top-most polygons to sample", f"{ok}")
-        expect_true(bad <= max(1, ok // 8), f"{tag}: sample points have the colour their packet says ({ok} ok, {bad} off)", first_bad,
-                    hint="The picture and the packets disagree: wrong colours written, textures not uploaded, or the CLUT wrong.")
+        expect_true(bad <= max(1, ok // 8), f"{tag}: sample points have the color their packet says ({ok} ok, {bad} off)", first_bad,
+                    hint="The picture and the packets disagree: wrong colors written, textures not uploaded, or the CLUT wrong.")
         # a textured render must show texels: top-most textured polygons whose picture matched their texture
         if s["mode"] == 1:
             print(f"  ({tag}: {tex_ok_here} textured sample points matched)")
@@ -613,7 +613,7 @@ def check_picture(ctx, name):
     return r, info, sc
 
 
-@check("pictures (main disc): silhouette = projected polygons; top-most polygons show their packet's colour or texel (textured renders show texels)",
+@check("pictures (main disc): silhouette = projected polygons; top-most polygons show their packet's color or texel (textured renders show texels)",
        hint="If the packets check passes and this fails, VRAM or the draw environment is at fault; if both fail, fix the packets first.")
 def _(ctx):
     check_picture(ctx, "main")
@@ -840,7 +840,7 @@ def _(ctx):
 
 
 @check("shp_parse: every damaged file is rejected with the documented code (ALIGN -2, MAGIC -3, HEADER -4, PRIM -5, INDEX -6, TEXTURE -7)",
-       hint="The order of shp.h: alignment, magic, header consistency (including 64-bit-safe sums), the record walk (tag, size, fit, count, leftovers), then indices, then texture.")
+       hint="The order of shp.h: alignment, magic, header consistency (including sums that cannot wrap), the record walk (tag, size, fit, count, leftovers), then indices, then texture.")
 def _(ctx):
     cases, recs, _ = direct_run(ctx)
     for c, rec in zip(cases, recs):
@@ -857,7 +857,7 @@ def prim_dict(rec_bytes, size_ret):
 
 
 @check("shp_decode: every record of the ship and of the alternate ship decodes to the reference's fields; it returns the record size and writes nothing else",
-       hint="Per type (E.8.2): indices at +4, then the normal, a pad for quads, UVs and the texture index for textured types, then the colours: 1 for F/FT, one per vertex for G/GT.")
+       hint="Per type (E.8.2): indices at +4, then the normal, a pad for quads, UVs and the texture index for textured types, then the colors: 1 for F/FT, one per vertex for G/GT.")
 def _(ctx):
     cases, recs, _ = direct_run(ctx)
     for c, rec in zip(cases, recs):
@@ -876,7 +876,7 @@ def _(ctx):
             expect_eq(got["uv"][:nvv], [tuple(x) for x in d["uv"]], f"{label} ({t}): texture-local UVs", fmt="dec")
             expect_eq(got["tex"], d["tex"], f"{label} ({t}): texture index", fmt="dec")
         cols = [tuple(x) + (0,) for x in d["colors"]]
-        expect_eq(got["rgb"][:len(cols)], cols, f"{label} ({t}): colours (r, g, b, 0)", fmt="dec")
+        expect_eq(got["rgb"][:len(cols)], cols, f"{label} ({t}): colors (r, g, b, 0)", fmt="dec")
         expect_eq(bytes.fromhex(rec["reads"][1]), bytes([FILL]) * GUARD, f"{label}: bytes after the 40-byte ShpPrim are untouched", hint="Write only the struct.")
 
 
@@ -897,8 +897,8 @@ def _(ctx):
             expect_eq(rec["v0"], want, c["name"], fmt="dec")
 
 
-@check("shp_fill: all eight types, with and without a texture: command byte, tag length, colours, signed coordinates, texture-local UV + the texture's origin, tpage, clut, semi-transparency",
-       hint="setPolyXX, setRGBn, setXY3/4 from sxy (low half x, high half y, SIGNED 16-bit), setUV3/4 with u + tex->u, v + tex->v, p->tpage / p->clut, setSemiTrans for flag bit 1.")
+@check("shp_fill: all eight types, with and without a texture: command byte, tag length, colors, signed coordinates, texture-local UV + the texture's origin, tpage, clut, semi-transparency",
+       hint="Per packet kind: command byte and length (setPolyXX), colors, x and y from sxy (low half x, high half y, SIGNED 16-bit), and for a texture the local UV plus the texture's origin and its tpage and clut words; the semi-transparency bit for flag bit 1.")
 def _(ctx):
     cases, recs, sxy = direct_run(ctx)
     for c, rec in zip(cases, recs):
@@ -918,7 +918,7 @@ def _(ctx):
         expect_eq(pk["semi"], bool(c["flags"] & 2), f"{c['name']}: semi-transparency bit")
         expect_eq(pk["xy"], [sxy[i] for i in c["v"][:n]], f"{c['name']}: vertices", fmt="dec", hint="sxy[v[k]]: x = (int16_t) low half, y = high half >> 16: negative values!")
         want_rgb = c["rgb"][:n] if kind[0] == "G" else c["rgb"][:1]
-        expect_eq(pk["rgb"], want_rgb, f"{c['name']}: colours", fmt="dec")
+        expect_eq(pk["rgb"], want_rgb, f"{c['name']}: colors", fmt="dec")
         if "T" in kind:
             tp, cl, u0, v0, _, _ = c["tex"]
             expect_eq(pk["uv"], [(u + u0, v + v0) for u, v in c["uvs"][:n]], f"{c['name']}: UVs (local + texture origin)", fmt="dec")

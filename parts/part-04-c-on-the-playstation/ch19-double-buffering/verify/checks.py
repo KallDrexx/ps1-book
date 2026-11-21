@@ -1,9 +1,9 @@
 """Chapter 19 checks: Double Buffering with Display and Draw Environments.
 Build: CMake + PSn00bSDK. Three emulator runs of 130 frames (OpenBIOS takes ~32 before `main`): the shipped initial state and two states the
-verifier patches into hue, hue_step and rect_x (frame_no is zero-initialised, in .bss, so not patchable), so a hard-coded colour or trajectory cannot pass.
+verifier patches into hue, hue_step and rect_x (frame_no is zero-initialized, in .bss, so not patchable), so a hard-coded color or trajectory cannot pass.
 probe.lua records the state variables at every GP1 05h (display start) write and at every VBlank. Checks: the state follows the stated update
 rules, the display start alternates 0 / 240 once per VBlank (one loop iteration per frame), and screenshots show a solid background of
-exactly the colour the hue state implies (sampled on a grid: a torn frame or a stale rectangle fails) with the white rectangle where
+exactly the color the hue state implies (sampled on a grid: a torn frame or a stale rectangle fails) with the white rectangle where
 rect_x says."""
 import re
 
@@ -70,7 +70,7 @@ def _(ctx):
 def _(ctx):
     for k, want in SHIPPED.items():
         if k == "frame_no":
-            continue        # zero-initialised: lives in .bss, not in the executable image
+            continue        # zero-initialized: lives in .bss, not in the executable image
         off = ctx.symbols[k] - ctx.exe.load_addr
         expect_eq(int.from_bytes(ctx.exe.code[off:off + 4], "little"), want, f"initial {k}", fmt="dec")
 
@@ -140,8 +140,8 @@ def white_run(img, y):
     return (xs[0], len(xs)) if xs else (None, 0)
 
 
-@check("screenshots: one solid background colour (no tearing), the right hue, the rectangle where rect_x says",
-       hint="Per shot: every sampled pixel outside the rectangle has the colour hue_to_rgb(hue) gives; white 32x32 rectangle at (rect_x, 104).")
+@check("screenshots: one solid background color (no tearing), the right hue, the rectangle where rect_x says",
+       hint="Per shot: every sampled pixel outside the rectangle has the color hue_to_rgb(hue) gives; white 32x32 rectangle at (rect_x, 104).")
 def _(ctx):
     for name in STATES:
         r = run(ctx, name)
@@ -162,19 +162,19 @@ def _(ctx):
                         bad.append((x, y, img.pixel(x, y)))
             expect_true(not bad, f"all {30 * 40} sampled background pixels = {bg}",
                         f"{len(bad)} differ, e.g. {bad[:3]} {what}",
-                        "Several colours in one frame means tearing or a missing clear: clear the back buffer every frame "
-                        "(isbg + PutDrawEnv) and swap only after VSync. A wrong colour: check hue_to_rgb and the isbg clear.")
+                        "Several colors in one frame means tearing or a missing clear: clear the back buffer every frame "
+                        "(isbg + PutDrawEnv) and swap only after VSync. A wrong color: check hue_to_rgb and the isbg clear.")
             left, n = white_run(img, RECT_Y + RECT_H // 2)
             expect_true(left is not None and abs(left - st["x"]) <= 1 and abs(n - RECT_W) <= 2,
                         f"white rectangle {RECT_W} wide starting at x = {st['x']}", f"left={left}, width={n} {what}",
-                        "TILE at (rect_x, 104), 32x32, colour 255,255,255, sent with DrawPrim after the clear.")
+                        "TILE at (rect_x, 104), 32x32, color 255,255,255, sent with DrawPrim after the clear.")
             expect_pixel(img, st["x"] + RECT_W // 2, RECT_Y + 2, (255, 255, 255), tol=12)
             expect_pixel(img, st["x"] + RECT_W // 2, RECT_Y + RECT_H - 3, (255, 255, 255), tol=12)
             shots[tag] = (st, bg, left)
         (sa, bga, la), (sb, bgb, lb) = shots["a"], shots["b"]
         expect_eq(sb["n"] - sa["n"], SHOT_B - SHOT_A, f"frames between the two screenshots ({name})",
                   hint="One frame per VBlank.")
-        expect_true(max(abs(a - b) for a, b in zip(bga, bgb)) >= 16, "background colour differs between the shots",
+        expect_true(max(abs(a - b) for a, b in zip(bga, bgb)) >= 16, "background color differs between the shots",
                     f"{bga} vs {bgb} ({name})", "The background must cycle: hue += hue_step every frame.")
         want = (sb["x"] - sa["x"])
         expect_true(abs((lb - la) - want) <= 1, f"rectangle moved {want} px between the shots ({name}; 1 px per frame)",

@@ -437,7 +437,7 @@ def _(ctx):
 
 
 @check("program starts at the header's entry point and reaches `done`",
-       hint="If the header is wrong the BIOS loader may refuse the file or run garbage: the run times out. "
+       hint="If the header is wrong the loader may refuse the file or run garbage: the run times out. "
             "Check the load address (header word, .org and .create must agree) and the PC.")
 def _(ctx):
     header_ok(ctx)

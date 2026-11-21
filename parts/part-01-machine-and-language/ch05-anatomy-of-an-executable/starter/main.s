@@ -1,8 +1,8 @@
 ; Chapter 5 -- "Hand-Made Header"
-; Write the PSX-EXE header by hand (chapter section 7, part b). The code below is given.
+; Write the PSX-EXE header by hand (chapter section 7, part b). The code below is given: do not edit it.
 
 .psx
-.definelabel LOAD, 0x80010000          ; CHANGE ME: where the BIOS copies the code
+.definelabel LOAD, 0x80010000          ; CHANGE ME: where the loader copies the code
 .create "main.ps-exe", 0x8000F800      ; must equal LOAD - 0x800 (.create needs a literal number)
 
 ; ---- the 2048-byte header: YOUR CODE HERE ---------------------------------
@@ -16,8 +16,8 @@
 
 main:
     la    $s0, results
-    sw    $gp, 0x00($s0)               ; GP as the BIOS set it
-    sw    $sp, 0x04($s0)               ; SP as the BIOS set it
+    sw    $gp, 0x00($s0)               ; GP as the loader set it
+    sw    $sp, 0x04($s0)               ; SP as the loader set it
     la    $t0, main
     sw    $t0, 0x08($s0)               ; where this code really is
 

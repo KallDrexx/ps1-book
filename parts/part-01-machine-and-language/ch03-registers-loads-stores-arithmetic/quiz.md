@@ -20,9 +20,9 @@ Same result bits. `add` raises an Overflow exception when the signed result does
 `addiu $t0, $t0, -100`. There is no subtract-immediate; the 16-bit immediate is sign-extended, so a negative one subtracts.
 </details>
 
-**5. Why is `addiu $t0, $zero, 0x8000` not 32768?**
+**5. What range of constants can one `addiu` add, and how do you add 40000 to `$t0`?**
 <details><summary>Answer</summary>
-The immediate is sign-extended: `0x8000` has bit 15 set, so it becomes `0xFFFF8000` (-32768). Use `ori $t0, $zero, 0x8000` for 32768.
+-32768 to 32767, because the 16-bit immediate is sign-extended. Build 40000 in another register (`li $t1, 40000`, which is one `ori`) and use `addu $t0, $t0, $t1`. Writing `addiu $t0, $t0, 0x9C40` would add -25536.
 </details>
 
 **6. This code stores the wrong value. Why?**

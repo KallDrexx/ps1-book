@@ -3,16 +3,16 @@ Build: CMake + PSn00bSDK.
 STATIC: the state symbols exist; the program's OWN objects (project + psxe, never the SDK's libraries) contain GTE commands
 (RTPS or RTPT, NCLIP, AVSZ3 or AVSZ4); no floating point; the reference solution's psxe mirrors common/psxe.
 DYNAMIC (probe.lua): every time the program calls frame_done() the probe records all 45 words of objects[], the CPU cycles
-between render_begin() and render_end(), and the quads found by WALKING the ordering table handed to DrawOTag (slot, colour,
+between render_begin() and render_end(), and the quads found by WALKING the ordering table handed to DrawOTag (slot, color,
 four corners). The Python reference below is the contract of README section 7:
   * physics: per object, per frame: vy += gravity; y += vy; if y > (floor_y - radius) << 12 then y = that, vy = -fx_mul(vy,
     bounce), bounces++; each angle = (angle + step) & 4095. Compared EXACTLY, every frame, in the shipped run (300 frames) and
-    in a run whose start state, gravity, restitution, floor height, sizes, steps, colours, camera and lens are all patched;
+    in a run whose start state, gravity, restitution, floor height, sizes, steps, colors, camera and lens are all patched;
   * drawing: object matrix = RotMatrix(angles) with its columns scaled by size, translation (x, y >> 12, z), composed with the
     camera matrix (identity rotation, translation cam); corners projected as the GTE's RTPS does (the divider of psx-spx);
     a face is drawn iff NCLIP of its corners 0, 1, 2 is positive; its OT slot is (AVSZ4 of the four SZ) >> 7 (+-1);
-    the floor is 8 x 6 tiles at slot 63 whose corners and checker colours follow the same projection;
-  * the picture: tile centres and visible face centres have the right colour.
+    the floor is 8 x 6 tiles at slot 63 whose corners and checker colors follow the same projection;
+  * the picture: tile centers and visible face centers have the right color.
 Runs: shipped numbers (300 frames); patched everything (150 frames); a frozen scene (gravity 0, no spin) for the picture."""
 import re
 import shutil
@@ -339,7 +339,7 @@ def check_tables(name, d, t):
     expect_eq(t["shade"], SHADE, f"{name}: face_shade[]", hint="Do not change the shade table.")
     expect_eq(t["faces"], [v for f in FACES for v in f], f"{name}: faces[]", hint="Do not change the face table.")
     expect_eq(t["cube"], [v for i in range(8) for v in (*corner(i), 0)], f"{name}: cube[]", hint="Do not change the cube table.")
-    expect_eq(t["floor_colors"], [v for c in d["floors"] for v in c], f"{name}: floor_colors[]", hint="Do not change the floor colours.")
+    expect_eq(t["floor_colors"], [v for c in d["floors"] for v in c], f"{name}: floor_colors[]", hint="Do not change the floor colors.")
 
 
 def check_frames(ctx, name):
@@ -380,7 +380,7 @@ HINTS = {
 
 # ---- drawing checks ------------------------------------------------------------------------------------------------------------------
 def check_cubes(ctx, name):
-    """The cube quads in the ordering table against the reference: which faces, their colours, corners and slots."""
+    """The cube quads in the ordering table against the reference: which faces, their colors, corners and slots."""
     r, d, rows = check_frames(ctx, name)       # drawn from the program's OWN state: physics is judged by its own check
     judged = 0
     for x in rows:
@@ -394,8 +394,8 @@ def check_cubes(ctx, name):
                 for f in range(6):
                     if near(q["rgb"], face_rgb(st[i], f), 1):
                         key = (i, f)
-            expect_true(key is not None, f"{name}, frame {x.n}: every cube quad has a face colour (colour field x shade)", str(q["rgb"]),
-                        "colour channel * face_shade[f] >> 8 for each of the object's three channels.")
+            expect_true(key is not None, f"{name}, frame {x.n}: every cube quad has a face color (the `colour` field x shade)", str(q["rgb"]),
+                        "color channel * face_shade[f] >> 8 for each of the object's three channels.")
             expect_true(key not in seen, f"{name}, frame {x.n}: object {key[0]} face {key[1]} is drawn once", "drawn twice")
             seen[key] = q
         for i in range(3):
@@ -438,8 +438,8 @@ def check_floor(ctx, name):
                         "The floor's matrix is the camera's: identity rotation, translation cam. Tile (c, r) spans x = (c - 4) * 2048 .. +2048, z = (r - 3) * 2048 .. +2048 at y = floor_y; "
                         "corners in Z order: far-left, far-right, near-left, near-right.")
             left.remove(hit)
-            expect_true(near(hit["rgb"], d["floors"][tl["parity"]], 1), f"{name}, frame {x.n}: tile (col {tl['c']}, row {tl['r']}) has colour {d['floors'][tl['parity']]}",
-                        str(hit["rgb"]), "Checkerboard: colour (col + row) & 1 from floor_colors[].")
+            expect_true(near(hit["rgb"], d["floors"][tl["parity"]], 1), f"{name}, frame {x.n}: tile (col {tl['c']}, row {tl['r']}) has color {d['floors'][tl['parity']]}",
+                        str(hit["rgb"]), "Checkerboard: color (col + row) & 1 from floor_colors[].")
 
 
 # ---- the picture ---------------------------------------------------------------------------------------------------------------------
@@ -475,10 +475,10 @@ def check_picture(ctx, name, shot_frames, min_faces=1, min_tiles=14):
                 continue
             got = img.pixel(cx, cy)
             want = d["floors"][tl["parity"]]
-            expect_true(colors_close(got, want, 14), f"{name}, frame {fr}: floor tile (col {tl['c']}, row {tl['r']}) centre ({cx}, {cy}) is colour {want}", str(got),
+            expect_true(colors_close(got, want, 14), f"{name}, frame {fr}: floor tile (col {tl['c']}, row {tl['r']}) center ({cx}, {cy}) is color {want}", str(got),
                         "Alternate the two floor_colors[] by (col + row) & 1; the floor must be drawn behind the cubes (slot 63) and inside the screen.")
             per_parity[tl["parity"]] += 1
-        expect_true(min(per_parity) >= min_tiles // 2, f"{name}, frame {fr}: enough tiles of both colours are visible to judge ({min_tiles // 2}+ each)", str(per_parity), "(checker design)")
+        expect_true(min(per_parity) >= min_tiles // 2, f"{name}, frame {fr}: enough tiles of both colors are visible to judge ({min_tiles // 2}+ each)", str(per_parity), "(checker design)")
         for i in range(3):
             for f in range(6):
                 if abs(rcs[i]["areas"][f]) < MARGIN or rcs[i]["areas"][f] < 0:
@@ -489,7 +489,7 @@ def check_picture(ctx, name, shot_frames, min_faces=1, min_tiles=14):
                     continue
                 want = face_rgb(st[i], f)
                 got = img.pixel(cx, cy)
-                expect_true(colors_close(got, want, 14), f"{name}, frame {fr}: object {i} face {f} centre ({cx}, {cy}) is colour {want}", str(got),
+                expect_true(colors_close(got, want, 14), f"{name}, frame {fr}: object {i} face {f} center ({cx}, {cy}) is color {want}", str(got),
                             "Cubes are drawn over the floor: slot of the face's average depth, always nearer than the floor's slot 63.")
                 faces_seen += 1
     expect_true(faces_seen >= min_faces * len(shot_frames), f"{name}: enough cube faces were judged in the pictures", str(faces_seen), "(checker design)")
@@ -532,7 +532,7 @@ def _(ctx):
         expect_true(states[len(rows)][i][14] >= 1, f"patched: object {i} bounces at least once (checker design)", str(states[len(rows)][i][14]))
 
 
-@check("each cube has its own matrix: every visible face's quad has the reference corners (+-2 px), colour and OT slot; hidden faces are not drawn",
+@check("each cube has its own matrix: every visible face's quad has the reference corners (+-2 px), color and OT slot; hidden faces are not drawn",
        hint="Per cube: RotMatrix + ScaleMatrix + TransMatrix, CompMatrixLV with the camera, upload (load_matrix), THEN its eight gte_rtps().")
 def _(ctx):
     check_cubes(ctx, "base")
@@ -545,14 +545,14 @@ def _(ctx):
     check_cubes(ctx, "still")
 
 
-@check("floor: 8 x 6 quads at the farthest slot, corners from the projected grid, alternating checker colours (shipped and patched camera)",
-       hint="Upload the camera matrix, transform the 9 x 7 grid corners, then one POLY_F4 per tile at slot OT_LENGTH - 1 with colour (col + row) & 1.")
+@check("floor: 8 x 6 quads at the farthest slot, corners from the projected grid, alternating checker colors (shipped and patched camera)",
+       hint="Upload the camera matrix, transform the 9 x 7 grid corners, then one POLY_F4 per tile at slot OT_LENGTH - 1 with color (col + row) & 1.")
 def _(ctx):
     check_floor(ctx, "base")
     check_floor(ctx, "patched")
 
 
-@check("picture: tile centres show the alternating colours; visible face centres show the cube colours (cubes in front of the floor)",
+@check("picture: tile centers show the alternating colors; visible face centers show the cube colors (cubes in front of the floor)",
        hint="Floor at slot 63, cubes at the slots of their own depth: a cube resting on the floor must hide the tiles behind it.")
 def _(ctx):
     check_picture(ctx, "base", (3, 40, 97, 210, 290))

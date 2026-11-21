@@ -137,7 +137,7 @@ static void leaf(SdFace *F, const SdVert q[4], int depth)
 
 static void split(SdFace *F, const SdVert q[4], int depth)
 {
-	SdVert m[5];                     /* m01, m02, m13, m23, centre */
+	SdVert m[5];                     /* m01, m02, m13, m23, center */
 	SdVert c[4][4];
 
 	if (depth == F->level) {

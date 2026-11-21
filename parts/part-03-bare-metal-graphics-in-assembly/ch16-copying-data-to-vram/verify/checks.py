@@ -129,7 +129,7 @@ def _(ctx):
 
 
 @check("ABI: vram_upload returns with $sp, $s0-$s7, $gp and $fp unchanged (h is read from 16($sp))",
-       hint="Save every $s register you use in a frame and restore it, and $sp, before jr $ra. h is argument 4: 16($sp) at entry.")
+       hint="Save every $s register you use in a frame and restore it, and $sp, before jr $ra. h is the fifth argument: 16($sp) at entry.")
 def _(ctx):
     for fn in ("vram_upload", "bpp24_halfwords"):
         for c in calls_of(ctx, fn):
@@ -242,7 +242,7 @@ def _(ctx):
         r = run(ctx, name)
         x, y, w, h = r.u32("x"), r.u32("y"), r.u32("w"), r.u32("h")
         img = screen_image(r)
-        expect_eq(r.data["shots"]["end"]["bpp"], 16, f"run {name}: screenshot colour depth", hint="Part 1 stays in 15-bit mode.")
+        expect_eq(r.data["shots"]["end"]["bpp"], 16, f"run {name}: screenshot color depth", hint="Part 1 stays in 15-bit mode.")
         src = r.mem("img16")
         for j in range(h):
             for i in range(w):
@@ -258,7 +258,7 @@ def _(ctx):
                           hint="gpu_clear(0x303038, 0, 0, 320, 240) before the upload; the upload must not spill.")
 
 
-@check("part 2: the display is switched to 24-bit colour: GP1(08h) with bit 4 set, still 320x240 NTSC",
+@check("part 2: the display is switched to 24-bit color: GP1(08h) with bit 4 set, still 320x240 NTSC",
        hint="GP1 08h value 0x08000011: bits 0-1 = 1 (320 wide), bit 2 = 0 (240 high), bit 3 = 0 (NTSC), bit 4 = 1 (24-bit).")
 def _(ctx):
     for name in ("m1", "m1b"):

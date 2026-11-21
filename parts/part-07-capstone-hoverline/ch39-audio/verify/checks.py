@@ -377,20 +377,20 @@ def _(ctx):
     k = ks[0]
     expect_eq(k["pose"], 0, "the engine key-on happens when the game is entered (before the first scripted pose)")
     expect_eq(k["addr"], o.samples[0]["addr"] // 8, "start-address register of voice 0 at key-on (ENGINE addr / 8)", fmt="hex",
-              hint="The register holds 8-byte units: getSPUAddr(addr).")
+              hint="The unit of the start-address register: README 5.3.")
     expect_eq((k["vol_l"], k["vol_r"]), (o.cfg["engine_vol"],) * 2, "volume registers of voice 0 (engine_vol, left and right)", fmt="hex")
     expect_eq(k["pitch"], M.pitch_for_speed(0, rate_of(o, "ENGINE"), o.cfg["idle_mul"], o.cfg["span_mul"]), "pitch register of voice 0 at key-on (the idle pitch)", fmt="hex")
     expect_true(k["adsr1"] != 0 or k["adsr2"] != 0, "the envelope registers of voice 0 were written before key-on", "both 0", "SPU_CH_ADSR1/2: see README 5.3.")
     rows = o.rows
     low = [r["pose"] for r in rows if r["stats"][9] <= 0]
     expect_true(not low, "the engine envelope level (audio_stats.env_engine) is above 0 in every frame of the run (the voice is audible)", f"0 at poses {low[:5]}",
-                hint="Is the sample's loop flag set (4 at the start, 3 at the end: a flag-01 end block would silence the voice)? Is the sustain level 15 (the top, ADSR1 bits 0-3) with the fastest attack?")
+                hint="Was the whole ENGINE sample uploaded, loop blocks included (README 5.2)? Are the envelope registers the ones of README 5.3?")
     ends = [r["pose"] for r in rows if r["stats"][8] & 1]
     expect_true(len(ends) >= 3, "ENDX bit 0 (the engine voice reached a loop-end block) is seen in at least 3 frames", f"seen in {len(ends)} frames",
                 hint="ENDX is set by the SPU each time a block with the end flag (bit 0) is played; the engine loops once every 788 blocks, 1 s at its native rate and 2 s at the idle pitch.")
 
 
-@check("engine_pitch_follows_speed", hint="pitch = min((base * mul) >> 12, 0x3FFF); base = rate*4096/44100, mul = idle_mul + (((speed >> 8) * span_mul) >> 10). Written to voice 0 every frame in the game.")
+@check("engine_pitch_follows_speed", hint="The engine pitch is the formula of README 5.5, written to voice 0 in every game frame.")
 def _(ctx):
     o = run_of(ctx, "main")
     check_samples(o)
@@ -407,7 +407,7 @@ def _(ctx):
         expect_true(r["pose"] in last, f"pose {r['pose']}: the pitch of voice 0 is written in every game frame", "no store to the pitch register of voice 0 in this frame",
                     "audio_engine_update(ship.speed) once per game frame, after ship_update.")
         expect_eq(last[r["pose"]], want, f"pitch register of voice 0 at pose {r['pose']} (ship.speed {r['speed']} = {r['speed'] / 4096:.2f} units/tick)", fmt="hex",
-                  hint="Check the order: base from the file's rate, mul with the shift of the speed by 8 first, then the clamp.")
+                  hint="README 5.5: follow the formula step by step, in its order.")
         seen.append((r["pose"], r["speed"], last[r["pose"]]))
     sweep_rows = [(p, s, v) for (p, s, v), pose in zip(seen, [POSES["main"][p - 1] for p, _, _ in seen]) if pose["kind"] == "speed"]
     expect_true(len(sweep_rows) >= 80, "the speed sweep was driven", str(len(sweep_rows)), "")
@@ -437,7 +437,7 @@ def _(ctx):
         expect_true(c.get("returned", True), f"audio_pitch_for_speed({speed}) returned", "never returned", "An endless loop in the function?")
         got = c["v0"] & 0xFFFFFFFF
         expect_eq(got, want, f"audio_pitch_for_speed({speed}) with rate {c['rate']}, idle_mul {c['idle']}, span_mul {c['span']}", fmt="hex",
-                  hint="base = rate * 4096 / 44100 (integer division); speed < 0 counts as 0; the result is capped at 0x3FFF.")
+                  hint="README 5.5: integer division for the base, negative speeds, and the clamp.")
         clob = c.get("clobbered") or []
         expect_true(not clob, "audio_pitch_for_speed preserves the callee-saved registers", str(clob), "")
 
@@ -490,7 +490,7 @@ def check_events(o, kind, minimum=4):
     got_kind = [g for g in got if g["sample"] == kind]
     expect_true(len(want_kind) >= minimum, f"the script raises at least {minimum} {kind} events", str(len(want_kind)), "")
     expect_eq(len(got_kind), len(want_kind), f"key-ons of the {kind} sample over the run",
-              hint="BOOST: when the section CHANGES into one with a TRK_BOOST face. THUD: when |lateral| > half_width becomes true (not every frame it stays true).")
+              hint="README 5.6: both events fire on a change, not on every frame the condition holds.")
     for g, w in zip(got_kind, want_kind):
         expect_eq((g["pose"], g["voice"]), (w["pose"], w["voice"]), f"the {kind} key-ons in order: (pose, voice)",
                   hint="One key-on per event, in the frame the event happens, on the next round-robin voice (shared with the other sample).")
@@ -537,7 +537,7 @@ def _(ctx):
     after = [r for r in o.rows if r["pose"] >= last["pose"] and r["state"] == 1]
     expect_true(len(after) >= 80, "the script holds still for 80 frames after the last thud", str(len(after)), "")
     expect_true(after[1]["stats"][10] > 0, "the one-shot's envelope level is above 0 in the frame after it starts (it is audible; the SPU needs a moment to run the attack)", str(after[1]["stats"][10]),
-                "Fastest attack (ADSR1 bits 8-14 = 0), sustain level 15 (bits 0-3), and the volume registers written before key-on.")
+                "README 5.3: the envelope registers and the volume are written before the key-on.")
     expect_eq(after[-1]["stats"][10], 0, "the one-shot's envelope level 80 frames later (the 0.35 s sample has ended and the SPU muted the voice)",
               hint="Does the sample end with the 00 01 end block (the book's wav2vag writes it)? Did the program upload the whole data including the last block?")
     v = last["voice"]
@@ -559,17 +559,17 @@ def _(ctx):
 
 
 # ---- music ------------------------------------------------------------------------------------------------------------------------------------
-@check("music_plays_from_the_cd", hint="CdMix(default matrix), SPU CD volume, CdlSetmode with the DA bit, then CdlPlay (0x03) with the track number 2, sent once at start-up.")
+@check("music_plays_from_the_cd", hint="README 5.7: the drive's matrix, the SPU's CD volume, the mode, then one CdlPlay with the music track, sent once at start-up.")
 def _(ctx):
     o = run_of(ctx, "main")
     cd = o.rep.cd
     plays = [c for c in cd if c[1] == 0x03]
-    expect_true(len(plays) >= 1, "a CdlPlay (command 0x03) reaches the CD controller", f"commands seen: {sorted({hex(c[1]) for c in cd})}", "audio_music_start: CdControl(CdlPlay, &track, 0).")
+    expect_true(len(plays) >= 1, "a CdlPlay (command 0x03) reaches the CD controller", f"commands seen: {sorted({hex(c[1]) for c in cd})}", "audio_music_start sends it: README 5.7.")
     expect_eq(len(plays), 1, "CdlPlay commands in the main run (the track is 24 s long, the run is shorter)", hint="Start the music once.")
     expect_eq(plays[0][2], [o.cfg["music_track"]], "the parameter of CdlPlay: the track number (audio_cfg.music_track)", hint="Track 1 is the data track; the music is track 2.")
     modes = [c for c in cd if c[1] == 0x0E and c[0] == 0]
     expect_true(modes and modes[-1][2] and modes[-1][2][0] & 1, "the last CdlSetmode before the music has the CdlModeDA bit (bit 0)", str(modes[-1:] if modes else None),
-                "mode = CdlModeDA | CdlModeAP.")
+                "The mode bits: README 5.7.")
     expect_true(cd.index(plays[0]) > cd.index(modes[-1]), "CdlSetmode comes before CdlPlay", "", "")
     expect_true(modes[-1][2][0] & 2, "the auto-pause bit (CdlModeAP, bit 1) is set so the program learns when the track ends", str(modes[-1][2]), "")
     rg = o.rep.regs
@@ -578,7 +578,7 @@ def _(ctx):
     expect_true(rg.get(0x1DAA, 0) & 1 and rg.get(0x1DAA, 0) & 0x8000, "SPU control register: SPU enabled (bit 15) and CD audio enabled (bit 0)", f"{rg.get(0x1DAA, 0):#06x}", "SpuInit sets 0xC001; do not clear it.")
     atv = o.rep.cd_atv
     expect_eq((atv.get("l_to_l"), atv.get("r_to_r"), atv.get("l_to_r"), atv.get("r_to_l")), (128, 128, 0, 0), "the CD volume matrix left at {128, 0, 128, 0} (left to left, right to right)",
-              hint="CdMix(&mix) with the default matrix: without it the CD's audio never reaches the SPU.")
+              hint="README 5.7: the drive's volume matrix must be set.")
     for c in plays:
         expect_true(c[0] == 0, "the music starts before the game is entered (from the title)", f"pose {c[0]}", "")
 

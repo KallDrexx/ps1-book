@@ -10,7 +10,7 @@ Clear it, so the next poll waits for the next VBlank. Write a 0 to bit 0; bits w
 Bit 0 stays set, so every later wait returns immediately. The loop runs as fast as it can instead of once per VBlank: the animation is too fast and may flicker.
 </details>
 
-**3. Why can polling work without a BIOS interrupt handler getting in the way?**
+**3. Why does polling work here without a BIOS interrupt handler getting in the way?**
 <details><summary>Answer</summary>
 `I_STAT` latches the event regardless of `I_MASK`. The CPU takes an interrupt (and a BIOS handler, which might acknowledge VBlank itself, runs) only if the `I_MASK` bit is set and the COP0 status register enables interrupts. In the book's Redux setup interrupts are off, and the given `main` also writes `I_MASK = 0`, so nothing else clears the bit.
 </details>

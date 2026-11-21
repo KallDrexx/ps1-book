@@ -1,4 +1,4 @@
--- Chapter 25 probe. Observes only; the harness patches the state (start angles, steps, colours, cam_z, proj_h, cube)
+-- Chapter 25 probe. Observes only; the harness patches the state (start angles, steps, colors, cam_z, proj_h, cube)
 -- into the .exe before each run, and ends the run at max_frames. Every time the program calls frame_done() the probe
 -- records one row:
 --   { frame_no, rot.x, rot.y, rot.z,                       3 angles

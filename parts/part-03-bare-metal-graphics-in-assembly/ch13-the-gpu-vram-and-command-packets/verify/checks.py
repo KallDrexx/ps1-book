@@ -3,9 +3,9 @@ Phase 1 (probe.lua + tools/verify-lib/directcall.lua): gpu_init, gpu_clear and g
 random arguments (seed printed on failure), the 5th argument `h` on the stack, sentinels in the callee-saved
 registers. The probe records, per call, every word written to GP0/GP1 (the transcript), the number of GPUSTAT reads
 before the first GP0 word, and a diff of the whole 1024x512 VRAM. Checks compare both with what the hardware must do.
-Phase 2: the real program runs on three colour tables (the shipped one and two the verifier patches in), and the
-screenshot is sampled. Hard-coded colours or a pre-baked picture cannot pass: VRAM is reachable only through GP0 and
-the colours come from the patched tables."""
+Phase 2: the real program runs on three color tables (the shipped one and two the verifier patches in), and the
+screenshot is sampled. Hard-coded colors or a pre-baked picture cannot pass: VRAM is reachable only through GP0 and
+the colors come from the patched tables."""
 import struct
 
 from harness import *
@@ -67,7 +67,7 @@ def argtxt(c): return f"{c['fn']}(0x{c.get('a0', 0) & M:08X}, x={c.get('a1')}, y
 def _(ctx):
     ctx.require_symbols(*LABELS)
     expect_true(ctx.symbols["bar_colors"] % 4 == 0 and ctx.symbols["bg_color"] % 4 == 0,
-                "word-aligned colour tables", "unaligned", hint="Put `.align 4` before the data.")
+                "word-aligned color tables", "unaligned", hint="Put `.align 4` before the data.")
 
 
 @static_check("armips reports no warnings", hint="Usually a load delay: a loaded register used by the very next instruction.")
@@ -169,7 +169,7 @@ def packet_check(ctx, fn, cmd):
             raise CheckFailure(
                 expected="GP0 words " + ", ".join(f"0x{w:08X}" for _, w in want),
                 actual=("GP0/GP1 words " + ", ".join(f"{'GP0' if p == 0 else 'GP1'}:0x{w:08X}" for p, w in got)) if got else "no writes to the GPU",
-                hint=f"{fn} sends exactly three words to GP0: 0x{cmd:02X}BBGGRR, (y<<16)|x, (h<<16)|w. The colour argument is "
+                hint=f"{fn} sends exactly three words to GP0: 0x{cmd:02X}BBGGRR, (y<<16)|x, (h<<16)|w. The color argument is "
                      f"0x00RRGGBB, so swap red and blue; h is the 5th argument at 16($sp).",
                 message=f"{argtxt(c)} wrote the wrong packet" + seed(ctx))
 
@@ -211,7 +211,7 @@ def diff_check(ctx, fn, expected_rect):
                     hint="Fill rectangle rounds x down and w up to multiples of 16; the monochrome rectangle is "
                          "pixel-exact and clipped to the drawing area." + seed(ctx))
         expect_true(vals == [want_val], f"every changed pixel = 0x{want_val:04X} (15-bit of 0x{c['a0'] & 0xFFFFFF:06X})",
-                    ", ".join(f"0x{v:04X}" for v in vals), hint="Wrong colour: red and blue swapped?" + seed(ctx))
+                    ", ".join(f"0x{v:04X}" for v in vals), hint="Wrong color: red and blue swapped?" + seed(ctx))
 
 
 @check("gpu_clear paints the 16-pixel-granular rectangle in VRAM, even outside the drawing area",
@@ -244,26 +244,26 @@ def bar_check(ctx, name):
     expect_eq((img.width, img.height), (SCREEN_W, SCREEN_H), "screenshot size")
     for i, col in enumerate(bars):
         expect_region(img, i * BAR_W, BAR_Y, BAR_W, BAR_H, rgb(col), tol=10, min_fraction=1.0,
-                      what=f"bar {i} (x {i * BAR_W}..{i * BAR_W + BAR_W - 1}) in colour table '{name}'",
-                      hint="Bars are 40 px wide, y 24..215, in table order, left to right. The colours come from bar_colors in memory.")
+                      what=f"bar {i} (x {i * BAR_W}..{i * BAR_W + BAR_W - 1}) in color table '{name}'",
+                      hint="Bars are 40 px wide, y 24..215, in table order, left to right. The colors come from bar_colors in memory.")
     expect_region(img, 0, 0, SCREEN_W, BAR_Y, rgb(bg), tol=10, min_fraction=1.0, what="top border (y 0..23)",
                   hint="gpu_clear the whole 320x240 display with bg_color before the bars.")
     expect_region(img, 0, BAR_Y + BAR_H, SCREEN_W, SCREEN_H - BAR_Y - BAR_H, rgb(bg), tol=10, min_fraction=1.0,
-                  what="bottom border (y 216..239)", hint="Same border colour below the bars.")
+                  what="bottom border (y 216..239)", hint="Same border color below the bars.")
 
 
-@check("shipped colours: 8 bars of 40x192 at y=24 in table order, border in bg_color",
+@check("shipped colors: 8 bars of 40x192 at y=24 in table order, border in bg_color",
        hint="The table is bar_colors (0x00RRGGBB words). Bar i starts at x = 40*i.")
 def _(ctx): bar_check(ctx, "shipped")
 
 
-@check("patched colour table 1: the picture follows the table, not constants in your code",
+@check("patched color table 1: the picture follows the table, not constants in your code",
        hint="The verifier overwrites bar_colors and bg_color in the executable. Read them from memory with lw.")
 def _(ctx): bar_check(ctx, "alt1")
 
 
-@check("patched colour table 2: same, with different colours",
-       hint="As above. A hard-coded colour in main shows up here.")
+@check("patched color table 2: same, with different colors",
+       hint="As above. A hard-coded color in main shows up here.")
 def _(ctx): bar_check(ctx, "alt2")
 
 

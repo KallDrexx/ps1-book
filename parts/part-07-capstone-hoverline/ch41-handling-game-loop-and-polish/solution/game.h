@@ -39,10 +39,11 @@ void game_update(void);
    TITLE: title_draw and the menu; submitted_objects = 0. COUNTDOWN, RACE, RESULTS: draw_track() and the race text (README 5.8). */
 void game_draw(void);
 
-/* The game picture of this chapter (README 5.6): render_begin(); then the whole track, sections 0 .. section_count - 1, with track_draw. */
+/* The game picture: render_begin(); the sections visible from ship_section (track_draw_visible, Chapter 38), the ship, the debug readouts,
+   then the race text (README 5.8). */
 void draw_track(void);
 
-/* Chapter 37: the ship (README 5.6): ship_matrix, d = ship.pos - cam_eye as the translation, composed with the view rotation; render_shp(&ship_shp, &ship_store). */
+/* Chapter 37: the ship: ship_matrix, d = ship.pos - cam_eye as the translation, composed with the view rotation; render_shp(&ship_shp, &ship_store). */
 void draw_ship(void);
 
 /* Chapter 33's scene picture (README 5.7): not called in this chapter (the track alone fills the primitive buffer), kept for later chapters.

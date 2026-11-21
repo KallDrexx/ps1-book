@@ -2,11 +2,11 @@
 
 ## 1. Concept
 
-A register is just 32 bits. Whether they mean `-1` or `4294967295`, a colour or a mask, depends on which instruction reads them. Two's complement, sign extension, masks and shifts are how low-level code packs, unpacks and reinterprets bits.
+A register is just 32 bits. Whether they mean `-1` or `4294967295`, a color or a mask, depends on the instruction that reads them. Two's complement, sign extension, masks and shifts are how low-level code packs, unpacks and reinterprets bits.
 
 ## 2. Why it matters
 
-The PS1 is made of packed bit fields. Pixels are 15-bit colours. GPU commands carry a colour in the low 24 bits and a command number in the top 8. Vertices are signed 16-bit halves. Pad state is one bit per button. The GTE works in signed fixed-point numbers. Every one of these is a mask, a shift, or a sign extension.
+The PS1 is made of packed bit fields. Pixels are 15-bit colors. GPU commands carry a color in the low 24 bits and a command number in the top 8. A vertex is two signed coordinates in one word. Pad state is one bit per button. The GTE works in signed fixed-point numbers. Handling any of these takes a mask, a shift or a sign extension.
 
 ## 3. Learning objectives
 
@@ -15,8 +15,8 @@ After this chapter you can:
 - negate a number and read a bit pattern as signed or unsigned;
 - choose between `lb`/`lbu` and `lh`/`lhu`, and say what each puts in the upper bits;
 - build and test bit fields with `and`, `or`, `xor`, `nor` and their immediate forms;
-- pick the right shift (`sll`, `srl`, `sra`) and explain why `sra` is not a division;
-- pack an RGB888 colour into the PS1's BGR555 format and unpack it again;
+- pick the right shift (`sll`, `srl`, `sra`) and explain why `sra` is not a C-style division for negative numbers;
+- pack an RGB888 color into the PS1's BGR555 format and unpack it again;
 - reverse the bytes of a word.
 
 ## 4. Prerequisites
@@ -47,13 +47,13 @@ An n-bit register has 2^n patterns. Two's complement reads the top bit as worth 
 
 Facts to keep:
 
-- **Negate = invert all bits, add 1.** `-x = ~x + 1`. `0 - x` gives the same answer, which is why the CPU needs no separate negate instruction (write `subu rd, $zero, rs`).
-- **`addu`/`subu` do not know about signs.** The same instruction adds signed and unsigned numbers. Signedness only matters where an instruction must choose: comparisons (`slt` vs `sltu`), right shifts (`sra` vs `srl`) and narrow loads (`lb` vs `lbu`).
+- **Negate = invert all bits, add 1.** `-x = ~x + 1`. `0 - x` gives the same answer, so the CPU has no negate instruction: write `subu rd, $zero, rs`.
+- **`addu`/`subu` do not know about signs.** The same instruction adds signed and unsigned numbers. Signedness only matters where an instruction must choose. In this chapter that means comparisons (`slt` vs `sltu`), right shifts (`sra` vs `srl`) and narrow loads (`lb` vs `lbu`).
 - **The range is lopsided.** 32 bits hold -2147483648 to +2147483647. The most negative value has no positive twin: negating `0x80000000` gives `0x80000000` again. Remember this for `abs`.
 
 ### 5.2 Sign extension
 
-Moving a narrow signed value into a wider register means copying its top bit upward, so the value stays the same:
+To widen a narrow signed value without changing it, copy its top bit into all the new upper bits:
 
 ```
  8-bit  0xF0 = -16:             1111 0000
@@ -71,16 +71,16 @@ Loads choose for you:
 | `lhu` | 2 bytes (aligned) | zero |
 | `lw` | 4 bytes (aligned) | none needed |
 
-There is no `lwu` on the 32-bit R3000. Stores (`sb`, `sh`) simply write the low bits; there is nothing to extend. Use `lbu`/`lhu` for pixels, flags and unsigned counters; `lb`/`lh` for signed vertex and fixed-point values.
+Stores (`sb`, `sh`) write the low bits of the register; there is nothing to extend. Use `lbu`/`lhu` for pixels, flags and unsigned counters, and `lb`/`lh` for signed coordinates and fixed-point values.
 
-Immediates matter too:
+Immediates are extended too:
 
 | Instruction | 16-bit immediate becomes |
 |---|---|
-| `addiu`, `slti`, `sltiu`, and the load/store offsets | **sign**-extended (`addiu $t, $zero, -1` gives `0xFFFFFFFF`) |
-| `andi`, `ori`, `xori` | **zero**-extended (`ori $t, $zero, 0xFFFF` gives `0x0000FFFF`, not `-1`) |
+| `addiu`, `slti`, `sltiu`, and the load/store offsets | **sign**-extended (`addiu $t0, $zero, -1` gives `0xFFFFFFFF`) |
+| `andi`, `ori`, `xori` | **zero**-extended (`ori $t0, $zero, 0xFFFF` gives `0x0000FFFF`, not `-1`) |
 
-The logic instructions treat their immediate as a bit mask, so it must not grow a sign. This is why `li $t, 0xFFFF` and `li $t, -1` assemble to different instructions.
+The logic instructions treat their immediate as a bit mask, so it must not grow a sign. This is why `li $t0, 0xFFFF` assembles to an `ori` and `li $t0, -1` to an `addiu`.
 
 ### 5.3 Logic
 
@@ -89,7 +89,7 @@ The logic instructions treat their immediate as a bit mask, so it must not grow 
 | `and rd, rs, rt` / `andi rt, rs, imm` | bit is 1 only if both are 1 |
 | `or` / `ori` | 1 if either is 1 |
 | `xor` / `xori` | 1 if they differ |
-| `nor rd, rs, rt` | `~(rs \| rt)`; `nor rd, rs, $zero` is NOT |
+| `nor rd, rs, rt` | `~(rs \| rt)` |
 
 The four jobs of a mask `m`:
 
@@ -100,18 +100,18 @@ The four jobs of a mask `m`:
 | force bits to 0 (clear) | `x & ~m` |
 | flip bits (toggle) | `x ^ m` |
 
-There is no NOT instruction and no `andn`; `nor` with `$zero` supplies NOT.
+There is no NOT instruction: `nor rd, rs, $zero` does the job, and armips accepts `not rd, rs` as shorthand for it. There is no and-not either, so to clear bits, build `~m` first or load it as a constant.
 
 ### 5.4 Shifts
 
 | Instruction | Shifts | Fills with | Amount |
 |---|---|---|---|
 | `sll rd, rt, n` | left | zeros | constant 0 to 31 |
-| `srl rd, rt, n` | right, **logical** | zeros | constant |
-| `sra rd, rt, n` | right, **arithmetic** | copies of the sign bit | constant |
+| `srl rd, rt, n` | right, **logical** | zeros | constant 0 to 31 |
+| `sra rd, rt, n` | right, **arithmetic** | copies of the sign bit | constant 0 to 31 |
 | `sllv`, `srlv`, `srav rd, rt, rs` | same | same | register `rs`, **low 5 bits only** |
 
-Note the operand order of the variable forms: value in `rt`, amount in `rs`. Only the low 5 bits of the amount count: a variable shift by 33 shifts by 1, and one by 32 does nothing (it does **not** clear the register).
+In the variable forms the value (`rt`) is written before the amount (`rs`). Only the low 5 bits of the amount count: a variable shift by 33 shifts by 1, and one by 32 does nothing (it does **not** clear the register).
 
 ```
  sra by 3 of 0xFFFFFC85:     1111 1111 1111 1111 1111 1100 1000 0101
@@ -119,18 +119,20 @@ Note the operand order of the variable forms: value in `rt`, amount in `rs`. Onl
  srl by 3 of the same:       0001 1111 1111 1111 1111 1111 1001 0000   (zeros in: now a big positive number)
 ```
 
-A left shift by n multiplies by 2^n (modulo 2^32), signed or unsigned. A right shift divides by 2^n only with the right flavour: `srl` for unsigned, `sra` for signed. **The rounding trap:** `sra` rounds toward negative infinity, but C-style division (and most people's expectation) rounds toward zero.
+A left shift by n multiplies by 2^n (modulo 2^32), signed or unsigned. A right shift divides by 2^n only with the right flavor: `srl` for unsigned, `sra` for signed. **The rounding trap:** `sra` rounds toward negative infinity, but C-style division rounds toward zero.
 
 | x | x >> 1 (`sra`) | x / 2 (toward zero) |
 |---|---|---|
 | 7 | 3 | 3 |
 | -7 | **-4** | **-3** |
 
-To divide a signed number by 2^n toward zero, add `2^n - 1` first when it is negative, then shift. You can build that bias from the sign: `sra x, 31` is all ones for a negative x, and masking it with `2^n - 1` gives the bias.
+To divide a signed number by 2^n toward zero, add `2^n - 1` first when it is negative, then shift. You can build that bias without a branch: x shifted right arithmetically by 31 is all ones for a negative x and zero otherwise, and masking it with `2^n - 1` gives the bias.
 
 ### 5.5 Fields: the shift-and-mask idiom
 
-Extract a field `width` bits wide at bit `pos`: shift right by `pos`, then `and` with `(1 << width) - 1`. Insert: clear the field, `or` the shifted value. Sign-extend a field: shift it to the **top** of the register, then arithmetic-shift it back down. The second shift does the copying:
+- **Extract** a field `width` bits wide at bit `pos`: shift right by `pos`, then `and` with `(1 << width) - 1`.
+- **Insert**: clear the field, then `or` in the value shifted left by `pos`.
+- **Sign-extend** a field: shift it to the **top** of the register, then shift it back down with `sra`, which copies the sign:
 
 ```
  5-bit field 11101 in the low bits of a word, with junk above:      ....1 1101
@@ -138,16 +140,16 @@ Extract a field `width` bits wide at bit `pos`: shift right by `pos`, then `and`
  sra by 27:            sign copied down                              1111 1111 ... 1111 1101  = -3
 ```
 
-### 5.6 The PS1's 15-bit colour
+### 5.6 The PS1's 15-bit color
 
-VRAM pixels and many GPU colour fields use BGR555. Per psx-spx, a 16-bit pixel is
+VRAM pixels, and so textures and palette (CLUT) entries, are 16-bit BGR555:
 
 ```
  bit  15  14 13 12 11 10   9  8  7  6  5   4  3  2  1  0
      [ M ][  B  B  B  B  B ][ G  G  G  G  G ][ R  R  R  R  R ]
 ```
 
-`M` (bit 15) is the mask / semi-transparency flag. 5 bits per channel, **red in the lowest bits**: the opposite order to the 0x00RRGGBB you usually write colours in.
+`M` (bit 15) is the mask / semi-transparency flag. Each channel has 5 bits, with **red in the lowest bits**: the opposite order to the `0x00RRGGBB` you usually write colors in.
 
 Converting from 8 bits per channel throws away the low 3 bits of each channel:
 
@@ -158,15 +160,15 @@ Converting from 8 bits per channel throws away the low 3 bits of each channel:
                   BBBBB        GGGGG      RRRRR
 ```
 
-Going back, the low 5 bits need filling. Shifting left by 3 leaves the low 3 bits zero, so full white (31) becomes 248, not 255. This book's `bgr555_unpack` **replicates the top bits**: `c8 = (c5 << 3) | (c5 >> 2)`, which maps 0 to 0 and 31 to 255 exactly.
+Going back, the low 3 bits of each channel need filling. Shifting left by 3 leaves them zero, so full white (31) becomes 248, not 255. This book's `bgr555_unpack` **replicates the top bits** into them: `c8 = (c5 << 3) | (c5 >> 2)`, which maps 0 to 0 and 31 to 255.
 
 ### 5.7 Endianness swap
 
-The R3000 in the PS1 is little-endian (Chapter 2). Data from big-endian formats or tools arrives with its bytes reversed. `swap_endian32` reverses the four bytes of a word: `0x11223344` becomes `0x44332211`. Each byte moves by a shift; masks keep only the byte you want from each shifted copy.
+The PS1's R3000 is little-endian (Chapter 2), so a word from a big-endian file format loads with its bytes reversed. `swap_endian32` reverses the four bytes of a word: `0x11223344` becomes `0x44332211`. A shift moves each byte, and a mask keeps only the wanted byte from each shifted copy.
 
 ## 6. Worked example
 
-[`example/main.s`](example/main.s) (`make` in `example/`) stores thirteen results; its header lists them. Run it, then read `results` in the debugger (Chapter 6).
+[`example/main.s`](example/main.s) (`make` in `example/`) stores thirteen results. Run it, then read `results` in the debugger (Chapter 6).
 
 | `results[i]` | Shows | Value |
 |---|---|---|
@@ -181,11 +183,11 @@ The R3000 in the PS1 is little-endian (Chapter 2). Data from big-endian formats 
 
 ## 7. Project: Bit Toolkit
 
-Six leaf subroutines plus finishing the driver. Everything goes in `starter/main.s`, which declares the routines as stubs that just return.
+You write six leaf subroutines and finish a driver. Everything goes in `starter/main.s`, which declares the routines as stubs that just return.
 
 ### 7.1 The routines
 
-All take their argument in `$a0` (and `$a1`), return in `$v0` (and `$v1`), use only `$t0-$t9`, `$a0-$a3`, `$v0-$v1`, and return with `jr $ra`. The verifier fills every register it does not set with garbage.
+Each routine takes its arguments in `$a0` (and `$a1`), returns its result in `$v0` (and `$v1`), uses only `$t0-$t9`, `$a0-$a3` and `$v0-$v1`, and returns with `jr $ra`. The verifier fills every temporary and unused argument register with garbage before each call.
 
 | Routine | Input | Result |
 |---|---|---|
@@ -200,44 +202,46 @@ All take their argument in `$a0` (and `$a1`), return in `$v0` (and `$v1`), use o
 
 - **Shifts, masks and adds only.** `mult`, `multu`, `div`, `divu`, `mfhi`, `mflo`, `mthi` and `mtlo` are banned in the whole program (Chapter 12 covers them).
 - **Routines touch no memory.** No loads or stores between `done` and `drv_val`, so no lookup tables: the point is to compute with shifts and masks. (The driver may load and store.)
-- At most 400 instructions per call. That is generous (a loop over the 32 bits fits); the straight-line versions take about 5 to 25.
-- No armips warnings; place routines after `done` and before the data.
+- **At most 400 instructions per call.** That is generous (a loop over the 32 bits fits); the straight-line routines take about 5 to 25.
+- **No armips warnings.** Keep the routines after `done` and before the data.
 
 ### 7.3 The driver
 
-The starter's driver already calls the six routines on four input words and stores `results[0]` to `results[6]`. You write the rest, directly in the driver:
+The starter's data block holds four input words and room for the results:
 
 | Label | Content |
 |---|---|
-| `drv_val` | signed input for `abs`, `sign_extend`, `popcount`, `swap_endian32` and the rows below |
+| `drv_val` | signed input for `abs`, `sign_extend`, `popcount`, `swap_endian32` and results 7 to 12 |
 | `drv_bits` | width for `sign_extend` |
-| `drv_rgb`, `drv_bgr` | inputs for the two colour routines |
+| `drv_rgb`, `drv_bgr` | inputs for the two color routines |
 | `results` | 13 words |
+
+The starter's driver already calls the six routines and stores `results[0]` to `results[6]`. You compute the rest directly in the driver. Do not edit the data; the verifier replaces the inputs with its own.
 
 | `results[i]` | Value |
 |---|---|
 | 0 to 3 | `abs(val)`, `sign_extend(val, bits)`, `popcount(val)`, `rgb888_to_bgr555(rgb)` (given) |
 | 4, 5 | `bgr555_unpack(bgr)`: `$v0`, then `$v1` (given) |
 | 6 | `swap_endian32(val)` (given) |
-| 7 to 10 | `lb`, `lbu`, `lh`, `lhu` of `drv_val` (low byte / low halfword) |
+| 7 to 10 | `lb`, `lbu`, `lh`, `lhu` at `drv_val` (its low byte / low halfword) |
 | 11 | `drv_val` shifted right by 3, arithmetic |
 | 12 | `drv_val / 8` **rounded toward zero**, without `div` |
 
 ### 7.4 Hints
 
-- `abs`: build a mask from the sign (`sra` by 31). XOR with it, then subtract it. Work it out for 5, -5 and 0.
+- `abs`: build a mask from the sign (`sra` by 31). XOR with it, then subtract it. Work it out on paper for 5, -5 and 0.
 - `sign_extend`: the shift-to-top-and-back idiom needs the amount `32 - bits`. Use the variable shifts.
 - `popcount`: test the low bit, add it, shift right logically, repeat until zero. Use `srl`, not `sra`, or negative inputs never reach zero.
 - `rgb888_to_bgr555`: shift each channel's top 5 bits into place and mask. Three shift-and-mask pairs, two `or`s.
-- `bgr555_unpack`: extract a 5-bit field, then `(c << 3) | (c >> 2)`. Same steps for each channel; place the result with a final shift.
+- `bgr555_unpack`: extract a 5-bit field, then `(c << 3) | (c >> 2)`. The steps are the same for each channel; a final shift puts the result in its byte.
 - `swap_endian32`: handle the outer bytes with plain shifts and the two inner bytes with a shift and a mask. A mask like `0x00FF0000` needs `lui`.
-- Fill delay slots only when it is obviously safe; a `nop` is fine here. The load-delay rule from Chapter 7 still applies in the driver.
+- A `nop` in every delay slot is fine here. The load-delay rule from Chapter 7 still applies in the driver.
 
 ### 7.5 Stretch goals
 
-- Reimplement `popcount` in about a dozen instructions with the SWAR trick (add bit pairs, then nibbles, then bytes with masks `0x55555555`, `0x33333333`, `0x0F0F0F0F`); the last step needs a multiply or more shifts. Stay under the ban.
-- Write `bgr555_pack_flag(a0, a1)` that sets or clears bit 15.
-- Write `reverse_bits32` (bit-reversal) with the same swap-and-mask idea at 1, 2, 4, 8 and 16 bits.
+- Reimplement `popcount` without a loop, in about 20 instructions, with the SWAR trick: add neighboring bits, then bit pairs, then nibbles, using the masks `0x55555555`, `0x33333333` and `0x0F0F0F0F`. The usual last step is a multiply, which is banned: sum the four bytes with shifts and adds instead.
+- Write `bgr555_set_mask`: `$a0` = a BGR555 pixel, `$a1` = 0 or 1; `$v0` = the pixel with bit 15 set to `$a1`.
+- Write `reverse_bits32`, which reverses the 32 bits of a word, with the same shift-and-mask idea: swap neighboring bits, then pairs, nibbles, bytes and halves.
 
 ## 8. Verification
 
@@ -245,7 +249,7 @@ The starter's driver already calls the six routines on four input words and stor
 parts/part-02-thinking-like-the-r3000/ch09-signed-numbers-logic-and-shifts/verify/verify.sh
 ```
 
-Checks `starter/` by default; pass a path for a copy, `-v` for the log, `--solution` for the reference. Like Chapter 8, the verifier **calls each routine directly**, with sentinel values in the `$s` registers, garbage in the temporaries, and `$ra` aimed at a return trampoline. It prints the random seed on a failure, so you can see exactly which call failed.
+Checks `starter/` by default; pass a path for a copy, `-v` for the log, `--solution` for the reference. As in Chapter 8, the verifier **calls each routine directly**, with sentinel values in the callee-saved registers, garbage in the temporaries, and `$ra` aimed at a return trampoline. Then it runs the whole program on five data sets. The random values differ each run; a failure message shows the failing call and the seed.
 
 | Check | What it means | If it fails |
 |---|---|---|
@@ -254,12 +258,13 @@ Checks `starter/` by default; pass a path for a copy, `-v` for the log, `--solut
 | `no mult/div/HI/LO instructions` | None in the program. | A banned instruction; the message names it. |
 | `the routines use registers only` | No load/store in the routines. | A table lookup or stack use. |
 | `the driver calls each routine` | `jal` to all six from `main..done`. | A routine was inlined or skipped. |
+| `armips reports no warnings` | Clean build. | Usually a load-delay hazard in the driver. |
+| `program reaches done` | The run stops at `done`. | A loop that never ends, or a crash. Run with `-v`. |
 | `abs ...`, `sign_extend ...`, `popcount ...`, `rgb888_to_bgr555 ...`, `bgr555_unpack ...`, `swap_endian32 ...` | Edge values (0, -1, `0x80000000`, `0x7FFFFFFF`, masks), every width 1 to 32, and random values with garbage in the unused bits, against Python reference functions. | The message shows the call, expected and actual values. Typical: `abs(0x80000000)`, `bits` = 1 or 32, a `srl` where `sra` was needed. |
 | `every routine returns through $ra` | The trampoline is reached. | A fixed `j`, or `$ra` overwritten. |
 | `callee-saved registers unchanged` | `$s0-$s7`, `$gp`, `$sp`, `$fp` intact. | The message names the register. |
-| `armips reports no warnings` | Clean build. | Usually a load-delay hazard in the driver. |
 | `instruction budget` | At most 400 per call. | A loop that runs far too often. |
-| `driver: results ...` | All 13 results, on the shipped data and on four other data sets. | Wrong index; `sra` where round-toward-zero was required; `lbu` where `lb` was meant. |
+| `driver: ...` (two checks) | All 13 results, on the shipped data and on four other data sets. | Wrong index; `sra` where round-toward-zero was required; `lbu` where `lb` was meant. |
 
 A pass ends with `CHAPTER 09: PASSED (18/18 checks)`.
 
@@ -267,12 +272,12 @@ A pass ends with `CHAPTER 09: PASSED (18/18 checks)`.
 
 - **`sra` for division of negatives.** `-7 >> 1` is `-4`, not `-3`. Add the bias first (section 5.4).
 - **`srl` where `sra` is needed** (and the reverse). `sign_extend` with `srlv` returns the field zero-extended, which looks right for positive test values.
-- **`andi`/`ori` with a "negative" immediate.** The immediate is zero-extended, so there is no way to write `ori $t, $t, -1`. Use `li` or `nor`.
-- **Loading a byte with `lb` when you want an unsigned value.** A pixel channel of 200 comes back as -56.
+- **`andi`/`ori`/`xori` with a negative immediate.** The immediate is zero-extended. armips accepts `ori $t0, $t0, -1` without a warning, but it only sets the low 16 bits. Load the constant with `li` first.
+- **`lb` where `lbu` is needed.** A color channel of 200 comes back as -56.
 - **Shift amounts of 32 or more.** The variable forms use the low 5 bits only; `sllv` by 32 does nothing rather than clearing the register. (For `sign_extend`, `bits` = 32 means a shift by 0, which is fine.)
-- **Colour channel order.** BGR555 puts red in the **low** bits, the reverse of `0x00RRGGBB`.
-- **Truncating 8 to 5 bits.** The reference drops the low 3 bits; it does not round.
-- **`abs(0x80000000)`.** There is no positive 2^31. The routine returns `0x80000000` unchanged; callers must know.
+- **Color channel order.** BGR555 puts red in the **low** bits, the reverse of `0x00RRGGBB`.
+- **Rounding 8 bits to 5.** `rgb888_to_bgr555` drops the low 3 bits; it does not round.
+- **`abs(0x80000000)`.** There is no positive 2^31. The routine returns `0x80000000` unchanged, which is still negative.
 
 ## 10. Quiz
 
@@ -280,7 +285,7 @@ A pass ends with `CHAPTER 09: PASSED (18/18 checks)`.
 
 ## 11. Further reading
 
-- psx-spx, the GPU section on 15-bit colour (texture and VRAM pixel formats) for the BGR555 layout and the mask bit: <https://psx-spx.consoledev.net/>
+- psx-spx, "Graphics Processing Unit (GPU)", for the 15-bit BGR555 pixel layout and the mask bit: <https://psx-spx.consoledev.net/>
 - psx-spx, "CPU Specifications" for the instruction encodings (`sll`, `sllv`, `andi`).
 - *Hacker's Delight* (Warren), chapters 2 and 5, for bit tricks (`abs`, `popcount`, byte swaps).
 - *See MIPS Run* (Sweetman), the chapter on the instruction set (shifts, sign extension).

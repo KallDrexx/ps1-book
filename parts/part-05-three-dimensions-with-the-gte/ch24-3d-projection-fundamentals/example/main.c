@@ -1,6 +1,6 @@
 /* Chapter 24 worked example: a tunnel. Perspective only, no rotation.
  * Eight square frames, 1.0 apart in depth, drift toward the camera. Each corner is (+-1, +-1, z);
- * the screen position is  centre + x * h / z.  Watch the frames bunch up in the distance and
+ * the screen position is  center + x * h / z.  Watch the frames bunch up in the distance and
  * spread out as they come near: that is the divide by z. */
 #include <stdint.h>
 #include <psxgpu.h>
@@ -45,7 +45,7 @@ int main(void)
 			line(r, b, l, b, shade, i);
 			line(l, b, l, t, shade, i);
 		}
-		z0 -= FX_ONE / 20;                           /* towards the camera */
+		z0 -= FX_ONE / 20;                           /* toward the camera */
 		if (z0 < NEAR)
 			z0 += FX_ONE;                            /* the next frame has taken its place */
 		ot_draw();

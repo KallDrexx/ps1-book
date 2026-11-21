@@ -3,7 +3,7 @@ STATIC: libpsxe.a (now four modules) exports only the module APIs, the headers a
 input.c really goes through the BIOS pad driver (it references InitPAD and StartPAD), main.c is thin, data as shipped.
 DYNAMIC: the harness presses buttons on PCSX-Redux's pad (`inputs=`: pad overrides; active-low on the wire, the BIOS driver
 fills the guest's buffer). The probe records cursor_state every frame and calls input_held/pressed/released directly.
-Four scripted runs: base (shipped numbers), patched (speeds, home, colour read from the state, not from constants),
+Four scripted runs: base (shipped numbers), patched (speeds, home, color read from the state, not from constants),
 clamp (big steps and a bigger sprite against all four edges) and edges (the three queries against the held series)."""
 import re
 import struct
@@ -17,8 +17,8 @@ SW, SH = 320, 240
 BG = (24, 24, 32)
 NCOL = 6
 PALETTE = [(230, 40, 40), (40, 200, 60), (60, 110, 255), (240, 220, 40), (220, 60, 220), (40, 220, 220)]
-SHIPPED = dict(x=152, y=112, colour=0, speed=2, fast=4, home_x=152, home_y=112, size=16)
-FIELDS = ["x", "y", "colour", "speed", "fast", "home_x", "home_y", "size"]
+SHIPPED = dict(x=152, y=112, color=0, speed=2, fast=4, home_x=152, home_y=112, size=16)
+FIELDS = ["x", "y", "color", "speed", "fast", "home_x", "home_y", "size"]
 STATE_SZ = 4 * len(FIELDS)
 MAIN_BUDGET = 70
 LAG_TOL = 1             # frames of slack on the length of a measured hold
@@ -40,7 +40,7 @@ SCRIPT_CLAMP = [(60, ("LEFT",), 8), (78, ("UP",), 8), (96, ("RIGHT",), 10), (116
 SCRIPT_EDGES = [(70, ("CROSS",), 30), (90, ("UP",), 12), (115, ("CROSS",), 1)]
 RUNS = {
     "base": dict(script=SCRIPT_BASE, patch=None, frames=330, shots=[("a", 100), ("b", 160), ("c", 200), ("d", 232), ("e", 276), ("f", 325)]),
-    "patch": dict(script=SCRIPT_PATCH, patch=dict(x=100, y=100, colour=3, speed=3, fast=7, home_x=50, home_y=60), frames=135, shots=[]),
+    "patch": dict(script=SCRIPT_PATCH, patch=dict(x=100, y=100, color=3, speed=3, fast=7, home_x=50, home_y=60), frames=135, shots=[]),
     "clamp": dict(script=SCRIPT_CLAMP, patch=dict(x=150, y=100, speed=40, fast=40, home_x=150, home_y=100, size=32), frames=145,
                   shots=[("end", 140)]),
     "edges": dict(script=SCRIPT_EDGES, patch=None, frames=145, shots=[]),
@@ -70,25 +70,25 @@ def states(r):
 
 
 def at(sts, f):
-    """State sampled at frame f: (x, y, colour)."""
+    """State sampled at frame f: (x, y, color)."""
     expect_true(f in sts, f"a sample for frame {f}", "missing")
     return tuple(sts[f][1:4])
 
 
-@static_check("symbols", hint="Keep main, cursor_state and cursor_colours. The linker drops functions nobody calls: the cursor rules must use input_held, input_pressed and input_released.")
+@static_check("symbols", hint="Keep main, cursor_state and cursor_colors. The linker drops functions nobody calls: the cursor rules must use input_held, input_pressed and input_released.")
 def _(ctx):
-    ctx.require_symbols("main", "cursor_state", "cursor_colours", "input_init", "input_update", "input_held",
+    ctx.require_symbols("main", "cursor_state", "cursor_colors", "input_init", "input_update", "input_held",
                         "input_pressed", "input_released", "display_init", "display_clear", "display_swap",
                         "ot_begin_frame", "ot_draw", "gfx_quad_f4")
 
 
-@static_check("data layout as shipped", hint="Do not edit cursor_state's layout or initial values, or the colour table.")
+@static_check("data layout as shipped", hint="Do not edit cursor_state's layout or initial values, or the color table.")
 def _(ctx):
     base, code = ctx.exe.load_addr, ctx.exe.code
     o = ctx.symbols["cursor_state"] - base
     expect_bytes(code[o:o + STATE_SZ], state_bytes(), "initial `cursor_state` (8 x int32)")
-    o = ctx.symbols["cursor_colours"] - base
-    expect_bytes(code[o:o + 3 * NCOL], bytes(c for rgb in PALETTE for c in rgb), "`cursor_colours` table")
+    o = ctx.symbols["cursor_colors"] - base
+    expect_bytes(code[o:o + 3 * NCOL], bytes(c for rgb in PALETTE for c in rgb), "`cursor_colors` table")
 
 
 # ---- structure: the archive and the headers (as in Chapter 21, with one more module) --------------------------------
@@ -296,32 +296,32 @@ def _(ctx):
 
 
 @check("Square doubles the speed (4 px per frame) and does not move the cursor by itself",
-       hint="step = input_held(INPUT_SQUARE) ? fast : speed. Square alone changes nothing.")
+       hint="While Square is held the step is `fast` instead of `speed`. Square alone changes nothing.")
 def _(ctx):
     sts = states(run(ctx, "base"))
     check_segment(sts, 130, ("SQUARE", "RIGHT"), 10, 4, at(sts, 129), "SQUARE+RIGHT 10 frames")
     check_segment(sts, 148, ("SQUARE",), 10, 4, at(sts, 147), "SQUARE alone")
 
 
-@check("X changes the colour once per PRESS: a 30-frame hold counts once, three taps count three, 6 colours wrap",
-       hint="Use input_pressed(INPUT_CROSS) (the edge), not input_held: held would step the colour every frame.")
+@check("X changes the color once per PRESS: a 30-frame hold counts once, three taps count three, 6 colors wrap",
+       hint="Use input_pressed(INPUT_CROSS) (the edge), not input_held: held would step the color every frame.")
 def _(ctx):
     sts = states(run(ctx, "base"))
     c = {f: s[3] for f, s in sts.items()}
-    expect_eq(c[165], 0, "colour before the first press", fmt="dec",
-              hint="Nothing pressed X yet: if the colour changed at start-up, input_update trusted the zeroed buffer (README 5.3).")
+    expect_eq(c[165], 0, "color before the first press", fmt="dec",
+              hint="Nothing pressed X yet: if the color changed at start-up, input_update trusted the zeroed buffer (README 5.3).")
     window = [c[f] for f in range(165, 200)]
     changes = sum(1 for a, b in zip(window, window[1:]) if a != b)
-    expect_true(changes == 1 and c[200] == 1, "one 30-frame hold: exactly one change, 0 -> 1", f"{changes} changes, colour {c[200]}",
+    expect_true(changes == 1 and c[200] == 1, "one 30-frame hold: exactly one change, 0 -> 1", f"{changes} changes, color {c[200]}",
                 "A held button is not a new press: act only on the frame input_pressed() is true.")
-    expect_eq(c[232], 4, "colour after three more taps", fmt="dec", hint="Each press, however short, advances the colour by one.")
-    expect_eq(c[276], 4, "Start and the D-pad leave the colour alone", fmt="dec")
-    expect_eq(c[325], 1, "three more taps: 4 -> 5 -> 0 -> 1 (the table has 6 colours)", fmt="dec",
-              hint="colour = (colour + 1) % 6.")
-    expect_true(all(0 <= v < NCOL for v in c.values()), "colour always in 0..5", str(sorted(set(c.values()))))
+    expect_eq(c[232], 4, "color after three more taps", fmt="dec", hint="Each press, however short, advances the color by one.")
+    expect_eq(c[276], 4, "Start and the D-pad leave the color alone", fmt="dec")
+    expect_eq(c[325], 1, "three more taps: 4 -> 5 -> 0 -> 1 (the table has 6 colors)", fmt="dec",
+              hint="color = (color + 1) % 6.")
+    expect_true(all(0 <= v < NCOL for v in c.values()), "color always in 0..5", str(sorted(set(c.values()))))
 
 
-@check("Start puts the cursor back at (home_x, home_y) when it is RELEASED, and keeps the colour",
+@check("Start puts the cursor back at (home_x, home_y) when it is RELEASED, and keeps the color",
        hint="On input_released(INPUT_START): x = home_x; y = home_y. Read home from cursor_state, do not hard-code it. Nothing happens while Start is still down.")
 def _(ctx):
     sts = states(run(ctx, "base"))
@@ -335,13 +335,13 @@ def _(ctx):
               hint="home_x and home_y are fields of cursor_state: use them.")
 
 
-@check("speeds, size and colour come from cursor_state (patched: speed 3, fast 7, colour 3 -> 4)",
-       hint="No constants in the rules: read c->speed, c->fast, c->size and the current colour from the struct.")
+@check("speeds, size and color come from cursor_state (patched: speed 3, fast 7, color 3 -> 4)",
+       hint="No constants in the rules: read c->speed, c->fast, c->size and the current color from the struct.")
 def _(ctx):
     sts = states(run(ctx, "patch"))
     check_segment(sts, 60, ("RIGHT",), 10, 3, at(sts, 59), "RIGHT with speed 3")
     check_segment(sts, 80, ("SQUARE", "DOWN"), 10, 7, at(sts, 79), "SQUARE+DOWN with fast 7")
-    expect_eq(at(sts, 130)[2], 4, "colour after one press from 3", fmt="dec")
+    expect_eq(at(sts, 130)[2], 4, "color after one press from 3", fmt="dec")
 
 
 @check("the cursor is clamped to the screen on all four edges (every frame), also for a 32 px square",
@@ -358,7 +358,7 @@ def _(ctx):
 
 
 def shown(ctx, name, tag, f):
-    """Screenshot `tag` of run `name` taken at frame f: the sprite is where cursor_state says, in the colour it says."""
+    """Screenshot `tag` of run `name` taken at frame f: the sprite is where cursor_state says, in the color it says."""
     r = run(ctx, name)
     sts = states(r)
     x, y, c = at(sts, f)
@@ -377,8 +377,8 @@ def shown(ctx, name, tag, f):
     expect_true(abs(outside - size * size) <= 2 * size + 4, f"only one {size}x{size} square is drawn", f"{outside} non-background pixels")
 
 
-@check("screenshots: one square at the position and in the colour cursor_state reports (six moments, three runs)",
-       hint="The picture must follow the state: draw with gfx_quad_f4 at (x, y), size x size, colour cursor_colours[colour].")
+@check("screenshots: one square at the position and in the color cursor_state reports (six moments, three runs)",
+       hint="The picture must follow the state: draw with gfx_quad_f4 at (x, y), size x size, color cursor_colors[color].")
 def _(ctx):
     for tag, f in (("a", 100), ("b", 160), ("c", 200), ("d", 232), ("e", 276), ("f", 325)):
         shown(ctx, "base", tag, f)
@@ -455,6 +455,6 @@ def _(ctx):
                     "Idle buttons read as 1 bits in the raw buffer. If every query is true now, you forgot to invert.")
     # start-up: before the driver's first poll the buffer is all zero ("every button down" if trusted)
     sts = states(run(ctx, "base"))
-    expect_eq(at(sts, 59), (SHIPPED["x"], SHIPPED["y"], SHIPPED["colour"]), "state before the first scripted press (frame 59): untouched",
-              fmt="dec", hint="Nothing was pressed yet. A colour or position change here means input_update trusted the buffer before the "
+    expect_eq(at(sts, 59), (SHIPPED["x"], SHIPPED["y"], SHIPPED["color"]), "state before the first scripted press (frame 59): untouched",
+              fmt="dec", hint="Nothing was pressed yet. A color or position change here means input_update trusted the buffer before the "
                               "first poll (all zero bits = every button down): check stat == 0 and the type first (README 5.3).")

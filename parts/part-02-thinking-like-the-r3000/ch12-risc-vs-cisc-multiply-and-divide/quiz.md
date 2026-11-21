@@ -12,7 +12,7 @@ In the special registers HI (upper half) and LO (lower half). `mflo rd` copies t
 
 **3. You write `multu $t0, $t1` followed immediately by `mflo $t2`. Is the value right? What does it cost?**
 <details><summary>Answer</summary>
-Right: the R3000 interlocks on `mfhi`/`mflo`, stalling until the unit is done. It costs 6, 9 or 13 cycles of stall depending on the size of `rs` (`$t0`). Independent instructions between the two hide that time.
+Right: the R3000 interlocks on `mfhi`/`mflo`, stalling until the unit is done. It costs up to 6, 9 or 13 cycles of stall, depending on the size of `rs` (`$t0`). Independent instructions between the two hide that time.
 </details>
 
 **4. `divu` or `div`: how long, and what is the cheaper alternative when the divisor is a constant?**
@@ -42,10 +42,10 @@ Multiplication by a power of two is a left shift, and sums are taken modulo 2^32
 
 **9. A word loop copies 1024 bytes. Why can't it simply `lw`/`sw` from the first byte if `dst` is at address 0x80100001?**
 <details><summary>Answer</summary>
-`lw`/`sw` need a multiple of 4; otherwise an address-error exception. Copy a byte head (3 bytes here) until `dst` is aligned; if `src` is aligned then too (same `& 3`), run the word loop, then a byte tail. If `src` and `dst` differ mod 4 you need a byte loop or `lwl`/`lwr`.
+`lw`/`sw` need a multiple of 4; otherwise an address-error exception. Copy a byte head (3 bytes here) until `dst` is aligned. If `src` is now aligned too (it started with the same `& 3`), run the word loop, then a byte tail. If `src` and `dst` differ mod 4 you need a byte loop or `lwl`/`lwr`.
 </details>
 
 **10. Why does `(w - 0x01010101) & ~w & 0x80808080` detect a zero byte in `w`, and why is the `& ~w` needed?**
 <details><summary>Answer</summary>
-Subtracting 1 from a zero byte borrows and sets its top bit; `& 0x80808080` keeps top bits. But a byte that already had its top bit set (0x80 to 0xFF) also keeps it after subtracting 1, giving a false positive; `& ~w` clears those, because they were set in `w`.
+Subtracting 1 from a zero byte borrows and sets its top bit; `& 0x80808080` keeps top bits. But a byte from 0x81 to 0xFF still has its top bit set after subtracting 1, giving a false positive; `& ~w` clears every byte whose top bit was set in `w`.
 </details>

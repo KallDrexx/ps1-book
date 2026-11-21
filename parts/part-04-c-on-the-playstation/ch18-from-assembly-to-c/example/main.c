@@ -14,7 +14,7 @@ int main(void)
 	SetDefDispEnv(&disp, 0, 0, 320, 240);
 	SetDefDrawEnv(&draw, 0, 0, 320, 240);
 
-	/* sum_expanded(0, 31) = 0 + 255; (0, 0) = 0; (8, 8) = 66 + 66: a purple screen (255, 0, 132). */
+	/* sum_expanded(0, 31) = 0 + 255; (0, 0) = 0; (8, 8) = 66 + 66: a pink screen (255, 0, 132). */
 	setRGB0(&draw, sum_expanded(0, 31), sum_expanded(0, 0), sum_expanded(8, 8));
 	draw.isbg = 1;
 

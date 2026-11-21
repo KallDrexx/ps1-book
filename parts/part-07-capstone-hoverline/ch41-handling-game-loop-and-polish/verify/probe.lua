@@ -102,7 +102,7 @@ local function set_pad(spec)                       -- spec: 'CROSS,LEFT' ('' = n
   end
 end
 
--- the pilot: it steers toward the centre of the section LOOK sections ahead (by the links), holding CROSS, braking in sharp corners.
+-- the pilot: it steers toward the center of the section LOOK sections ahead (by the links), holding CROSS, braking in sharp corners.
 -- It reads the program's own state (ship, ship_section, track), so it drives the same lap for the same code.
 local TWO_PI = 2 * math.pi
 local LOOK = 3

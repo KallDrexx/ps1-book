@@ -21,7 +21,7 @@ It is the firmware in ROM that boots the console and provides kernel services (m
 The pad is active-low, so Up being *up* gives a 1 bit: the cursor moves up whenever Up is **not** pressed, and stops while it is held. Invert first (`~raw`) or test `!(raw & PAD_UP)`.
 </details>
 
-**4.** Fill in the table for a button that is down in frames 3 to 5 only (frames 1 to 7). In which frames are `held`, `pressed` and `released` true?
+**4.** A button is down in frames 3 to 5 only, out of frames 1 to 7. In which frames are `held`, `pressed` and `released` true?
 
 <details><summary>Answer</summary>
 
@@ -32,7 +32,7 @@ The pad is active-low, so Up being *up* gives a 1 bit: the cursor moves up whene
 
 <details><summary>Answer</summary>
 
-The driver keeps writing into it from the VBlank interrupt after `input_init` has returned. A local array lives on the stack and is reused by other calls, so the driver would corrupt them.
+The driver keeps writing into it from the VBlank interrupt after `input_init` has returned. A local array lives on the stack, and later calls reuse that memory, so the driver would corrupt their data.
 </details>
 
 **6.** Why does `input_update` check `stat` and `type` before using `btn`?
@@ -42,18 +42,18 @@ The driver keeps writing into it from the VBlank interrupt after `input_init` ha
 Not every buffer holds a pad answer. Before the first poll it still holds its initial zeros (a `static` array): `stat` 0 looks valid, and zero bits read as active-low mean every button is down. An empty port reports `stat = FFh`. Only `stat == 0` together with a known `type` (4, 5 or 7) says the buffer holds a real answer.
 </details>
 
-**7.** A colour should change once per press. Your code calls `input_held(INPUT_CROSS)` instead of `input_pressed`. What does a 30-frame hold do, and why?
+**7.** A color should change once per press. Your code calls `input_held(INPUT_CROSS)` instead of `input_pressed`. What does a 30-frame hold do, and why?
 
 <details><summary>Answer</summary>
 
-The colour advances 30 times: `held` is true on every frame the button is down, and the rule runs every frame. `pressed` is true on the first frame only.
+The color advances 30 times: `held` is true on every frame the button is down, and the rule runs every frame. `pressed` is true on the first frame only.
 </details>
 
 **8.** What goes wrong if `input_update` runs twice in one frame?
 
 <details><summary>Answer</summary>
 
-The second call copies the new reading into `before` too, so `now == before` and `pressed` and `released` are false for that frame: every edge is lost (and an edge seen by code between the two calls disappears). Call it once per frame.
+The second call copies the new reading into `before` and reads the same buffer again, so `now == before`: `pressed` and `released` are false for the rest of that frame, and every edge is lost. Call it once per frame.
 </details>
 
 **9.** Why does the book's `input_pressed` not clear a flag after it returns 1?

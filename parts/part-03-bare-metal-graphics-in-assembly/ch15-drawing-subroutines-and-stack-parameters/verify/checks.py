@@ -4,9 +4,9 @@ called DIRECTLY, arguments 0-3 in $a0-$a3 and the rest at 16($sp), 20($sp), ... 
 every GP0/GP1 word each call writes, so the exact packet, the number of GPUSTAT reads and the ABI (exception, return,
 $sp/$s0-$s7/$gp/$fp preserved) are checked per call.
 Phase 2: the real program runs on three scenes: the one the reader ships in `scene`, read back from RAM, and two other
-landscapes that the verifier writes over the table (different polygon counts, shapes, colours, vertex orders). The GP0
+landscapes that the verifier writes over the table (different polygon counts, shapes, colors, vertex orders). The GP0
 transcript must contain exactly the table's polygons, in order; the screenshot is sampled inside the polygons (the
-topmost polygon at each point decides the expected colour; points near any edge are skipped) and on background points.
+topmost polygon at each point decides the expected color; points near any edge are skipped) and on background points.
 A hard-coded picture cannot pass: the table changes. Packets are compared by what the GPU draws (11-bit coordinates,
 equivalent vertex orders accepted; see canonical())."""
 import math
@@ -72,7 +72,7 @@ def gen_scene(seed, n, bg):
     """A deterministic pseudo-random landscape: n polygons of the three types, inside the screen, any winding."""
     rng = random.Random(seed)
     entries = []
-    def colour(): return (rng.randrange(0x20, 0xE0) << 16) | (rng.randrange(0x20, 0xE0) << 8) | rng.randrange(0x20, 0xE0)
+    def color(): return (rng.randrange(0x20, 0xE0) << 16) | (rng.randrange(0x20, 0xE0) << 8) | rng.randrange(0x20, 0xE0)
     for i in range(n):
         t = [T_FLAT_TRI, T_FLAT_QUAD, T_GOURAUD_TRI, T_FLAT_TRI, T_GOURAUD_TRI][rng.randrange(5)]
         cx, cy = rng.randrange(50, 270), rng.randrange(50, 190)
@@ -88,7 +88,7 @@ def gen_scene(seed, n, bg):
                 verts.append((int(round(cx + r * math.cos(a))), int(round(cy + r * math.sin(a)))))
             if rng.random() < 0.5:
                 verts.reverse()                    # the other winding
-        entries.append(dict(type=t, cols=[colour(), colour(), colour()] if t == T_GOURAUD_TRI else [colour(), 0, 0], verts=verts))
+        entries.append(dict(type=t, cols=[color(), color(), color()] if t == T_GOURAUD_TRI else [color(), 0, 0], verts=verts))
     return dict(bg=bg, entries=entries)
 
 
@@ -130,7 +130,7 @@ def s11(v):
 def canonical(cmd, words):
     """What the GPU draws from a packet, independent of equivalent choices: coordinates are the sign-extended low 11
     bits of each half (x & 0x7FF and x & 0xFFFF are both fine), a triangle's vertices may come in any order and a
-    quad's in any order that keeps the same diagonal (v2-v3). Gouraud colour words after the first must have 00 on
+    quad's in any order that keeps the same diagonal (v2-v3). Gouraud color words after the first must have 00 on
     top. Returns None for a malformed packet."""
     if cmd not in LEN or len(words) != LEN[cmd]:
         return None
@@ -315,7 +315,7 @@ WEIGHTS = [(0.8, 0.1, 0.1), (0.1, 0.8, 0.1), (0.1, 0.1, 0.8), (1 / 3, 1 / 3, 1 /
            (0.45, 0.10, 0.45), (0.10, 0.45, 0.45)]
 
 
-def colour_at(e, p):
+def color_at(e, p):
     if e["type"] == T_GOURAUD_TRI:
         w = bary(p, e["verts"])
         return tuple(sum(rgb(c)[i] * k for c, k in zip(e["cols"], w)) for i in range(3)), TOL_GOURAUD
@@ -341,14 +341,14 @@ def samples(sc):
                 if cls[i] != "in" or any(c is None for c in cls[i + 1:]):
                     continue
                 top = max(j for j in range(i, len(es)) if cls[j] == "in")
-                col, tol = colour_at(es[top], p)
+                col, tol = color_at(es[top], p)
                 out.append((p[0], p[1], tuple(int(round(c)) for c in col), tol, f"polygon {top}, point ({p[0]},{p[1]})"))
     return out
 
 
 # ---- the scene runs --------------------------------------------------------------------------------------------
 @check("the scene table has at least 20 polygons of valid types (shipped table, read back from RAM)",
-       hint="`scene`: count word, background colour, then 8-word entries (type, 3 colours, 4 packed vertices).")
+       hint="`scene`: count word, background color, then 8-word entries (type, 3 colors, 4 packed vertices).")
 def _(ctx):
     sc = get_scene(ctx, "shipped")
     expect_true(len(sc["entries"]) >= 20, "at least 20 polygons", str(len(sc["entries"])))
@@ -356,7 +356,7 @@ def _(ctx):
 
 @check("the program sends the table's polygons to the GPU, in table order and nothing else polygon-shaped (3 scenes)",
        hint="Walk the table from the count word: for each entry call the routine its type names. The verifier writes two "
-            "different landscapes over `scene`, so the count, shapes and colours must all come from the table.")
+            "different landscapes over `scene`, so the count, shapes and colors must all come from the table.")
 def _(ctx):
     for name in SCENES:
         sc = get_scene(ctx, name)
@@ -371,7 +371,7 @@ def _(ctx):
         for i, ((c, w), (wc, ww)) in enumerate(zip(pk, want)):
             expect_true(c == wc and canonical(c, w) == canonical(wc, ww),
                         f"scene '{name}', polygon {i} (type {sc['entries'][i]['type']}): " + hexs(ww) + " (or an equivalent vertex order)",
-                        hexs(w), hint="Wrong type dispatch, colours, vertices (unpack the signed 16-bit halves) or order.")
+                        hexs(w), hint="Wrong type dispatch, colors, vertices (unpack the signed 16-bit halves) or order.")
 
 
 @check("every routine is called for the entries of its type (a flat triangle by draw_flat_tri, ...)",
@@ -387,7 +387,7 @@ def _(ctx):
                         hint="main must call the routine for each entry of that type.")
 
 
-@check("the picture: inside every polygon the colour is the polygon's (interpolated for Gouraud), where it is topmost",
+@check("the picture: inside every polygon the color is the polygon's (interpolated for Gouraud), where it is topmost",
        hint="Sampled points inside each polygon, at least 3 px from every edge, compared with the topmost polygon there.")
 def _(ctx):
     for name in SCENES:
@@ -399,11 +399,11 @@ def _(ctx):
         expect_true(len(pts) >= len(sc["entries"]), f"scene '{name}': enough interior samples", str(len(pts)),
                     hint="The polygons are too small or too hidden to sample; make them bigger.")
         for x, y, exp, tol, what in pts:
-            expect_pixel(img, x, y, exp, tol=tol, what=f"scene '{name}': {what}", hint="Wrong polygon, colour, position or draw order.")
+            expect_pixel(img, x, y, exp, tol=tol, what=f"scene '{name}': {what}", hint="Wrong polygon, color, position or draw order.")
 
 
-@check("background untouched: pixels away from every polygon are the table's background colour, in every scene",
-       hint="gpu_clear the whole screen with the table's background colour first; polygons must not spill.")
+@check("background untouched: pixels away from every polygon are the table's background color, in every scene",
+       hint="gpu_clear the whole screen with the table's background color first; polygons must not spill.")
 def _(ctx):
     for name in SCENES:
         sc = get_scene(ctx, name)
@@ -416,5 +416,5 @@ def _(ctx):
                     continue
                 n += 1
                 expect_pixel(img, x, y, rgb(sc["bg"]), tol=TOL_BG, what=f"scene '{name}': background pixel ({x},{y})",
-                             hint="Something was drawn here (or the screen was not cleared with the table's colour).")
+                             hint="Something was drawn here (or the screen was not cleared with the table's color).")
         expect_true(n > 100, f"scene '{name}': enough background samples", str(n))

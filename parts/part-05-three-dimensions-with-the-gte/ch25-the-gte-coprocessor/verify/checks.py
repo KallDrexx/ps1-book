@@ -1,19 +1,19 @@
 """Chapter 25 checks: The GTE Coprocessor ("Solid Cube").
 Build: CMake + PSn00bSDK.
 STATIC: the state symbols exist; the program's OWN objects (project + psxe, never the SDK's libraries) contain GTE commands
-(RTPS or RTPT, NCLIP, AVSZ3 or AVSZ4) and do not call the CPU maths of Chapter 23 (fx_mul/fx_div/fx_rotate); no floating
+(RTPS or RTPT, NCLIP, AVSZ3 or AVSZ4) and do not call the CPU math of Chapter 23 (fx_mul/fx_div/fx_rotate); no floating
 point; the reference solution's psxe mirrors common/psxe.
 DYNAMIC (probe.lua): every time the program calls frame_done() the probe records the angles, the matrix the program uploaded,
 the eight projected corners and depths, the GTE flags, the counters, the CPU cycles spent between render_begin() and
-render_end(), and the quads found by WALKING the ordering table handed to DrawOTag (slot, colour, four corners).
+render_end(), and the quads found by WALKING the ordering table handed to DrawOTag (slot, color, four corners).
 The Python reference below is the contract of README section 7:
   * the matrix is RotMatrix's (Rx * Ry * Rz, SDK isin/icos), translation (0, 0, cam_z);
   * the corners are projected exactly as the GTE's RTPS does (the 'unr' divider ported from psx-spx);
   * a face is drawn iff NCLIP of its corners 0, 1, 2 is positive; the reference decides it from the REFERENCE matrix, so a face
     whose area is within a margin of zero (edge-on) is not judged;
   * a drawn quad goes to OT slot clamp((SZ0+SZ1+SZ2+SZ3) / 4 / 4 >> 7) (AVSZ4 with ZSF4 = 256, shifted by 7), +-1.
-Runs: shipped numbers (120 frames); six poses with the rotation frozen (screenshots at face centres, a grid scan for hidden
-colours); a recoloured pose; patched lens, cube size, speeds and a third axis; a cube straddling the camera (GTE flags)."""
+Runs: shipped numbers (120 frames); six poses with the rotation frozen (screenshots at face centers, a grid scan for hidden
+colors); a recolored pose; patched lens, cube size, speeds and a third axis; a cube straddling the camera (GTE flags)."""
 import math
 import re
 import shutil
@@ -286,7 +286,7 @@ def _(ctx):
 # ---- dynamic checks -----------------------------------------------------------------------------------------------------------
 def check_tables(name, d, t, colors_expected):
     expect_eq(t["faces"], [v for f in FACES for v in f], f"{name}: faces[] at frame 1", hint="Do not change the face table: it is part of the contract.")
-    expect_eq(t["colors"], [v for c in colors_expected for v in c], f"{name}: face_colors[] at frame 1", hint="Do not change the colour table.")
+    expect_eq(t["colors"], [v for c in colors_expected for v in c], f"{name}: face_colors[] at frame 1", hint="Do not change the color table.")
     expect_eq(t["cube"], [v for i in range(8) for v in (*corner(i, d["size"]), 0)], f"{name}: cube[] at frame 1", hint="Do not change the cube table.")
     expect_eq(t["cam_z"], d["cam_z"], f"{name}: cam_z", hint="Read it, do not write it.")
     expect_eq(t["proj_h"], d["h"], f"{name}: proj_h", hint="Read it, do not write it.")
@@ -365,7 +365,7 @@ def check_culling(ctx, name):
         drawn = []
         for q in x.quads:
             f = face_of_rgb(d["colors"], q["rgb"])
-            expect_true(f is not None, f"{name}, frame {x.n}: every quad has the colour of one face", str(q["rgb"]),
+            expect_true(f is not None, f"{name}, frame {x.n}: every quad has the color of one face", str(q["rgb"]),
                         "setRGB0 from face_colors[f] (not from a constant).")
             expect_eq(q["code"], 0x28, f"{name}, frame {x.n}: quads are POLY_F4 (code 0x28)", hint="setPolyF4 then setRGB0.")
             drawn.append(f)
@@ -374,7 +374,7 @@ def check_culling(ctx, name):
         extra = sorted(set(drawn) & hid)
         judged += len(vis) + len(hid)
         hint = ("A face is drawn only if NCLIP of its corners 0, 1, 2 (gte_ldsxy3 + gte_nclip + gte_stopz) is POSITIVE: "
-                "positive means clockwise on the screen, which the face table is built for (README 5.6).")
+                "positive means clockwise on the screen, which the face table is built for (README 5.7).")
         if extra and not missing:
             hint += " You are drawing faces that point away from the camera: the test is missing or has the wrong sign."
         if missing and extra:
@@ -406,7 +406,7 @@ def check_sorting(ctx, name):
 
 
 def lit_colors(img, step=2):
-    """Colour -> pixel count over a grid of the whole picture."""
+    """Color -> pixel count over a grid of the whole picture."""
     out = {}
     for y in range(0, img.height, step):
         for x in range(0, img.width, step):
@@ -431,16 +431,16 @@ def check_picture(ctx, name, shot_frames):
             ys = [ref["xy"][i][1] for i in FACES[f]]
             px, py = round(sum(xs) / 4), round(sum(ys) / 4)
             got = img.pixel(px, py)
-            expect_true(colors_close(got, colors[f], 24), f"{name}, frame {fr}: the centre of face {f}, ({px}, {py}), is colour {colors[f]}", str(got),
+            expect_true(colors_close(got, colors[f], 24), f"{name}, frame {fr}: the center of face {f}, ({px}, {py}), is color {colors[f]}", str(got),
                         "Each face is its own POLY_F4 with face_colors[f]; check the face table's corner order and the culling sign.")
         counts = lit_colors(img)
         for c, n in counts.items():
             if colors_close(c, BG, 14):
                 continue
             who = [f for f in range(6) if colors_close(c, colors[f], 14)]
-            expect_true(who, f"{name}, frame {fr}: every non-background pixel has a face colour", f"colour {c} x{n} is neither background nor a face colour")
+            expect_true(who, f"{name}, frame {fr}: every non-background pixel has a face color", f"color {c} x{n} is neither background nor a face color")
             for f in who:
-                expect_true(f not in hid, f"{name}, frame {fr}: hidden face {f} ({colors[f]}) is not visible anywhere", f"{n} grid pixels have its colour",
+                expect_true(f not in hid, f"{name}, frame {fr}: hidden face {f} ({colors[f]}) is not visible anywhere", f"{n} grid pixels have its color",
                             "A face turned away from the camera must not be drawn (NCLIP <= 0).")
         for f in vis:
             expect_true(any(colors_close(c, colors[f], 14) and n >= 30 for c, n in counts.items()), f"{name}, frame {fr}: face {f} fills an area of the picture",
@@ -481,8 +481,8 @@ def _(ctx):
                 "(a problem with the checker's reference if this fails with a correct program)")
 
 
-@check("picture (spinning, frames 30 and 95): face centres have the face colours; no hidden face colour appears anywhere",
-       hint="One POLY_F4 per visible face, coloured face_colors[f], corners from screen_xy[faces[f][0..3]] in that order.")
+@check("picture (spinning, frames 30 and 95): face centers have the face colors; no hidden face color appears anywhere",
+       hint="One POLY_F4 per visible face, colored face_colors[f], corners from screen_xy[faces[f][0..3]] in that order.")
 def _(ctx):
     check_picture(ctx, "base", (30, 95))
 
@@ -491,7 +491,7 @@ def pose_runs():
     return [f"pose{i}" for i in range(len(POSES))]
 
 
-@check("six frozen poses: faces drawn and sorted as the reference says, face centres coloured, no hidden colour anywhere",
+@check("six frozen poses: faces drawn and sorted as the reference says, face centers colored, no hidden color anywhere",
        hint="rot_step is patched to 0, so each pose holds: the drawing must follow rot and the face table.")
 def _(ctx):
     kinds = set()
@@ -508,8 +508,8 @@ def _(ctx):
     expect_true(kinds == {1, 2, 3}, "the poses show one, two and three faces", f"visible-face counts seen: {sorted(kinds)} (checker design)")
 
 
-@check("colours come from face_colors[]: a recoloured, frozen pose is drawn in the new colours",
-       hint="Read face_colors[f] when you build each quad; do not hard-code the colours or their order.")
+@check("colors come from face_colors[]: a recolored, frozen pose is drawn in the new colors",
+       hint="Read face_colors[f] when you build each quad; do not hard-code the colors or their order.")
 def _(ctx):
     check_culling(ctx, "recolor")
     check_picture(ctx, "recolor", (2,))

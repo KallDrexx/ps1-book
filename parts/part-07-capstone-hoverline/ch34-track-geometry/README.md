@@ -2,11 +2,11 @@
 
 ## 1. Concept
 
-A race track is a **ring of sections**. Each section is five quads between two **rings** of six vertices, and neighbouring sections *share* their ring. The track is wider than the 16-bit range of the GTE's vertex input, and the format allows any `s32` world, so every vertex is made **camera-relative in 32-bit C** before the GTE sees it. This chapter loads `TRACK.TRK`, validates it, and draws the whole track as flat-coloured quads (colour by face flag) with a wireframe overlay you can switch on.
+A race track is a **ring of sections**. Each section is five quads between two **rings** of six vertices, and neighboring sections *share* their ring. The track is wider than the 16-bit range of the GTE's vertex input, and the format allows any `s32` world, so every vertex is made **camera-relative in 32-bit C** before the GTE sees it. This chapter loads `TRACK.TRK`, validates it, and draws the whole track as flat-colored quads (color by face flag) with a wireframe overlay you can switch on.
 
 ## 2. Why it matters
 
-The track is the biggest piece of data in *Hoverline*: 672 vertices, 560 faces, 112 sections. Everything later reads it: textures (Ch 35), subdivision (36), the ship's start line (37), the visibility window (38), collision edges and boost pads (40, 41). Getting the file layout, the checks on untrusted data, and the world-scale arithmetic right here saves every later chapter. It is also where "the world is bigger than the hardware" stops being a footnote.
+The track is the biggest piece of data in *Hoverline*: 672 vertices, 560 faces, 112 sections. Everything later reads it: textures (Ch 35), subdivision (36), the ship's start line (37), the visibility window (38), collision edges and boost pads (40, 41). Every later chapter relies on the file layout, the checks on untrusted data, and the world-scale arithmetic being right here. It is also where "the world is bigger than the hardware" stops being a footnote.
 
 ## 3. Learning objectives
 
@@ -14,10 +14,11 @@ After this chapter you can:
 
 - describe a track as sections, rings and shared vertices, and say how a face finds its four corners through the vertex table;
 - parse `.TRK` **in place** with bounds validation: header counts against file size, every index against its table, with distinct error codes in a fixed order;
-- say exactly where the GTE's 16-bit limits are (the vertex input and the view-space outputs, not the 32-bit translation), why loading absolute vertices only works for a world that fits `s16` around the origin, and use the recipe: rotation-only `RT`, `TR = 0`, `d = vertex - eye` in 32 bits, skip a vertex when any `|d|` exceeds 32767;
+- say where the GTE's 16-bit limits are (the vertex input and the view-space outputs, not the 32-bit translation) and why loading absolute vertices only works for a world that fits `s16` around the origin;
+- apply the camera-relative recipe: rotation-only `RT`, `TR = 0`, `d = vertex - eye` in 32 bits, skip a vertex when any component of `d` exceeds 32767 in magnitude;
 - run each face through the cull rules (far, near plane, back face, size, buffer) and count where it went;
-- colour faces from their flags and draw a closed outline with one GPU polyline packet;
-- size the primitive buffer for a worst case and say honestly what drawing the whole track costs.
+- color faces from their flags and draw a closed outline with one GPU polyline packet;
+- size the primitive buffer for a worst case and say what drawing the whole track costs.
 
 ## 4. Prerequisites
 
@@ -71,7 +72,7 @@ Everything is little-endian, which is also how the R3000 stores `int`. Face `v[]
 |---|---|---|
 | `FLOOR` | 0 | a drivable lane quad |
 | `WALL` | 1 | a side wall facing the road |
-| `BOOST` | 2 | the centre lane of a boost section (always with `FLOOR`) |
+| `BOOST` | 2 | the center lane of a boost section (always with `FLOOR`) |
 | `START` | 3 | the start line, three lane quads of the start section (with `FLOOR`) |
 | `FLIP_H` | 4 | mirrored texture: Chapter 35, ignored here |
 
@@ -79,7 +80,7 @@ Everything is little-endian, which is also how the R3000 stores `int`. Face `v[]
 
 The file is read into one buffer with `cd_load_file` (Chapter 29: a `malloc`ed, 4-byte aligned buffer). Instead of copying 560 faces into new structs, the parser fills a small `Track` with **pointers into that buffer**: `vertices = image + 0x60`, `faces = vertices + 12 * vertex_count`, and so on. The buffer then has to stay allocated for as long as the track is used (`main.c` does not free it). `TrkVertex`, `TrkFace` and `TrkSection` in `track.h` are laid out exactly like the file's records (a `_Static_assert` checks the sizes 12, 24, 64), so `&track.faces[i]` *is* face `i`.
 
-Two consequences. The image must be 4-byte aligned (a `u32` read from an odd address raises a CPU exception on the R3000), which is the first thing `track_parse` checks. And a **header field is read with byte-wise helpers** (`rd16`, `rd32`), which is safe at any address, while the tables are read through the struct pointers after the alignment is proven.
+One consequence: the image must be 4-byte aligned, because reading a `u32` through a struct pointer at an unaligned address raises an address error exception on the R3000. Alignment is therefore the first thing `track_parse` checks. The starter's byte-wise helpers (`rd16`, `rd32`) work at any address; the renderer reads the tables through the struct pointers, which is safe once the alignment is proven.
 
 ### 5.4 Validating: nothing is trusted until it is checked
 
@@ -153,32 +154,32 @@ All four vertices are classified **before** the first test, so the per-vertex st
 
 **Vertex order.** Faces list their corners in **Z order**: `v0 v1` is one edge, `v2 v3` the opposite edge, so the outline of the quad is `v0 -> v1 -> v3 -> v2`. A `POLY_F4` takes the corners in exactly this order. `NCLIP` on `v0 v1 v2` is positive when the face is turned towards you (the generator already ordered each face to face the road).
 
-**Colour legend** (a GPU word is `r | g << 8 | b << 16`; `track_colour(flags)`):
+**Color legend** (a GPU word is `r | g << 8 | b << 16`; `track_colour(flags)`):
 
 | Face | Test (in this order) | RGB | |
 |---|---|---|---|
 | start line | `START` | (240, 240, 240) | white |
 | boost pad | `BOOST` | (0, 200, 255) | cyan |
 | wall | `WALL` | (40, 60, 120) | blue |
-| lane | `FLOOR` | (70, 72, 80) | grey |
+| lane | `FLOOR` | (70, 72, 80) | gray |
 | none of the four | | (255, 0, 255) | magenta |
 | wireframe | | (255, 255, 0) | yellow |
 
-The generated tracks store the same values in each face's `color[]` field, and Appendix E.10.3 mentions it. This chapter takes the colour from the **flags** anyway: flags are the face's meaning, the colour field is a convenience a tool may fill wrongly (the verifier's second disc zeroes it).
+The generated tracks store the same values in each face's `color[]` field, and Appendix E.10.3 mentions it. This chapter takes the color from the **flags** anyway: flags are the face's meaning, the color field is a convenience a tool may fill wrongly (the verifier's second disc zeroes it).
 
 ### 5.7 Packets and the budget
 
-A flat quad is a `POLY_F4`, **24 bytes**: tag, colour + command `0x28`, four `xy` words (Chapter 14). Its ordering-table slot is `AVSZ4` of the four `SZ` values `>> 7` (`OTZ_SHIFT`, as in Chapter 33), clamped to 0..63 by `ot_add`.
+A flat quad is a `POLY_F4`, **24 bytes**: tag, color + command `0x28`, four `xy` words (Chapter 14). Its ordering-table slot is `AVSZ4` of the four `SZ` values `>> 7` (`OTZ_SHIFT`, as in Chapter 33), clamped to 0..63 by `ot_add`.
 
-| Worst case | Bytes |
+| | Bytes |
 |---|---|
-| 560 faces x `POLY_F4` | 13,440 |
-| + 560 outlines x 32 (5.8) | 31,360 |
-| `psxe` before this chapter | **2,048** |
+| Worst case: 560 faces x `POLY_F4` (24) | 13,440 |
+| Worst case in wire mode: 560 x (24 + 32), fill plus outline (5.8) | 31,360 |
+| `psxe`'s buffer before this chapter | **2,048** |
 
 The Chapter 21 library gives each frame 2,048 bytes of primitives: 85 quads. This chapter's copy of `psxe/include/psxe/ot.h` sets `PRIM_BUF_SIZE` to **32,768** (two frames = 64 KB of the 2 MB RAM). When the buffer is full anyway, `ot_alloc` returns `NULL`: count the face in `faces_dropped` and `prims_dropped` and allocate nothing more this frame; never write past it (guard bytes behind each buffer must stay `0xA5`).
 
-**What the whole track costs.** The harness counted the R3000 cycles inside `track_draw` for the 20 main-disc poses on the reference solution: **174,000 to 454,000, mean 325,000**, against the 566,120 cycles between two NTSC vertical blanks: **about 57 percent** of one frame for the drawing alone, 64 percent in the two poses with the outline. In PCSX-Redux the loop still holds one frame (the GPU is not timed); a real console also spends time filling pixels. What matters is what the time buys: at the start line **187** of 560 faces are far, **173** behind the eye, **39** back-facing, **2** too big, **159** drawn. About **72 percent of the faces are rejected**, and there will still be a ship, physics and collision to fit. Chapter 38 draws only a window of sections around the ship; this chapter deliberately draws all of them, so that you see why.
+**What the whole track costs.** The harness counted the R3000 cycles inside `track_draw` for the 20 main-disc poses on the reference solution: **174,000 to 454,000, mean 325,000**, against the 566,120 cycles between two NTSC vertical blanks: **about 57 percent** of one frame for the drawing alone on average (64 percent in the two poses with the outline). In PCSX-Redux the loop still holds one frame (the GPU is not timed); a real console also spends time filling pixels. What matters is what the time buys: at the start line **187** of 560 faces are far, **173** behind the eye, **39** back-facing, **2** too big, **159** drawn. About **72 percent of the faces are rejected**, and there will still be a ship, physics and collision to fit. Chapter 38 draws only a window of sections around the ship; this chapter deliberately draws all of them, so that you see why.
 
 ### 5.8 The wireframe overlay
 
@@ -211,13 +212,13 @@ It prints the header, the flag counts (336 floor, 224 wall, 4 boost, 3 start), t
 
 ## 7. Project: the whole track, outlined
 
-### 7.1 Behaviour
+### 7.1 Behavior
 
-The program boots from the disc: the title, then **Start** goes to the game as in Chapter 33. The game now shows **only the track** (the Chapter 33 scenery is still loaded, but not drawn: the track uses the frame's whole primitive budget). It is seen from the Chapter 33 start position, behind the start line, in a dark blue sky. The **fly camera** is unchanged: D-pad moves in world axes, R1/L1 down/up, R2/L2 turn. **Select** toggles the wireframe overlay (edge-triggered). **Start** returns to the title.
+The program boots from the disc: the title, then **Start** goes to the game as in Chapter 33. The game now shows **only the track** (the Chapter 33 scenery is still loaded, but not drawn: the track uses the frame's whole primitive budget). It is seen from the Chapter 33 start position, behind the start line, in a dark blue sky. The **fly camera** is unchanged: D-pad moves in world axes, R1/L1 down/up, R2/L2 turn. **Select** toggles the wireframe overlay (once per press). **Start** returns to the title.
 
 ### 7.2 The contract
 
-`starter/` is Chapter 33's `solution/` plus the new modules; it builds and boots, but `track_parse` rejects every file, so the game state shows a red screen (`load_status` 4). **Given:** everything of Chapter 33 including `main.c` (it loads `\DATA\TRACK.TRK;1` and calls your `track_parse`), `psxe/` with the larger buffer, the `LINE_P5` packet and `load_matrix`. **Read `track.h` and `track_render.h` first: they are the contract.** **You write:**
+`starter/` is Chapter 33's `solution/` plus the new modules; it builds and boots, but `track_parse` rejects every file, so the game state shows a red screen (`load_status` 4). **Given:** all of Chapter 33's code including `main.c` (it loads `\DATA\TRACK.TRK;1` and calls your `track_parse`), `psxe/` with the larger buffer, the `LINE_P5` packet and `load_matrix`. **Read `track.h` and `track_render.h` first: they are the contract.** **You write:**
 
 | File | Functions |
 |---|---|
@@ -253,8 +254,8 @@ The program boots from the disc: the title, then **Start** goes to the game as i
 
 - `d = vertex - eye` in `s32`, then to `s16`. Never `view_mtx.t`, never the absolute vertex.
 - Skip a face when **any** of its four vertices is far; classify all four first.
-- Nothing may depend on this track: no counts, no section numbers. The verifier boots a second disc with track 2 translated far from the origin, with zeroed colour fields.
-- Colour comes from the flags, not from `color[]`.
+- Nothing may depend on this track: no counts, no section numbers. The verifier boots a second disc with track 2 translated far from the origin, with zeroed color fields.
+- Color comes from the flags, not from `color[]`.
 - Never write past `ot_alloc`'s block.
 - `input_pressed`, not `input_held`, for Select.
 
@@ -271,7 +272,7 @@ The program boots from the disc: the title, then **Start** goes to the game as i
 
 - Project three vertices at a time with `RTPT` (Chapter 27) and count the cycles saved.
 - Clamp instead of skip: compare the picture from a far pose, and say what looks wrong.
-- Colour the faces by section number to see the sections.
+- Color the faces by section number to see the sections.
 - Draw the section window `[s - 2, s + 8]` for a section `s` you choose: `track_draw(first, count)` already supports it.
 
 ## 8. Verification
@@ -291,8 +292,8 @@ About 35 seconds: a build, three emulator runs (the disc, a second disc, direct 
 | `... track_stats ...` (main and alt) | the 8 counters equal the rules at every pose | wrong order of the tests; vertices of a far face unclassified |
 | `... camera-relative ...` (main and alt) | every `trk_rel` equals `vertex - eye`, within +-32767; `VS_FAR` exactly when some `|d| > 32767`; `trk_sxy`, `trk_sz` equal the exact RTPS | absolute vertices, `TR` used, `t` not zeroed |
 | `boundaries` | a vertex at `|d| = 32767` is kept and at 32768 is far, on every axis, both signs | `>=` for `>`; clamping |
-| `... packets ...` | the ordering table holds exactly the expected `POLY_F4` / polyline packets: colour, corners, slot; an outline after its fill | wrong corner order; outline linked after fill |
-| `... pictures ...` | the colour at the centre of drawn faces equals the legend under painter's order (cyan boost pads of sections 28, 76); yellow at outline edges | wrong colour or draw order |
+| `... packets ...` | the ordering table holds exactly the expected `POLY_F4` / polyline packets: color, corners, slot; an outline after its fill | wrong corner order; outline linked after fill |
+| `... pictures ...` | the color at the center of drawn faces equals the legend under painter's order, cyan boost pads included; yellow at outline edges | wrong color or draw order |
 | `the primitive buffers ...` | guard bytes intact | writing past a block |
 | `track_parse accepts ... rejects ...` | 81 crafted files: every code, the check order, limits and exact boundaries; `*out` zero; input untouched | order of checks; 16-bit sums |
 | `track_vertex / track_face / track_section` | pointer or `NULL` for -1, 0, last, count, 65535, ... | unsigned compare |
@@ -300,18 +301,18 @@ About 35 seconds: a build, three emulator runs (the disc, a second disc, direct 
 | `track_draw(t, first, count)` | wrap, count cut, `count <= 0`, negative `first`; vertices seen; `view_mtx.t` set non-zero in the test | modulo of a negative; not zeroing `t` |
 | `the primitive budget` | six draws on one frame; the drops start where the model says | one drop must stop all later allocations |
 
-A pass ends with `CHAPTER 34: PASSED (23/23 checks)`. The untouched starter fails; so do absolute vertices, the camera in `TR`, clamping instead of skipping, hard-coded counts, and a swapped colour priority.
+The remaining checks cover the build (state symbols linked, the disc's files, the buffer size) and a sanity limit on `track_draw`'s run time. A pass ends with `CHAPTER 34: PASSED (23/23 checks)`. The untouched starter fails; so do absolute vertices, the camera in `TR`, clamping instead of skipping, hard-coded counts, and a swapped color priority.
 
 ## 9. Common pitfalls
 
 - **Putting the camera in `TR`.** The GTE handles the large `t` fine; the absolute vertex is what gets narrowed to 16 bits. It looks right on the shipped tracks (their coordinates fit `s16`) and breaks as soon as one does not, as on the second disc.
 - **Subtracting in 16 bits.** `(s16) v.x - (s16) eye.x` wraps; subtract in `int32_t`, then narrow.
-- **A local `SVECTOR` for `gte_ldv0`.** The macro does not tell the compiler it reads memory, so the GTE can load stale stack bytes: garbage projections that change with the optimisation level (7.5).
+- **A local `SVECTOR` for `gte_ldv0`.** The macro does not tell the compiler it reads memory, so the GTE can load stale stack bytes: garbage projections that change with the optimization level (7.5).
 - **Forgetting that `d` can still be too big.** A vertex 40,000 units away has no `s16`; it must be skipped, not truncated.
 - **Testing only the first vertex.** A face is skipped when *any* corner is far; and classify all four, or `trk_vstate` differs.
 - **`>=` for the far limit.** 32767 fits in `s16` and is kept; 32768 is far.
 - **Adding two `u16` and comparing.** `first_face + face_count` wraps in 16 bits.
-- **Reading a `u32` from an odd address.** An address error exception: check alignment first.
+- **Reading a `u32` from an unaligned address.** An address error exception: check alignment first.
 - **Linking the outline after the fill.** The fill covers it.
 - **Writing past the packet.** A full buffer returns `NULL`; stop allocating for the frame.
 - **Trusting the file.** Every index in it is a number to be checked.
@@ -323,6 +324,6 @@ A pass ends with `CHAPTER 34: PASSED (23/23 checks)`. The untouched starter fail
 ## 11. Further reading
 
 - Appendix E.10 (`.TRK`), `tools/assets/trkgen.py` (the generator and manifest), `formats.py` (`parse_trk`).
-- psx-spx, "GTE Division Inaccuracy" and "GTE Coordinate Calculation" (the saturations of 5.5).
+- psx-spx, "GTE Saturation" and "GTE Coordinate Calculation Commands" (`RTPS` and the saturations of 5.5).
 - Chapter 14 and [Appendix C](../../../appendices/C-gpu-commands.md) (`POLY_F4`, polyline `0x48`).
 - Next: Chapter 35 textures the same faces from `TRACK.TPK`.

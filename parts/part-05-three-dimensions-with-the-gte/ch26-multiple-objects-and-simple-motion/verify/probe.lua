@@ -1,4 +1,4 @@
--- Chapter 26 probe. Observes only; the harness patches the state (objects[], gravity, floor_y, cam, proj_h, colours)
+-- Chapter 26 probe. Observes only; the harness patches the state (objects[], gravity, floor_y, cam, proj_h, colors)
 -- into the .exe before each run and ends the run at max_frames. Every time the program calls frame_done() the probe
 -- records one row:
 --   { frame_no,

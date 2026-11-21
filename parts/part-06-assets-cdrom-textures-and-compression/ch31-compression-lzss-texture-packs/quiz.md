@@ -38,10 +38,10 @@ The decoder then copies from `ring[pos]` directly, with no subtraction; the comp
 The **uncompressed** blob (the concatenated TIMs). The decoder's job is to rebuild those bytes; checking them catches a damaged disc read and any decoder bug in one step, whatever the compressor did. A checksum of the compressed stream would pass for a decoder that rebuilds the wrong data.
 </details>
 
-**7.** A 16,896-byte pack compresses to 5,334 bytes. At 300 KB/s, how much disc time does that save, and how does it compare with a decode of 557,000 cycles at 33.8688 MHz?
+**7.** A 16,896-byte pack compresses to a 5,388-byte file. At 300 KB/s, how much disc time does that save, and how does it compare with a decode of 557,000 cycles at 33.8688 MHz?
 
 <details><summary>Answer</summary>
-Saved bytes: 16,896 - 5,334 = 11,562. At 300,000 bytes/s that is about 38.5 ms (77 ms at single speed). Decoding: 557,000 / 33,868,800 = 16.4 ms. So the pack loads about 22 ms faster even before counting seek time, and the saving grows with the compressibility of the data.
+Saved bytes: 16,896 - 5,388 = 11,508. At 300,000 bytes/s that is about 38 ms (77 ms at single speed). Decoding: 557,000 / 33,868,800 = 16.4 ms. So the pack loads about 22 ms faster even before counting seek time, and the saving grows with the compressibility of the data.
 </details>
 
 **8.** `lzss_decode` finds a reference of length 18 when only 10 output bytes remain. What must it do, and why not just copy 10?

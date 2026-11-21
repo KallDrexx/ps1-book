@@ -6,13 +6,13 @@ compiled into the EXE.
 MAIN RUN (the default placement, the cube spinning, 100 frames after the boot): load_status 0; tim_info equals the TIM headers (parsed here
 with tools/assets/tim.py); tex[] holds the texture-page word, CLUT word, texel origin and size that Appendix E.3.4 gives; a VRAM dump taken at
 the end shows each TIM's CLUT and image block, exactly, at the rectangle the TIM's own header names; the matrix is a rotation about the
-cube's centre; at every sampled frame the polygons found by walking the ordering table are exactly the front faces, each a POLY_FT4 (0x2C)
-with neutral colour, the face's texture's tpage and clut, corner UVs in the order top-left, top-right, bottom-left, bottom-right at the
+cube's center; at every sampled frame the polygons found by walking the ordering table are exactly the front faces, each a POLY_FT4 (0x2C)
+with neutral color, the face's texture's tpage and clut, corner UVs in the order top-left, top-right, bottom-left, bottom-right at the
 texture's first and last texels (so nothing is mirrored), corners where the projection puts them, in the right ordering-table slot; at three
 frames the screenshot is compared with the texture itself, point by point (inverse affine mapping through the polygon the program drew).
 ALT RUN: a second disc whose TIMs sit elsewhere in VRAM (other pages, a page in the lower half, other CLUT rows) and whose face-to-texture
 table, pose and spin are patched at run time: everything above must hold again. A program that hard-codes a placement, a texture per face or
-a flat colour fails.
+a flat color fails.
 DIRECT CALLS (probe_direct.lua): tim_parse on valid and damaged TIM images (flags, block sizes, VRAM bounds, CLUT alignment, texture page
 limits, trailing bytes, misaligned pointer; *t untouched on failure) and tex_from_tim on crafted descriptions."""
 import hashlib
@@ -46,7 +46,7 @@ SAMPLE_MIN_AREA = 3000                               # NCLIP units (twice the pi
 EDGE_PX = 2.5                                        # sample points keep this far from a triangle's edges
 VERT_TOL = 3                                         # pixels: drawn corner vs projected corner
 SLOT_TOL = 2
-COLOUR_TOL = 18                                      # per channel, 0..255: a texel matches the screen pixel within this
+COLOR_TOL = 18                                      # per channel, 0..255: a texel matches the screen pixel within this
 
 # Alternative placements for the second disc: (bpp, x, y, clut_x, clut_y), keyed by file.
 ALT_PLACE = {"CRATE.TIM": (8, 576, 256, 32, 500), "PANEL.TIM": (4, 848, 264, 48, 501), "LOGO.TIM": (4, 964, 320, 0, 502)}
@@ -308,7 +308,7 @@ def check_loading(ctx, name):
         expect_eq(clut_ptr != 0, bool(want[3]), f"{name}: {n}: clut_data is set exactly when the TIM has a CLUT", f"0x{clut_ptr:08X}")
         _, wt = describe(files[n])
         expect_eq(tex[6 * i:6 * i + 6], [wt[k] for k in ("tpage", "clut", "u", "v", "w", "h")], f"{name}: tex[{i}] ({n}) [tpage, clut, u, v, w, h]",
-                  fmt="dec", hint="Appendix E.3.4: tpage = x/64 | y/256 << 4 | tp << 7; clut = x/16 | y << 6; u = (x mod 64) * (4 at 4 bpp, 2 at 8 bpp); v = y mod 256; w in texels.")
+                  fmt="dec", hint="README 5.1 and 5.3 (Appendix E.3.4): the tpage word comes from the image rectangle and the depth, the CLUT word from the CLUT rectangle; u, v, w, h are in texels.")
     return r, rows, files
 
 
@@ -380,7 +380,7 @@ def check_prims(row, perm, files, name):
     for p in prims:
         slot, code, r, g, b = p[:5]
         expect_eq(code, 0x2C, f"{name}: frame {fr}: polygon command byte", fmt="hex", hint="POLY_FT4 is 0x2C: setPolyFT4(p).")
-        expect_eq([r, g, b], [128, 128, 128], f"{name}: frame {fr}: colour is neutral (0x80)", hint="setRGB0(p, 128, 128, 128): texel * 128 / 128.")
+        expect_eq([r, g, b], [128, 128, 128], f"{name}: frame {fr}: color is neutral (0x80)", hint="setRGB0(p, 128, 128, 128): texel * 128 / 128.")
         corners = [(p[5 + 4 * k], p[6 + 4 * k]) for k in range(4)]
         match = None
         for f, ps, area in vis + edge:
@@ -397,14 +397,14 @@ def check_prims(row, perm, files, name):
         t, tx = describe(files[NAMES[perm[f]]])
         got_tpage, got_clut = p[22], p[21]
         expect_eq(got_tpage & 0x1FF, tx["tpage"], f"{name}: frame {fr}: face {f} ({NAMES[perm[f]]}) tpage word (x/64, y/256, abr, tp)", fmt="hex",
-                  hint="p->tpage = tex.tpage: from the TIM's image rectangle: x/64 | y/256 << 4 | tp << 7 (tp: 0 = 4 bpp, 1 = 8 bpp).")
+                  hint="The polygon takes the tpage word of tex[face_tex[f]], which comes from the TIM's image rectangle and depth (README 5.3).")
         expect_eq(got_clut, tx["clut"], f"{name}: frame {fr}: face {f} ({NAMES[perm[f]]}) clut word (x/16, y)", fmt="hex",
-                  hint="p->clut = tex.clut: x/16 | y << 6, from the TIM's CLUT rectangle.")
+                  hint="The polygon takes the CLUT word of tex[face_tex[f]], which comes from the TIM's CLUT rectangle (README 5.3).")
         u0, v0, u1, v1 = tx["u"], tx["v"], tx["u"] + tx["w"] - 1, tx["v"] + tx["h"] - 1
         want = [(u0, v0), (u1, v0), (u0, v1), (u1, v1)]
         got = [(p[7 + 4 * k], p[8 + 4 * k]) for k in range(4)]
-        hint = ("Corner k of a face is top-left, top-right, bottom-left, bottom-right as seen from outside: u = u0 (k even) or u0 + w - 1 (k odd); "
-                "v = v0 (k < 2) or v0 + h - 1.")
+        hint = ("Corners 0..3 of a face are top-left, top-right, bottom-left, bottom-right as seen from outside; each takes the matching corner of the texture, "
+                "from its first texel to its last (README 5.7).")
         if got == [(u1, v0), (u0, v0), (u1, v1), (u0, v1)]:
             hint = "The texture is mirrored left-right: corner 0 must take the LEFT edge. " + hint
         expect_eq(got, want, f"{name}: frame {fr}: face {f} ({NAMES[perm[f]]}) corner UVs", hint=hint)
@@ -442,7 +442,7 @@ def check_picture(r, rows, perm, files, name, frames):
             UV = [(p[7 + 4 * k] - tx["u"], p[8 + 4 * k] - tx["v"]) for k in range(4)]
             ok = bad = 0
             first_bad = None
-            seen = set()                                        # screen colours at the sample points: a flat polygon shows one
+            seen = set()                                        # screen colors at the sample points: a flat polygon shows one
             xs = [v[0] for v in V]
             ys = [v[1] for v in V]
             for y in range(max(0, min(ys)), min(H, max(ys) + 1)):
@@ -473,7 +473,7 @@ def check_picture(r, rows, perm, files, name, frames):
                             for dx in (-1, 0, 1):
                                 jx, jy = min(tw - 1, max(0, ix + dx)), min(th - 1, max(0, iy + dy))
                                 e = px[jy * tw + jx]
-                                if max(abs(got[i] - e[i]) for i in range(3)) <= COLOUR_TOL:
+                                if max(abs(got[i] - e[i]) for i in range(3)) <= COLOR_TOL:
                                     hit = True
                         if hit:
                             ok += 1
@@ -485,16 +485,16 @@ def check_picture(r, rows, perm, files, name, frames):
             expect_true(ok + bad >= 25, f"{name}: frame {fr}: face {f} has enough sample points", f"{ok + bad}")
             expect_true(ok >= 0.9 * (ok + bad), f"{name}: frame {fr}: face {f} shows the {key} texture ({ok} of {ok + bad} sample points match)",
                         f"{ok} of {ok + bad}; e.g. pixel {first_bad[:2]} is {first_bad[2]}, the texel there is {first_bad[3]}" if first_bad else "",
-                        hint="Right colours but the wrong picture: UVs. Wrong colours: the CLUT word or the CLUT upload. Garbage: tpage or the image upload. "
-                             "Flat colour: the polygon is not textured.")
-            # The 3 x 3-texel tolerance lets one mid-grey 'match' a low-contrast texture (the panel); a textured face shows several colours.
+                        hint="Right colors but the wrong picture: UVs. Wrong colors: the CLUT word or the CLUT upload. Garbage: tpage or the image upload. "
+                             "Flat color: the polygon is not textured.")
+            # The 3 x 3-texel tolerance lets one mid-gray 'match' a low-contrast texture (the panel); a textured face shows several colors.
             need = min(3, len({q[:3] for q in px}))
-            expect_true(len(seen) >= need, f"{name}: frame {fr}: face {f} is textured ({len(seen)} distinct colours where the {key} texture has several)",
-                        f"{len(seen)} colour(s)", hint="Flat colour: the polygon is not textured (code 0x2C, tpage and UVs).")
+            expect_true(len(seen) >= need, f"{name}: frame {fr}: face {f} is textured ({len(seen)} distinct colors where the {key} texture has several)",
+                        f"{len(seen)} color(s)", hint="Flat color: the polygon is not textured (code 0x2C, tpage and UVs).")
         expect_true(tested >= 1, f"{name}: frame {fr}: at least one large face to sample", "none", hint="Is the cube drawn?")
 
 
-@check("the cube spins about its centre; the matrix is a rotation",
+@check("the cube spins about its center; the matrix is a rotation",
        hint="rot += rot_step each frame; RotMatrix + TransMatrix(0, 0, cam_z).")
 def _(ctx):
     r, rows, _ = observe(ctx, "main")
@@ -503,7 +503,7 @@ def _(ctx):
 
 
 @check("polygons: one POLY_FT4 per front face with the right tpage, clut, UVs, corners and slot",
-       hint="See 7.2: setPolyFT4, neutral colour, corners faces[f][0..3], UVs at the texture's first and last texels, tpage and clut from tex[face_tex[f]].")
+       hint="See 7.2: setPolyFT4, neutral color, corners faces[f][0..3], UVs at the texture's first and last texels, tpage and clut from tex[face_tex[f]].")
 def _(ctx):
     r, rows, files = observe(ctx, "main")
     for row in rows[::4]:
@@ -640,7 +640,7 @@ def _(ctx):
 
 
 @check("tex_from_tim: tpage word, clut word, texel origin and size for crafted placements",
-       hint="tpage = x/64 | y/256 << 4 | tp << 7; clut = x/16 | y << 6; u = (x mod 64) * (4, 2, 1); v = y mod 256; w = image w * (4, 2, 1).")
+       hint="README 5.1 and 5.3 (Appendix E.3.4): page column and row from the image position, the depth bits, the CLUT position; origin and size in texels, which depend on the depth.")
 def _(ctx):
     cases, recs = direct_run(ctx)
     for rec, (name, w) in zip(recs[len(cases["parse"]):], TEX_CASES):

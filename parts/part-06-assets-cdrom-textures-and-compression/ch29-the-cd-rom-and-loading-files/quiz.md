@@ -25,7 +25,7 @@ A Mode 2 Form 1 sector is 12 bytes of sync, 4 of header, 8 of subheader, 2048 of
 
 <details><summary>Answer</summary>
 
-The CPU is little-endian, so it reads `0x0D000000 = 218,103,808`. The right expression is `((uint32_t) p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3]` on the four bytes. The second reason: the file buffer is an array of bytes, and reading it through a `uint32_t *` breaks C's aliasing rules and silently assumes alignment, which fails at the first odd offset (an `lw` from an address not divisible by 4 raises an address error exception on the R3000).
+The CPU is little-endian, so it reads `0x0D000000 = 218,103,808`. The right expression is `((uint32_t) p[4] << 24) | (p[5] << 16) | (p[6] << 8) | p[7]`, which gives 13. The second reason: the file buffer is an array of bytes, and reading it through a `uint32_t *` breaks C's aliasing rules and silently assumes alignment, which fails at the first odd offset (an `lw` from an address not divisible by 4 raises an address error exception on the R3000).
 </details>
 
 **5.** `cd_load_file` calls `malloc`, and then `CdRead` reports an error. Which things must it do before returning, and what does it return?
@@ -39,7 +39,7 @@ Free the buffer (otherwise each failure leaks it), make sure `*size` is 0, and r
 
 <details><summary>Answer</summary>
 
-`F` comes from the file. For `F = 0xFFFFFFFF` the product `8 * F` overflows 32 bits (it wraps to a small number), so the second test can pass for a corrupt file and the parser would then read far beyond the buffer. Dividing the space left by 8 cannot overflow, so the check is safe.
+`F` comes from the file, and `8 * F` is computed in 32 bits. For `F = 0x20000002` the product wraps to 16, so the second test passes for a corrupt file that has room for only two faces, and the parser would then read far beyond the buffer. Dividing the space left by 8 cannot overflow, so the check is safe.
 </details>
 
 **7.** Why is `memcpy`-ing or casting the *vertices* of `MODEL.BIN` fine when its *counts* are not?
@@ -53,12 +53,12 @@ The vertices are little-endian `s16`, the CPU's own order, and the format puts t
 
 <details><summary>Answer</summary>
 
-Any of: the vertex or face count (a loop to 13: the ship has 13 vertices and 13 faces), the file size or sector count (`malloc(2048)`, or a loop that reads one sector), the model itself (compiled in with `xxd -i`), a colour or face table, `first_vertex`/`last_vertex` values copied from the ship. Everything about the model must come from the bytes that were read.
+Any of: the vertex or face count (a loop to 13: the ship has 13 vertices and 13 faces), the file size or sector count (`malloc(2048)`, or a loop that reads one sector), the model itself (compiled in with `xxd -i`), a color or face table, `first_vertex`/`last_vertex` values copied from the ship. Everything about the model must come from the bytes that were read.
 </details>
 
 **9.** Where do the heap and the stack live, and what does `malloc` do when the heap is exhausted?
 
 <details><summary>Answer</summary>
 
-Both are in the 2 MB of RAM above the program: the heap starts at the end of `.bss` and grows up (to `0x801FFFF8` at most), and the stack starts at `0x801FFFF0` and grows down. `malloc` returns `NULL` when it cannot satisfy a request, so every allocation must be checked. Nothing prevents a large heap from running into the stack.
+Both are in the 2 MB of RAM above the program: the heap starts at the end of `.bss` and grows up (to the top of RAM at most), and the stack starts at `0x801FFFF0` and grows down. `malloc` returns `NULL` when it cannot satisfy a request, so every allocation must be checked. Nothing prevents a large heap from running into the stack.
 </details>

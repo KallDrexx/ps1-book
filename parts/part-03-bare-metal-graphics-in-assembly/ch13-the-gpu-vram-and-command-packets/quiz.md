@@ -25,9 +25,9 @@ x is rounded down to a multiple of 16 (16) and the width is rounded up to a mult
 The fill ignores the drawing area and paints VRAM wherever you say (in 16-pixel steps). The `60h` rectangle is clipped to the drawing area, so a rectangle entirely outside it draws nothing.
 </details>
 
-**6. What byte order does the GPU expect for a colour word, and what is in the top byte?**
+**6. What byte order does the GPU expect for a color word, and what is in the top byte?**
 <details><summary>Answer</summary>
-`0xCCBBGGRR`: the command byte `CC` on top, then blue, green, red. If you hold colours as `0x00RRGGBB`, swap red and blue before OR-ing in the command byte. VRAM then stores each channel in 5 bits, so a screenshot shows the value rounded to a multiple of 8 (`0x80` reads back as `0x84`).
+`0xCCBBGGRR`: the command byte `CC` on top, then blue, green, red. If you hold colors as `0x00RRGGBB`, swap red and blue before OR-ing in the command byte. VRAM then keeps only the top 5 bits of each channel, so a screenshot shows a slightly different value (`0x80` comes back as `0x84`).
 </details>
 
 **7. Which GPUSTAT bit says "ready to receive command word"? When does it matter?**
@@ -42,5 +42,5 @@ Bit 26. The GPU buffers commands in a small FIFO and draws while the CPU runs on
 
 **9. NTSC or PAL: what changes for a 320x240 picture?**
 <details><summary>Answer</summary>
-NTSC is about 60 Hz with 263 lines of 3413 GPU clocks; PAL is about 50 Hz with 314 lines of 3406 clocks. The horizontal range is the same, but the vertical range sits at different TV lines (NTSC 16 to 256), and GP1(08h) bit 3 selects the video mode. PAL has room for about 288 visible lines, so a 240-line picture is centred with a different range; VRAM and the commands are identical.
+NTSC is about 60 Hz with 263 lines of 3413 GPU clocks; PAL is about 50 Hz with 314 lines of 3406 clocks. The horizontal range is the same, but the vertical range sits at different TV lines (NTSC 16 to 256), and GP1(08h) bit 3 selects the video mode. PAL has room for about 288 visible lines, so a 240-line picture is centerd with a different range; VRAM and the commands are identical.
 </details>

@@ -1,6 +1,6 @@
 -- Chapter 14 probe.
 -- Phase 1: pack_color and pack_vertex are called DIRECTLY (tools/verify-lib/directcall.lua) with random arguments
---   (negative coordinates, garbage in the top byte of the colour); the record's v0 is the result.
+--   (negative coordinates, garbage in the top byte of the color); the record's v0 is the result.
 -- Phase 2: the real program runs to `done`. Every word written to GP0 (0x1F801810) and GP1 (0x1F801814) is logged
 --   with the number of GPUSTAT reads (lw from 0x1F801814) so far. The value of a write is the source register of the
 --   `sw` at the faulting pc (decoded here), because the breakpoint callback does not get it.

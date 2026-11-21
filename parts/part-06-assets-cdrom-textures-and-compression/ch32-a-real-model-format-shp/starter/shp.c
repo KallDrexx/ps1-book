@@ -41,7 +41,7 @@ uint32_t shp_packet_size(unsigned type, int textured)
 
 void shp_fill(void *pkt, const ShpPrim *p, const int32_t *sxy, const Tex *tex)
 {
-	/* TODO (README 7.3 steps 4 and 6): one case per packet kind: setPolyXX, colours, setXY3/setXY4, and for textured kinds setUV3/setUV4 + tpage + clut. */
+	/* TODO (README 7.3 steps 4 and 6): one case per packet kind: setPolyXX, colors, setXY3/setXY4, and for textured kinds setUV3/setUV4 + tpage + clut. */
 	(void) pkt;
 	(void) p;
 	(void) sxy;

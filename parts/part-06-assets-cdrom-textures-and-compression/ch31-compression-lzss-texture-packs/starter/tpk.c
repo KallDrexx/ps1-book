@@ -5,10 +5,10 @@
 #include "tim.h"
 #include "tpk.h"
 
-/* TODO (README 5.7 and 7.2): the five functions of tpk.h. tim_parse, tim_upload, tex_from_tim (tim.c) and cd_load_file (cdrom.c) are
+/* TODO (README 5.7 and 7.2): the five unfinished functions below. tim_parse, tim_upload, tex_from_tim (tim.c) and cd_load_file (cdrom.c) are
    Chapter 29 and 30's finished work. Until you write these, everything fails with an error code and the screen stays red. */
 
-/* TODO: little-endian 32-bit read from a byte pointer (the file image is only guaranteed 1-byte aligned inside tpk_parse's caller). */
+/* TODO: little-endian 32-bit read from a byte pointer (the file image may start at any address, so do not read it through a uint32_t pointer). */
 
 uint32_t tpk_crc32(const uint8_t *p, size_t n)
 {

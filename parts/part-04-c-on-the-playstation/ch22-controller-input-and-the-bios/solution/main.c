@@ -4,12 +4,12 @@
 #include <psxe/gfx.h>
 #include <psxe/input.h>
 
-#define NUM_COLOURS 6
+#define NUM_COLORS 6
 
 /* State the verifier reads and patches. Do not change the layout or the initial values. */
 typedef struct {
 	int32_t x, y;              /* top-left corner of the square */
-	int32_t colour;            /* index into cursor_colours */
+	int32_t color;            /* index into cursor_colors */
 	int32_t speed, fast;       /* pixels per frame: normal, and while Square is held */
 	int32_t home_x, home_y;    /* where Start puts the cursor */
 	int32_t size;              /* side of the square, in pixels */
@@ -17,7 +17,7 @@ typedef struct {
 
 Cursor cursor_state = { 152, 112, 0, 2, 4, 152, 112, 16 };
 
-const uint8_t cursor_colours[NUM_COLOURS][3] = {
+const uint8_t cursor_colors[NUM_COLORS][3] = {
 	{ 230,  40,  40 }, {  40, 200,  60 }, {  60, 110, 255 },
 	{ 240, 220,  40 }, { 220,  60, 220 }, {  40, 220, 220 },
 };
@@ -38,7 +38,7 @@ static void cursor_update(void)
 	if (input_held(INPUT_DOWN))  c->y += step;
 
 	if (input_pressed(INPUT_CROSS))
-		c->colour = (c->colour + 1) % NUM_COLOURS;
+		c->color = (c->color + 1) % NUM_COLORS;
 	if (input_released(INPUT_START)) {
 		c->x = c->home_x;
 		c->y = c->home_y;
@@ -50,7 +50,7 @@ static void cursor_update(void)
 static void cursor_draw(void)
 {
 	const Cursor *c = &cursor_state;
-	const uint8_t *rgb = cursor_colours[c->colour];
+	const uint8_t *rgb = cursor_colors[c->color];
 
 	gfx_quad_f4(c->x, c->y, c->size, c->size, rgb[0], rgb[1], rgb[2], 0);
 }

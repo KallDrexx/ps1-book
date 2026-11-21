@@ -436,7 +436,7 @@ def _(ctx): run_set(ctx, "shipped")
 
 @check("driver: results follow patched data (negative coordinates, 16-bit wraparound, non-zero pads)",
        hint="The vertex table and offset are replaced before the run, so constants fail. Coordinates are SIGNED 16-bit; "
-            "sums wrap (0x7FFF + 1 = 0x8000 = -32768) and the pad word never changes in `vertices`, but is 0 after unpack.")
+            "sums wrap (0x7FFF + 1 = 0x8000 = -32768) and the pad field never changes in `vertices`, but is 0 after unpack.")
 def _(ctx):
     for key in ("negative", "wrap", "random", "varied"):
         run_set(ctx, key)

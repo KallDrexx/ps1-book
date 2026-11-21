@@ -43,7 +43,7 @@ void handling_skid(int32_t vel[3], const int32_t target[3], int32_t dt);
      hx = isin(a), hz = icos(a);  num = up[0] * hx + up[2] * hz;
      g  = (-num) / up[1]          (C division, truncating; the slope of the road along the heading, 4.12; negative = the road climbs)
      g clamped to -32767 .. 32767;  y = (g * 4096) / collide_isqrt(4096 * 4096 + g * g)     (truncating: the y component of the unit vector along the slope)
-     p = the whole-unit angle in -PITCH_LIMIT .. PITCH_LIMIT that minimises |isin(p) + y| (the first, i.e. the smallest, on a tie)
+     p = the whole-unit angle in -PITCH_LIMIT .. PITCH_LIMIT that minimizes |isin(p) + y| (the first, i.e. the smallest, on a tie)
    and the result is p << 12 as a 12.12 angle (nose up = positive: a climbing road, y < 0, gives p > 0).
    A scan of the 513 angles costs about 40,000 instructions, a tick at 60 Hz cannot afford it: isin rises strictly over this range, so a binary search finds p. */
 int32_t handling_pitch_target(const int32_t up[3], int32_t yaw);

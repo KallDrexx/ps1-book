@@ -66,7 +66,7 @@ end
 
 -- ---- the calls ---------------------------------------------------------------------------------
 local used = {}
-local function color()                       -- distinct 15-bit colours, never black, random garbage in bits 31-24
+local function color()                       -- distinct 15-bit colors, never black, random garbage in bits 31-24
   while true do
     local r, g, b = rnd(256), rnd(256), rnd(256)
     local c555 = bit.rshift(r, 3) + bit.lshift(bit.rshift(g, 3), 5) + bit.lshift(bit.rshift(b, 3), 10)

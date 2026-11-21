@@ -25,7 +25,7 @@ Flag 4 on a block records its address as the loop point; flag 3 (end + repeat) o
 
 <details><summary>Answer</summary>
 
-`speed` is 4.12 fixed point and reaches 245,760; times a `span_mul` of thousands it would pass 2^31. Shifting first keeps every product within 32 bits (at the price of a resolution of 1/16 unit per tick, still 960 distinct steps over the speed range). Non-decreasing: every operation (shift, multiply by a non-negative constant, add, multiply by `base`, shift, `min`) preserves order, and negative speeds are clamped to 0 first.
+`speed` is 4.12 fixed point and reaches 245,760 at the cap; times the default `span_mul` of 6400 that is already 1.57 x 10^9, close to 2^31, so a larger `span_mul` or a speed above the cap would overflow. Shifting first keeps every product within 32 bits for any speed up to `1 << 24` (at the price of a resolution of 1/16 unit per tick, still 960 steps over the speed range). Non-decreasing: every operation (shift, multiply by a non-negative constant, add, multiply by `base`, shift, `min`) preserves order, and negative speeds are clamped to 0 first.
 </details>
 
 **5.** Two consecutive sections both have boost faces (28 and 29). The ship drives through both. How many chimes, and why? And when does a thud fire for a ship that stays off the road for 100 frames?
@@ -35,11 +35,11 @@ Flag 4 on a block records its address as the loop point; flag 3 (end + repeat) o
 Two: the boost event fires when the nearest section **changes** into a section with a boost face, and 27 to 28 and 28 to 29 are two changes (staying inside one section raises nothing). The thud fires once, when the ship **first** goes off the road (`|lateral| > half_width` is true now and was false the frame before); the 99 frames after it are "was already off" and stay quiet. Coming back on and going out again is a new thud.
 </details>
 
-**6.** `audio_play_sfx` keys the voice off before the key-on, and writes all the registers before it. Why those orders?
+**6.** `audio_play_sfx` writes all of a voice's registers before the key-on. Why? Is the key-off it sends first required?
 
 <details><summary>Answer</summary>
 
-A key-on **starts** the voice with whatever the registers contain at that moment: pitch, address and volume must be final first, or the first samples play with the previous sound's settings (a click or a wrong pitch). The key-off first guarantees a voice that is still playing an earlier sound restarts from its envelope's beginning instead of continuing; with the 23-voice round robin it rarely matters, but it makes the call correct for any pool size.
+A key-on **starts** the voice with whatever the registers contain at that moment: pitch, address, volume and envelope must be final first, or the voice starts at the previous sound's address or plays its first samples with the old settings. The key-off is not required: a key-on copies the start address and restarts the envelope from zero even on a voice that is still playing. It is a precaution that costs one write.
 </details>
 
 **7.** The music does not play and no error is reported. Name three independent things that can silence a CD-DA track that is being played.

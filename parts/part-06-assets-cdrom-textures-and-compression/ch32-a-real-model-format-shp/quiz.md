@@ -5,13 +5,13 @@ Answers are hidden under each question.
 **1.** Why does the `.SHP` format use variable-length records instead of one size for every primitive? What does the parser use to find the next record?
 
 <details><summary>Answer</summary>
-A flat triangle needs 16 bytes, a textured Gouraud quad 44. One size for all (44) would waste up to 28 bytes on every cheap face, and the GPU would also have to process the biggest primitive type every time. With variable records the parser reads the tag, knows the type's layout, and advances the pointer by that record's size (16, 20, 24, 32, 24, 32, 32 or 44). The `size` field stored in the record must agree with the tag's size; a mismatch means a damaged file.
+A flat triangle needs 16 bytes, a textured Gouraud quad 44. One size for all (44) would waste up to 28 bytes on every cheap face, and drawing every face as the biggest primitive type would waste GPU time too. With variable records the parser reads the tag, knows the type's layout, and advances the pointer by that record's size (16, 20, 24, 32, 24, 32, 32 or 44). The `size` field stored in the record must agree with the tag's size; a mismatch means a damaged file.
 </details>
 
 **2.** A `GT4` record is 44 bytes in the file. How big is the `POLY_GT4` packet you build from it, and why are the two different?
 
 <details><summary>Answer</summary>
-52 bytes. The file record stores indices (2 bytes per vertex), a normal index, alignment pads and a colour per vertex, in a compact order that suits the disc. The packet is what the GPU reads: the OT tag (4 bytes), then per vertex a colour word, an XY word and a UV(+CLUT/tpage) word, in the GPU's order. They have no field in common except the colours and UVs, so you never copy a record into a packet; you build the packet field by field.
+52 bytes. The file record stores indices (2 bytes per vertex), a normal index, alignment pads and a color per vertex, in a compact order that suits the disc. The packet is what the GPU reads: the OT tag (4 bytes), then per vertex a color word, an XY word and a UV(+CLUT/tpage) word, in the GPU's order. Only the colors carry over unchanged (even the UVs get the texture's origin added), so you never copy a record into a packet; you build the packet field by field.
 </details>
 
 **3.** `POLY_F4 *p = ot_alloc(sizeof(p));` compiles and does not crash. What is wrong?
@@ -29,7 +29,7 @@ A flat triangle needs 16 bytes, a textured Gouraud quad 44. One size for all (44
 **5.** Why does the file store texture-*local* UVs and not absolute ones?
 
 <details><summary>Answer</summary>
-The model should not depend on where the textures end up in VRAM. A pack may be placed in different pages (the verifier's second disc does exactly that), or two packs may be loaded to avoid each other. With local UVs the file says "texel (63, 0) of texture 1"; the loader adds the texture's origin `(u0, v0)` that the store learned from the TIM header. The same `.SHP` then works wherever its textures were uploaded.
+The model should not depend on where the textures end up in VRAM. A pack's textures may be placed in different pages (the verifier's second disc does exactly that), or moved so that two packs do not overlap. With local UVs the file says "texel (63, 0) of texture 1"; the loader adds the texture's origin `(u0, v0)` that the store learned from the TIM header. The same `.SHP` then works wherever its textures were uploaded.
 </details>
 
 **6.** `prims_size` in a header is `0xFFFFFFF0` and `prims_offset` is `0x288`. The check `prims_offset + prims_size <= size` passes. Why, and how should you write it?
@@ -53,5 +53,5 @@ It separates two kinds of bug. Flat mode needs only the parser, the transform, t
 **9.** You advance the record pointer with `rec += sizeof(ShpPrim)`. What happens?
 
 <details><summary>Answer</summary>
-`ShpPrim` is 40 bytes, the decoded form. Records are 16 to 44 bytes, so after the first record you are in the middle of the next one: the tag byte you read is a vertex index or a colour, and the validator's tag/size checks (or garbage geometry) follow. Advance by the size of the record you just decoded (`shp_decode` returns it).
+`ShpPrim` is 40 bytes, the decoded form. Records are 16 to 44 bytes, so after the first step you are almost never at the start of a record: the "tag" byte you read is part of a vertex index, a UV or a color, and a failed tag/size check (or garbage geometry) follows. Advance by the size of the record you just decoded (`shp_decode` returns it).
 </details>
